@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import 'dotenv/config'; // Crucial for loading variables locally during testing
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,17 +12,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// EXACTLY 6 API KEYS (3 Groq, 3 Gemini)
+// Read the keys securely from your Environment Tab configuration
 const groqKeys = [
-  "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",
-  "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",
-  "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"
+  process.env.GROQ_KEY_1,
+  process.env.GROQ_KEY_2,
+  process.env.GROQ_KEY_3
 ];
 
 const geminiKeys = [
-  "AQ.Ab8RN6J2sLsdXR3SKairWfT3j_ksm-RhZeMkjQQVlY5j8MBe5w",
-  "AQ.Ab8RN6LJH7QSjZXAxhC_2ze_5PvITbhAAnonje5r5p3aAch2NQ",
-  "AQ.Ab8RN6L-Q0HMOR_hNAKVZU8naEmsIeVIm9n-NNNBazVBCMjwEQ"
+  process.env.GEMINI_KEY_1,
+  process.env.GEMINI_KEY_2,
+  process.env.GEMINI_KEY_3
 ];
 
 let currentGroqIndex = 0;
@@ -76,6 +77,12 @@ async function tryGroqPool(recentMessages) {
   for (let i = 0; i < groqKeys.length; i++) {
     try {
       const apiKey = groqKeys[currentGroqIndex];
+      
+      // If the dashboard field is empty or missing, skip it instantly
+      if (!apiKey) {
+        throw new Error(`Groq Key at slot ${currentGroqIndex} is empty or undefined.`);
+      }
+
       const formattedMessages = [
         { role: "system", content: SYSTEM_PROMPT },
         ...recentMessages
@@ -99,9 +106,9 @@ async function tryGroqPool(recentMessages) {
       if (data.choices && data.choices[0]) {
         return data.choices[0].message.content;
       }
-      throw new Error("Invalid Groq response format");
+      throw new Error(data.error?.message || "Invalid Groq response format");
     } catch (err) {
-      console.warn(`Groq Key Index ${currentGroqIndex} hit an error or limit. Moving to next...`);
+      console.warn(`Groq Key Index ${currentGroqIndex} failed! Error detail:`, err.message || err);
       currentGroqIndex = (currentGroqIndex + 1) % groqKeys.length;
     }
   }
@@ -113,6 +120,12 @@ async function tryGeminiPool(recentMessages) {
   for (let i = 0; i < geminiKeys.length; i++) {
     try {
       const apiKey = geminiKeys[currentGeminiIndex];
+      
+      // If the dashboard field is empty or missing, skip it instantly
+      if (!apiKey) {
+        throw new Error(`Gemini Key at slot ${currentGeminiIndex} is empty or undefined.`);
+      }
+
       const url = `https://googleapis.com{apiKey}`;
 
       const response = await fetch(url, {
@@ -135,9 +148,9 @@ async function tryGeminiPool(recentMessages) {
       if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
         return data.candidates[0].content.parts[0].text;
       }
-      throw new Error("Invalid Gemini response format");
+      throw new Error(data.error?.message || "Invalid Gemini response format");
     } catch (err) {
-      console.warn(`Gemini Key Index ${currentGeminiIndex} hit an error or limit. Moving to next...`);
+      console.warn(`Gemini Key Index ${currentGeminiIndex} failed! Error detail:`, err.message || err);
       currentGeminiIndex = (currentGeminiIndex + 1) % geminiKeys.length;
     }
   }
