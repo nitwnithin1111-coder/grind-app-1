@@ -1,4 +1,4 @@
-require('dotenv').config(); // Essential Line 1: Loads your GEMINI_API_KEY from environment tab / .env file
+require('dotenv').config(); // Essential: Loads variables from your environment panel
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -56,47 +56,56 @@ app.post('/api/chat', async (req, res) => {
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Invalid messages' });
   }
+
+  // Slice the context to the last 6 messages to stay under rate limits
   const recentMessages = messages.slice(-6);
+  
+  // Format history payloads properly for Groq's engine
+  const formattedMessages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...recentMessages.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content
+    }))
+  ];
+
   try {
     const response = await fetch(
-      // FIXED MODEL: Target the robust, long-term stable gemini-2.5-flash production model
-      `https://googleapis.com{process.env.GEMINI_API_KEY}`,
+      "https://groq.com", // Official OpenAI compatible proxy endpoint
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}` // Reads key securely from configuration panel
+        },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: recentMessages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          })),
-          generationConfig: {
-            maxOutputTokens: 500,
-            temperature: 0.8
-          }
+          model: "llama-3.1-8b-instant", // Your safe high-limit free model tier
+          messages: formattedMessages,
+          max_tokens: 500,
+          temperature: 0.8
         })
       }
     );
-    
+
     const data = await response.json();
-    
+
     if (data.error) {
-      console.error('Gemini error encountered:', data.error);
+      console.error('Groq Engine Warning:', data.error);
       return res.status(500).json({ error: data.error.message });
     }
 
-    // FIXED PARSING LOGIC: Correct structure layout for the official API object response
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-      const reply = data.candidates[0].content.parts[0].text;
+    // Safely pull string text values out of the choice arrays
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      const reply = data.choices[0].message.content;
       res.json({ reply });
     } else {
-      console.error('Unexpected layout structure from Google:', data);
-      res.status(500).json({ error: 'Failed to safely read AI message layout structure.' });
+      console.error('Unexpected layout structure from Groq:', data);
+      res.status(500).json({ error: 'Failed to read response content layout.' });
     }
 
   } catch (err) {
-    console.error('Server error loop caught:', err);
-    res.status(500).json({ error: 'Server error. Try again.' });
+    console.error('Server connection loop crash:', err);
+    res.status(500).json({ error: 'Server connection failed. Try again.' });
   }
 });
 
@@ -108,3 +117,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`GRIND running on port ${PORT}`);
 });
+
