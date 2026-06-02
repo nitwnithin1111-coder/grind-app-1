@@ -1,12 +1,33 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// EXACTLY 6 API KEYS (3 Groq, 3 Gemini)
+const groqKeys = [
+  "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",
+  "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",
+  "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"
+];
+
+const geminiKeys = [
+  "AQ.Ab8RN6J2sLsdXR3SKairWfT3j_ksm-RhZeMkjQQVlY5j8MBe5w",
+  "AQ.Ab8RN6LJH7QSjZXAxhC_2ze_5PvITbhAAnonje5r5p3aAch2NQ",
+  "AQ.Ab8RN6L-Q0HMOR_hNAKVZU8naEmsIeVIm9n-NNNBazVBCMjwEQ"
+];
+
+let currentGroqIndex = 0;
+let currentGeminiIndex = 0;
+
+// UNTOUCHED: Your Exact System Prompt
 const SYSTEM_PROMPT = `You are GRIND — an AI built specifically for JEE and NEET aspirants in India. You are not a motivational bot. You are a brutally honest, deeply empathetic companion that actually understands the Indian competitive exam ecosystem from the inside.
 
 WHO YOU ARE TALKING TO:
@@ -50,16 +71,51 @@ END every response with exactly ONE:
 - [RESTART: the one thing to do right now]
 - [FOCUS: the one topic to hit today]`;
 
-app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid messages' });
+// Helper: Try Groq API Pool (Primary Choice)
+async function tryGroqPool(recentMessages) {
+  for (let i = 0; i < groqKeys.length; i++) {
+    try {
+      const apiKey = groqKeys[currentGroqIndex];
+      const formattedMessages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...recentMessages
+      ];
+
+      const response = await fetch("https://groq.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: formattedMessages,
+          max_tokens: 500,
+          temperature: 0.8
+        })
+      });
+
+      const data = await response.json();
+      if (data.choices && data.choices[0]) {
+        return data.choices[0].message.content;
+      }
+      throw new Error("Invalid Groq response format");
+    } catch (err) {
+      console.warn(`Groq Key Index ${currentGroqIndex} hit an error or limit. Moving to next...`);
+      currentGroqIndex = (currentGroqIndex + 1) % groqKeys.length;
+    }
   }
-  const recentMessages = messages.slice(-6);
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
+  throw new Error("Entire Groq Key Pool exhausted.");
+}
+
+// Helper: Try Gemini API Pool (Backup Choice)
+async function tryGeminiPool(recentMessages) {
+  for (let i = 0; i < geminiKeys.length; i++) {
+    try {
+      const apiKey = geminiKeys[currentGeminiIndex];
+      const url = `https://googleapis.com{apiKey}`;
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -73,18 +129,40 @@ app.post('/api/chat', async (req, res) => {
             temperature: 0.8
           }
         })
+      });
+
+      const data = await response.json();
+      if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
       }
-    );
-    const data = await response.json();
-    if (data.error) {
-      console.error('Gemini error:', data.error);
-      return res.status(500).json({ error: data.error.message });
+      throw new Error("Invalid Gemini response format");
+    } catch (err) {
+      console.warn(`Gemini Key Index ${currentGeminiIndex} hit an error or limit. Moving to next...`);
+      currentGeminiIndex = (currentGeminiIndex + 1) % geminiKeys.length;
     }
-    const reply = data.candidates[0].content.parts[0].text;
-    res.json({ reply });
-  } catch (err) {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Server error. Try again.' });
+  }
+  throw new Error("Entire Gemini Key Pool exhausted.");
+}
+
+app.post('/api/chat', async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'Invalid messages' });
+  }
+  const recentMessages = messages.slice(-6);
+
+  try {
+    const reply = await tryGroqPool(recentMessages);
+    return res.json({ reply });
+  } catch (groqPoolError) {
+    console.warn("Groq network down or exhausted. Attempting Gemini Backup Pool...");
+    try {
+      const reply = await tryGeminiPool(recentMessages);
+      return res.json({ reply });
+    } catch (geminiPoolError) {
+      console.error("Critical Failure: Both Key Pools Exhausted completely for today.");
+      return res.status(500).json({ error: 'Servers are fully loaded right now. Please restart your session in a few minutes.' });
+    }
   }
 });
 
