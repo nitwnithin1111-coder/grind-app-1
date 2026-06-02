@@ -1,4 +1,4 @@
-require('dotenv').config(); // Loads variables safely from your environment panel
+require('dotenv').config(); // Essential: Loads variables safely from your environment panel
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -59,7 +59,7 @@ app.post('/api/chat', async (req, res) => {
 
   const recentMessages = messages.slice(-6);
   
-  // FIXED PAYLOAD STRUCTURING: Checks both .content and .text to prevent empty payloads
+  // Format history payloads properly for Groq's engine
   const formattedMessages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...recentMessages.map(m => ({
@@ -70,7 +70,7 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const response = await fetch(
-      "https://groq.com",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
         method: 'POST',
         headers: { 
@@ -78,7 +78,7 @@ app.post('/api/chat', async (req, res) => {
           'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // High speed free model
+          model: "llama-3.1-8b-instant", 
           messages: formattedMessages,
           max_tokens: 500,
           temperature: 0.8
@@ -86,20 +86,19 @@ app.post('/api/chat', async (req, res) => {
       }
     );
 
-    // FIXED PARSING SAFETY: Reads response as pure text first to avoid JSON crash loops
     const responseText = await response.text();
     
     if (!responseText) {
-      console.error("Groq returned an empty text string response package.");
-      return res.status(500).json({ error: "Empty server feedback received from Groq." });
+      console.error("Groq returned an empty response string.");
+      return res.status(500).json({ error: "Empty feedback received from server backend." });
     }
 
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseErr) {
-      console.error("Failed to parse raw text response to JSON object. Raw content was:", responseText);
-      return res.status(500).json({ error: "Server format communication error." });
+      console.error("Failed to parse response text as JSON:", responseText);
+      return res.status(500).json({ error: "Server structural communication error." });
     }
 
     if (data.error) {
@@ -107,12 +106,13 @@ app.post('/api/chat', async (req, res) => {
       return res.status(500).json({ error: data.error.message });
     }
 
+    // FIXED ARRAY POSITION INDEXING: Added [0] parameter mapping safely
     if (data.choices && data.choices[0] && data.choices[0].message) {
       const reply = data.choices[0].message.content;
       res.json({ reply });
     } else {
-      console.error('Unexpected payload layout received from Groq network response:', data);
-      res.status(500).json({ error: 'Failed to extract content message layout stream.' });
+      console.error('Unexpected payload layout received from Groq:', data);
+      res.status(500).json({ error: 'Failed to extract content message stream.' });
     }
 
   } catch (err) {
