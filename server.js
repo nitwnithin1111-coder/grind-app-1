@@ -7,6 +7,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// ── 10 API KEYS ─────────────────────────────────────────
+const GEMINI_KEYS = [
+  process.env.GEMINI_KEY_1,
+  process.env.GEMINI_KEY_2,
+  process.env.GEMINI_KEY_3,
+  process.env.GEMINI_KEY_4,
+  process.env.GEMINI_KEY_5,
+].filter(Boolean);
+
+const GROQ_KEYS = [
+  process.env.GROQ_KEY_1,
+  process.env.GROQ_KEY_2,
+  process.env.GROQ_KEY_3,
+  process.env.GROQ_KEY_4,
+  process.env.GROQ_KEY_5,
+].filter(Boolean);
+
+let geminiIndex = 0;
+let groqIndex = 0;
+
 const SYSTEM_PROMPT = `You are GRIND — an AI built specifically for JEE and NEET aspirants in India. You are not a motivational bot. You are a brutally honest, deeply empathetic companion that actually understands the Indian competitive exam ecosystem from the inside.
 
 WHO YOU ARE TALKING TO:
@@ -50,48 +70,97 @@ END every response with exactly ONE:
 - [RESTART: the one thing to do right now]
 - [FOCUS: the one topic to hit today]`;
 
+// ── GEMINI CALL ─────────────────────────────────────────
+async function callGemini(messages) {
+  const key = GEMINI_KEYS[geminiIndex % GEMINI_KEYS.length];
+  geminiIndex++;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: messages.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        })),
+        generationConfig: { maxOutputTokens: 500, temperature: 0.8 }
+      })
+    }
+  );
+  const data = await response.json();
+  if (data.error) throw new Error('GEMINI: ' + data.error.message);
+  return data.candidates[0].content.parts[0].text;
+}
+
+// ── GROQ CALL ───────────────────────────────────────────
+async function callGroq(messages) {
+  const key = GROQ_KEYS[groqIndex % GROQ_KEYS.length];
+  groqIndex++;
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 500,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages
+      ]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error('GROQ: ' + data.error.message);
+  return data.choices[0].message.content;
+}
+
+// ── CHAT ROUTE ──────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Invalid messages' });
   }
+
   const recentMessages = messages.slice(-6);
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: recentMessages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          })),
-          generationConfig: {
-            maxOutputTokens: 500,
-            temperature: 0.8
-          }
-        })
-      }
-    );
-    const data = await response.json();
-    if (data.error) {
-      console.error('Gemini error:', data.error);
-      return res.status(500).json({ error: data.error.message });
+
+  // Try all Gemini keys first
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    try {
+      const reply = await callGemini(recentMessages);
+      console.log(`Gemini key ${i + 1} worked ✅`);
+      return res.json({ reply });
+    } catch (err) {
+      console.log(`Gemini key ${i + 1} failed ❌:`, err.message);
     }
-    const reply = data.candidates[0].content.parts[0].text;
-    res.json({ reply });
-  } catch (err) {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Server error. Try again.' });
   }
+
+  // All Gemini failed — try all Groq keys
+  for (let i = 0; i < GROQ_KEYS.length; i++) {
+    try {
+      const reply = await callGroq(recentMessages);
+      console.log(`Groq key ${i + 1} worked ✅`);
+      return res.json({ reply });
+    } catch (err) {
+      console.log(`Groq key ${i + 1} failed ❌:`, err.message);
+    }
+  }
+
+  // All 10 failed
+  res.status(500).json({ 
+    error: 'Taking a breather. Try again in 2 minutes.' 
+  });
 });
 
+// ── SERVE FRONTEND ───────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ── START ────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`GRIND running on port ${PORT}`);
