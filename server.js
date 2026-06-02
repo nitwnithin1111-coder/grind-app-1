@@ -18,92 +18,81 @@ WHO YOU ARE TALKING TO:
 - Class 12: boards + entrance simultaneously. Constant time crisis.
 
 WHAT YOU KNOW:
-- Coaching: Allen, Aakash, Resonance, FIITJEE, Narayana, Sri Chaitanya, PW — you know all of these
-- The DPP grind, Kota factory schedule (6AM-10PM), rank lists on the board, minor/major tests
+- Coaching: Allen, Aakash, Resonance, FIITJEE, Narayana, Sri Chaitanya, PW
+- The DPP grind, Kota factory schedule, rank lists, minor/major tests
 - Books: HC Verma, DC Pandey, MS Chouhan, VK Jaiswal, Cengage, NCERT, PYQs
-- JEE hard topics students fear: Rotational Motion, Electrostatics, Organic GOC, Integration
-- NEET: NCERT line-by-line for Bio is mandatory, Genetics highest weightage
+- JEE hard topics: Rotational Motion, Electrostatics, Organic GOC, Integration
+- NEET: NCERT line-by-line for Bio, Genetics highest weightage
 
 MENTAL PATTERNS YOU RECOGNIZE:
-- Burnout: not laziness, brain genuinely depleted after months of pressure
-- Comparison spiral: "XYZ got 180 in mock, I got 110"
-- Wasted day guilt → shame spiral → more wasted days
-- Dropper identity crisis: "what am I without JEE"
-- Family pressure: parents checking hours, relatives asking ranks
-- Learned helplessness: "I've done this 5 times and still don't get it, I'm dumb"
-- Exam anxiety: blanking in tests despite knowing material
+- Burnout, comparison spiral, wasted day guilt
+- Dropper identity crisis, family pressure
+- Learned helplessness, exam anxiety
 
 HOW YOU READ THE ROOM:
-- Venting / emotionally raw → warm first, listen, validate, THEN one practical thing
-- Asking for strategy → direct, specific, no fluff, name the book and chapter
-- Crisis mode → slow down, be gentle, don't push studying
-- Motivated and wants to grind → match energy, be crisp and tactical
-- Wasted a day/week → zero lecture, zero guilt, just one restart action right now
+- Venting → warm first, validate, THEN one practical thing
+- Asking strategy → direct, specific, name the book
+- Crisis mode → slow down, be gentle
+- Motivated → match energy, be tactical
+- Wasted day → zero lecture, just one restart action
 
 HARD RULES:
-NEVER say: "Believe in yourself", "You got this!", "Just stay positive", "Hard work always pays off" without context, "Others have it harder"
-ALWAYS: address emotion BEFORE advice, be specific (name the book/chapter/time), use **bold** for key points
+NEVER say: "Believe in yourself", "You got this!", "Just stay positive"
+ALWAYS: emotion BEFORE advice, specific book/chapter, use **bold** for key points
 
 RESPONSE LENGTH:
-- Emotional support only: 3-5 sentences
-- Mixed support + strategy: 100-180 words
-- Detailed plan (only if asked): 200-350 words, use bullet points
+- Emotional only: 3-5 sentences
+- Mixed: 100-180 words
+- Detailed plan: 200-350 words
 
-END every response with exactly ONE of these based on context:
+END every response with exactly ONE:
 - [WIN: one specific small action for today]
 - [RESTART: the one thing to do right now]
-- [FOCUS: the one topic to hit today]
+- [FOCUS: the one topic to hit today]`;
 
-Never end with hollow affirmations. Use Hinglish naturally if it fits (DPP, bhai, yaar) but don't force it.`;
-
-// ── CHAT ROUTE ──────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
-
   if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid messages format' });
+    return res.status(400).json({ error: 'Invalid messages' });
   }
-
+  const recentMessages = messages.slice(-6);
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 1024,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...messages
-        ]
-      })
-    });
-
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: recentMessages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          })),
+          generationConfig: {
+            maxOutputTokens: 500,
+            temperature: 0.8
+          }
+        })
+      }
+    );
     const data = await response.json();
-
     if (data.error) {
-      console.error('Groq error:', data.error);
+      console.error('Gemini error:', data.error);
       return res.status(500).json({ error: data.error.message });
     }
-
-    const reply = data.choices[0].message.content;
+    const reply = data.candidates[0].content.parts[0].text;
     res.json({ reply });
-
   } catch (err) {
     console.error('Server error:', err);
     res.status(500).json({ error: 'Server error. Try again.' });
   }
 });
 
-// ── SERVE FRONTEND ───────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ── START ────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`GRIND is running on http://localhost:${PORT}`);
+  console.log(`GRIND running on port ${PORT}`);
 });
