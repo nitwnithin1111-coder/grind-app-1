@@ -1,4 +1,4 @@
-require('dotenv').config(); // Essential: Loads variables from your environment panel
+require('dotenv').config(); // Loads variables safely from your environment panel
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -57,29 +57,28 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Invalid messages' });
   }
 
-  // Slice the context to the last 6 messages to stay under rate limits
   const recentMessages = messages.slice(-6);
   
-  // Format history payloads properly for Groq's engine
+  // FIXED PAYLOAD STRUCTURING: Checks both .content and .text to prevent empty payloads
   const formattedMessages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...recentMessages.map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content
+      role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
+      content: m.content || m.text || ""
     }))
   ];
 
   try {
     const response = await fetch(
-      "https://groq.com", // Official OpenAI compatible proxy endpoint
+      "https://groq.com",
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}` // Reads key securely from configuration panel
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // Your safe high-limit free model tier
+          model: "llama-3.1-8b-instant", // High speed free model
           messages: formattedMessages,
           max_tokens: 500,
           temperature: 0.8
@@ -87,25 +86,38 @@ app.post('/api/chat', async (req, res) => {
       }
     );
 
-    const data = await response.json();
+    // FIXED PARSING SAFETY: Reads response as pure text first to avoid JSON crash loops
+    const responseText = await response.text();
+    
+    if (!responseText) {
+      console.error("Groq returned an empty text string response package.");
+      return res.status(500).json({ error: "Empty server feedback received from Groq." });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error("Failed to parse raw text response to JSON object. Raw content was:", responseText);
+      return res.status(500).json({ error: "Server format communication error." });
+    }
 
     if (data.error) {
-      console.error('Groq Engine Warning:', data.error);
+      console.error('Groq Engine Internal Error Flag:', data.error);
       return res.status(500).json({ error: data.error.message });
     }
 
-    // Safely pull string text values out of the choice arrays
     if (data.choices && data.choices[0] && data.choices[0].message) {
       const reply = data.choices[0].message.content;
       res.json({ reply });
     } else {
-      console.error('Unexpected layout structure from Groq:', data);
-      res.status(500).json({ error: 'Failed to read response content layout.' });
+      console.error('Unexpected payload layout received from Groq network response:', data);
+      res.status(500).json({ error: 'Failed to extract content message layout stream.' });
     }
 
   } catch (err) {
-    console.error('Server connection loop crash:', err);
-    res.status(500).json({ error: 'Server connection failed. Try again.' });
+    console.error('Server connection loop crash handled:', err);
+    res.status(500).json({ error: 'Server context timeout. Try hitting it again.' });
   }
 });
 
@@ -117,4 +129,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`GRIND running on port ${PORT}`);
 });
-
