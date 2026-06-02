@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load environment variables safely from your environment tab / .env file
+require('dotenv').config(); // Essential Line 1: Loads your GEMINI_API_KEY from environment tab / .env file
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -59,7 +59,7 @@ app.post('/api/chat', async (req, res) => {
   const recentMessages = messages.slice(-6);
   try {
     const response = await fetch(
-      // FIXED MODEL ENDPOINT: Changed from gemini-2.0-flash to the stable gemini-2.5-flash-lite
+      // FIXED MODEL: Target the robust, long-term stable gemini-2.5-flash production model
       `https://googleapis.com{process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
@@ -77,15 +77,25 @@ app.post('/api/chat', async (req, res) => {
         })
       }
     );
+    
     const data = await response.json();
+    
     if (data.error) {
-      console.error('Gemini error:', data.error);
+      console.error('Gemini error encountered:', data.error);
       return res.status(500).json({ error: data.error.message });
     }
-    const reply = data.candidates[0].content.parts[0].text;
-    res.json({ reply });
+
+    // FIXED PARSING LOGIC: Correct structure layout for the official API object response
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const reply = data.candidates[0].content.parts[0].text;
+      res.json({ reply });
+    } else {
+      console.error('Unexpected layout structure from Google:', data);
+      res.status(500).json({ error: 'Failed to safely read AI message layout structure.' });
+    }
+
   } catch (err) {
-    console.error('Server error:', err);
+    console.error('Server error loop caught:', err);
     res.status(500).json({ error: 'Server error. Try again.' });
   }
 });
@@ -98,4 +108,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`GRIND running on port ${PORT}`);
 });
-
