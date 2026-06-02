@@ -1,4 +1,3 @@
-require('dotenv').config(); // Essential: Loads variables safely from your environment panel
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -56,68 +55,36 @@ app.post('/api/chat', async (req, res) => {
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Invalid messages' });
   }
-
   const recentMessages = messages.slice(-6);
-  
-  // Format history payloads properly for Groq's engine
-  const formattedMessages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...recentMessages.map(m => ({
-      role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
-      content: m.content || m.text || ""
-    }))
-  ];
-
   try {
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", 
-          messages: formattedMessages,
-          max_tokens: 500,
-          temperature: 0.8
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: recentMessages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          })),
+          generationConfig: {
+            maxOutputTokens: 500,
+            temperature: 0.8
+          }
         })
       }
     );
-
-    const responseText = await response.text();
-    
-    if (!responseText) {
-      console.error("Groq returned an empty response string.");
-      return res.status(500).json({ error: "Empty feedback received from server backend." });
-    }
-
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseErr) {
-      console.error("Failed to parse response text as JSON:", responseText);
-      return res.status(500).json({ error: "Server structural communication error." });
-    }
-
+    const data = await response.json();
     if (data.error) {
-      console.error('Groq Engine Internal Error Flag:', data.error);
+      console.error('Gemini error:', data.error);
       return res.status(500).json({ error: data.error.message });
     }
-
-    // FIXED ARRAY POSITION INDEXING: Added [0] parameter mapping safely
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      const reply = data.choices[0].message.content;
-      res.json({ reply });
-    } else {
-      console.error('Unexpected payload layout received from Groq:', data);
-      res.status(500).json({ error: 'Failed to extract content message stream.' });
-    }
-
+    const reply = data.candidates[0].content.parts[0].text;
+    res.json({ reply });
   } catch (err) {
-    console.error('Server connection loop crash handled:', err);
-    res.status(500).json({ error: 'Server context timeout. Try hitting it again.' });
+    console.error('Server error:', err);
+    res.status(500).json({ error: 'Server error. Try again.' });
   }
 });
 
