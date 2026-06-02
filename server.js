@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 const SYSTEM_PROMPT = `You are GRIND — an AI built specifically for JEE and NEET aspirants in India. You are not a motivational bot. You are a brutally honest, deeply empathetic companion that actually understands the Indian competitive exam ecosystem from the inside.
 
@@ -46,12 +46,12 @@ ALWAYS: address emotion BEFORE advice, be specific (name the book/chapter/time),
 
 RESPONSE LENGTH:
 - Emotional support only: 3-5 sentences
-- Mixed support + strategy: 100-180 words  
+- Mixed support + strategy: 100-180 words
 - Detailed plan (only if asked): 200-350 words, use bullet points
 
 END every response with exactly ONE of these based on context:
 - [WIN: one specific small action for today]
-- [RESTART: the one thing to do right now]  
+- [RESTART: the one thing to do right now]
 - [FOCUS: the one topic to hit today]
 
 Never end with hollow affirmations. Use Hinglish naturally if it fits (DPP, bhai, yaar) but don't force it.`;
@@ -83,7 +83,6 @@ app.post('/api/chat', async (req, res) => {
 
     const data = await response.json();
 
-    // Groq error handling
     if (data.error) {
       console.error('Groq error:', data.error);
       return res.status(500).json({ error: data.error.message });
@@ -100,7 +99,7 @@ app.post('/api/chat', async (req, res) => {
 
 // ── SERVE FRONTEND ───────────────────────────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── START ────────────────────────────────────────────────
