@@ -4,8 +4,7 @@
   "description": "No-BS JEE/NEET AI companion",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "mkdir -p public && cp ./index.html public/"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
