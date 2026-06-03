@@ -3,227 +3,461 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GRIND — JEE/NEET Companion</title>
+<title>GRIND AI — JEE/NEET Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
+  :root {
+    --bg: #07070d;
+    --surface: #0d0d18;
+    --card: #12121f;
+    --border: #1e1e30;
+    --accent: #ff4d1c;
+    --gold: #f5c542;
+    --green: #2ecc8a;
+    --blue: #4da6ff;
+    --text: #e2e2ee;
+    --muted: #4a4a6a;
+    --muted2: #8888a8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    height: 100dvh; display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+  }
 
-:root {
-  --bg: #09090e;
-  --surface: #0f0f16;
-  --card: #141420;
-  --border: #232334;
-  --border2: #2e2e44;
-  --accent: #ff4d1c;
-  --accent-dim: rgba(255,77,28,0.12);
-  --gold: #f5c542;
-  --gold-dim: rgba(245,197,66,0.1);
-  --green: #2ecc8a;
-  --green-dim: rgba(46,204,138,0.1);
-  --blue: #4da6ff;
-  --blue-dim: rgba(77,166,255,0.1);
-  --text: #e2e2ee;
-  --muted: #5a5a72;
-  --muted2: #8888a8;
-}
+  /* Glows */
+  .glow-1 {
+    position:fixed; top:-100px; left:-100px;
+    width:400px; height:400px; pointer-events:none; z-index:0;
+    background:radial-gradient(circle,rgba(255,77,28,.12) 0%,transparent 70%);
+    animation: floatG 8s ease-in-out infinite;
+  }
+  .glow-2 {
+    position:fixed; bottom:-100px; right:-100px;
+    width:500px; height:500px; pointer-events:none; z-index:0;
+    background:radial-gradient(circle,rgba(77,166,255,.07) 0%,transparent 70%);
+    animation: floatG 10s ease-in-out infinite reverse;
+  }
+  @keyframes floatG { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,20px)} }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    position:fixed; inset:0; z-index:100;
+    background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:0;
+  }
+  .login-card {
+    background:rgba(18,18,31,0.9);
+    backdrop-filter:blur(30px);
+    border:1px solid var(--border);
+    border-radius:20px; padding:36px 32px;
+    width:90%; max-width:380px;
+    position:relative; overflow:hidden;
+    text-align:center;
+  }
+  .login-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue));
+  }
+  .login-logo {
+    width:56px; height:56px;
+    background:linear-gradient(135deg,var(--accent),#c43500);
+    border-radius:14px; margin:0 auto 16px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; box-shadow:0 0 30px rgba(255,77,28,.4);
+  }
+  .login-title {
+    font-family:'Space Mono',monospace; font-size:22px;
+    letter-spacing:6px; font-weight:700; margin-bottom:6px;
+  }
+  .login-sub { font-size:13px; color:var(--muted2); margin-bottom:28px; line-height:1.6; }
+  .google-btn {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; padding:13px 20px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; color:var(--text);
+    font-size:14px; font-weight:600; cursor:pointer;
+    transition:all .2s; text-decoration:none;
+    font-family:'Plus Jakarta Sans',sans-serif;
+  }
+  .google-btn:hover {
+    background:rgba(255,255,255,0.1);
+    border-color:rgba(255,255,255,0.2);
+    transform:translateY(-1px);
+    box-shadow:0 8px 20px rgba(0,0,0,0.3);
+  }
+  .google-icon { width:18px; height:18px; }
+  .login-footer { font-size:11px; color:var(--muted); margin-top:16px; font-family:'Space Mono',monospace; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'DM Sans', sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+  /* ── ONBOARDING SCREEN ── */
+  #onboarding-screen {
+    position:fixed; inset:0; z-index:99;
+    background:var(--bg);
+    display:none; align-items:center; justify-content:center;
+    overflow-y:auto; padding:20px;
+  }
+  .onboard-card {
+    background:rgba(18,18,31,0.95);
+    backdrop-filter:blur(30px);
+    border:1px solid var(--border);
+    border-radius:20px; padding:32px 28px;
+    width:100%; max-width:440px;
+    position:relative; overflow:hidden;
+  }
+  .onboard-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--accent),var(--gold));
+  }
+  .onboard-title { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .onboard-sub { font-size:13px; color:var(--muted2); margin-bottom:24px; }
+  .ob-label { font-size:12px; color:var(--muted2); font-family:'Space Mono',monospace; margin-bottom:8px; display:block; }
+  .ob-options { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:20px; }
+  .ob-opt {
+    padding:7px 14px; border-radius:8px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,0.03);
+    color:var(--muted2); font-size:13px; cursor:pointer;
+    transition:all .18s; font-family:'Plus Jakarta Sans',sans-serif;
+  }
+  .ob-opt:hover, .ob-opt.selected {
+    border-color:var(--accent); color:var(--accent);
+    background:rgba(255,77,28,0.08);
+  }
+  .ob-submit {
+    width:100%; padding:13px;
+    background:linear-gradient(135deg,var(--accent),#c43500);
+    border:none; border-radius:12px; color:white;
+    font-size:14px; font-weight:700; cursor:pointer;
+    transition:all .2s; font-family:'Plus Jakarta Sans',sans-serif;
+    box-shadow:0 4px 15px rgba(255,77,28,.3);
+  }
+  .ob-submit:hover { transform:translateY(-1px); box-shadow:0 8px 20px rgba(255,77,28,.4); }
 
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
+  /* ── MAIN APP ── */
+  #app { display:none; flex-direction:column; height:100dvh; }
 
-.logo-wrap { display: flex; align-items: center; gap: 10px; }
+  /* Header */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 18px;
+    background:rgba(13,13,24,0.9); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0; z-index:10; position:relative;
+  }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-mark {
+    width:34px; height:34px;
+    background:linear-gradient(135deg,var(--accent),#c43500);
+    border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-size:17px; box-shadow:0 0 18px rgba(255,77,28,.35);
+  }
+  .logo-name { font-family:'Space Mono',monospace; font-size:15px; font-weight:700; letter-spacing:5px; }
+  .logo-sub { font-size:10px; color:var(--muted2); letter-spacing:1px; margin-top:1px; }
 
-.logo-mark {
-  width: 34px; height: 34px;
-  background: var(--accent);
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px;
-  box-shadow: 0 0 18px rgba(255,77,28,0.35);
-}
+  .header-right { display:flex; align-items:center; gap:8px; }
+  .user-photo {
+    width:30px; height:30px; border-radius:50%;
+    border:1px solid var(--border); object-fit:cover;
+  }
+  .user-name { font-size:12px; color:var(--muted2); max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .logout-btn {
+    padding:4px 10px; border-radius:8px;
+    border:1px solid var(--border);
+    background:transparent; color:var(--muted2);
+    font-size:11px; cursor:pointer; transition:all .18s;
+    font-family:'Space Mono',monospace;
+  }
+  .logout-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .clear-btn {
+    padding:4px 10px; border-radius:8px;
+    border:1px solid var(--border);
+    background:transparent; color:var(--muted2);
+    font-size:11px; cursor:pointer; transition:all .18s;
+    font-family:'Space Mono',monospace;
+  }
+  .clear-btn:hover { border-color:rgba(255,77,28,.5); color:var(--accent); }
 
-.logo-name {
-  font-family: 'Space Mono', monospace;
-  font-size: 16px; font-weight: 700;
-  letter-spacing: 5px; color: var(--text);
-}
-.logo-tag { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 1px; }
+  .live-badge {
+    display:flex; align-items:center; gap:5px; padding:5px 10px;
+    background:rgba(46,204,138,.1); border:1px solid rgba(46,204,138,.2);
+    border-radius:20px; font-size:11px; font-family:'Space Mono',monospace; color:var(--green);
+  }
+  .live-dot { width:5px; height:5px; background:var(--green); border-radius:50%; animation:blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-.live-badge {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 10px;
-  background: var(--green-dim);
-  border: 1px solid rgba(46,204,138,0.25);
-  border-radius: 20px;
-  font-size: 11px; font-family: 'Space Mono', monospace; color: var(--green);
-}
-.live-dot { width: 5px; height: 5px; background: var(--green); border-radius: 50%; animation: blink 1.8s ease-in-out infinite; }
-@keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
+  /* Pills */
+  .pills {
+    display:flex; gap:7px; padding:8px 16px;
+    background:rgba(13,13,24,.7); border-bottom:1px solid var(--border);
+    overflow-x:auto; flex-shrink:0; scrollbar-width:none; z-index:5;
+  }
+  .pills::-webkit-scrollbar { display:none; }
+  .pill {
+    flex-shrink:0; padding:5px 13px; border-radius:30px;
+    border:1px solid var(--border); background:rgba(255,255,255,.03);
+    color:var(--muted2); font-size:12px; cursor:pointer; transition:all .18s; white-space:nowrap;
+  }
+  .pill:hover { border-color:var(--accent); color:var(--accent); background:rgba(255,77,28,.08); }
 
-.pills {
-  display: flex; gap: 7px; padding: 9px 18px;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  overflow-x: auto; flex-shrink: 0; scrollbar-width: none;
-}
-.pills::-webkit-scrollbar { display: none; }
+  /* Chat */
+  #chat {
+    flex:1; overflow-y:auto; padding:18px 16px;
+    display:flex; flex-direction:column; gap:16px; z-index:1;
+  }
+  #chat::-webkit-scrollbar { width:3px; }
+  #chat::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 
-.pill {
-  flex-shrink: 0; padding: 5px 13px; border-radius: 30px;
-  border: 1px solid var(--border2); background: transparent;
-  color: var(--muted2); font-size: 12px; font-family: 'DM Sans', sans-serif;
-  cursor: pointer; transition: all 0.18s; white-space: nowrap;
-}
-.pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .welcome {
+    background:rgba(18,18,31,.8); backdrop-filter:blur(20px);
+    border:1px solid var(--border); border-radius:16px; padding:20px;
+    position:relative; overflow:hidden; animation:fadeup .4s ease;
+  }
+  .welcome::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--accent),var(--gold),var(--blue));
+  }
+  .welcome h2 { font-size:18px; font-weight:700; line-height:1.4; margin-bottom:8px; }
+  .welcome h2 em { color:var(--accent); font-style:normal; }
+  .welcome p { font-size:13px; color:var(--muted2); line-height:1.7; }
+  .tag-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .tag { padding:3px 10px; border-radius:5px; font-size:11px; font-family:'Space Mono',monospace; }
+  .t-red { background:rgba(255,77,28,.1); color:var(--accent); border:1px solid rgba(255,77,28,.2); }
+  .t-gold { background:rgba(245,197,66,.1); color:var(--gold); border:1px solid rgba(245,197,66,.2); }
+  .t-green { background:rgba(46,204,138,.1); color:var(--green); border:1px solid rgba(46,204,138,.2); }
+  .t-blue { background:rgba(77,166,255,.1); color:var(--blue); border:1px solid rgba(77,166,255,.2); }
 
-#chat {
-  flex: 1; overflow-y: auto; padding: 20px 18px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-#chat::-webkit-scrollbar { width: 3px; }
-#chat::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* Messages */
+  .msg { display:flex; flex-direction:column; animation:fadeup .25s ease; }
+  @keyframes fadeup { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .msg.user { align-items:flex-end; }
+  .msg.ai { align-items:flex-start; }
+  .sender { font-size:10px; font-family:'Space Mono',monospace; color:var(--muted); margin-bottom:5px; padding:0 4px; }
+  .msg.ai .sender { color:var(--accent); }
+  .bubble {
+    max-width:88%; padding:13px 16px; border-radius:14px;
+    font-size:14px; line-height:1.75; position:relative;
+  }
+  .user .bubble {
+    background:linear-gradient(135deg,rgba(255,77,28,.2),rgba(255,77,28,.08));
+    border:1px solid rgba(255,77,28,.25); border-bottom-right-radius:3px;
+    backdrop-filter:blur(10px);
+  }
+  .ai .bubble {
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    border-bottom-left-radius:3px; backdrop-filter:blur(15px);
+  }
+  .ai .bubble::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,var(--accent) 0%,transparent 60%);
+    border-radius:14px 14px 0 0;
+  }
+  .bubble strong { color:var(--gold); font-weight:600; }
+  .bubble .win-box { background:rgba(46,204,138,.08); border:1px solid rgba(46,204,138,.2); border-radius:8px; padding:9px 13px; margin-top:10px; font-size:12px; color:var(--green); font-family:'Space Mono',monospace; }
+  .bubble .restart-box { background:rgba(255,77,28,.08); border:1px solid rgba(255,77,28,.2); border-radius:8px; padding:9px 13px; margin-top:10px; font-size:12px; color:var(--accent); font-family:'Space Mono',monospace; }
+  .bubble .focus-box { background:rgba(77,166,255,.08); border:1px solid rgba(77,166,255,.2); border-radius:8px; padding:9px 13px; margin-top:10px; font-size:12px; color:var(--blue); font-family:'Space Mono',monospace; }
+  .bubble ul { padding-left:18px; margin-top:8px; }
+  .bubble li { margin-bottom:5px; font-size:13px; color:#b8b8cc; }
+  .bubble .ql { border-left:2px solid var(--accent); padding-left:11px; margin:9px 0; font-size:13px; color:#9090b0; }
 
-.welcome {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 20px;
-  position: relative; overflow: hidden; animation: fadeup .35s ease;
-}
-.welcome::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--gold) 100%);
-}
-.welcome h2 { font-size: 18px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; }
-.welcome h2 em { color: var(--accent); font-style: normal; }
-.welcome p { font-size: 13.5px; color: var(--muted2); line-height: 1.65; }
-.tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
-.tag { padding: 3px 10px; border-radius: 5px; font-size: 11px; font-family: 'Space Mono', monospace; }
-.t-red { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(255,77,28,.2); }
-.t-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(245,197,66,.2); }
-.t-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(46,204,138,.2); }
-.t-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(77,166,255,.2); }
+  /* Copy btn */
+  .copy-btn {
+    position:absolute; top:8px; right:8px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+    border-radius:6px; padding:3px 7px; font-size:10px;
+    color:var(--muted2); cursor:pointer; opacity:0; transition:opacity .2s;
+    font-family:'Space Mono',monospace;
+  }
+  .ai .bubble:hover .copy-btn { opacity:1; }
+  .copy-btn:hover { color:var(--green); border-color:var(--green); }
+  .copy-btn.copied { color:var(--green); border-color:var(--green); opacity:1; }
 
-.msg { display: flex; flex-direction: column; animation: fadeup .25s ease; }
-@keyframes fadeup { from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)} }
+  /* Typing */
+  .typing-wrap { display:flex; flex-direction:column; align-items:flex-start; animation:fadeup .25s ease; }
+  .typing-bubble {
+    display:flex; align-items:center; gap:10px; padding:12px 16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    border-radius:14px; border-bottom-left-radius:3px; backdrop-filter:blur(15px);
+    font-size:12px; color:var(--muted2); font-family:'Space Mono',monospace;
+  }
+  .spinner { width:14px; height:14px; border:2px solid rgba(255,77,28,.2); border-top:2px solid var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .td { width:5px; height:5px; background:var(--accent); border-radius:50%; animation:tdot 1.2s ease-in-out infinite; }
+  .td:nth-child(3){animation-delay:.15s} .td:nth-child(4){animation-delay:.3s}
+  @keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-4px);opacity:1}}
 
-.msg.user { align-items: flex-end; }
-.msg.ai { align-items: flex-start; }
+  /* Input */
+  .input-wrap {
+    padding:12px 16px 16px;
+    background:rgba(13,13,24,.9); backdrop-filter:blur(20px);
+    border-top:1px solid var(--border); flex-shrink:0; z-index:10;
+  }
+  .input-row { display:flex; gap:9px; align-items:flex-end; }
+  #inp {
+    flex:1; background:rgba(255,255,255,.04); border:1px solid var(--border);
+    border-radius:14px; padding:12px 16px; color:var(--text);
+    font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; resize:none;
+    min-height:46px; max-height:120px; line-height:1.5; transition:border-color .2s,box-shadow .2s;
+  }
+  #inp:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,77,28,.12); }
+  #inp::placeholder { color:var(--muted); }
+  #send {
+    width:46px; height:46px;
+    background:linear-gradient(135deg,var(--accent),#c43500);
+    border:none; border-radius:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; flex-shrink:0; transition:all .18s;
+    box-shadow:0 4px 15px rgba(255,77,28,.3);
+  }
+  #send:hover { transform:scale(1.05); box-shadow:0 6px 20px rgba(255,77,28,.4); }
+  #send:active { transform:scale(.95); }
+  #send:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+  .foot { text-align:center; font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; margin-top:7px; }
 
-.sender { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--muted); margin-bottom: 5px; padding: 0 3px; }
-.msg.ai .sender { color: var(--accent); }
-
-.bubble { max-width: 90%; padding: 13px 16px; border-radius: 13px; font-size: 14px; line-height: 1.7; }
-
-.user .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-right-radius: 3px; }
-
-.ai .bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 3px; position: relative; }
-.ai .bubble::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, var(--accent) 0%, transparent 55%);
-  border-radius: 13px 13px 0 0;
-}
-
-.bubble strong { color: var(--gold); }
-.bubble .win-box { background: var(--green-dim); border: 1px solid rgba(46,204,138,.22); border-radius: 8px; padding: 9px 13px; margin-top: 10px; font-size: 12.5px; color: var(--green); font-family: 'Space Mono', monospace; }
-.bubble .restart-box { background: var(--accent-dim); border: 1px solid rgba(255,77,28,.22); border-radius: 8px; padding: 9px 13px; margin-top: 10px; font-size: 12.5px; color: var(--accent); font-family: 'Space Mono', monospace; }
-.bubble .focus-box { background: var(--blue-dim); border: 1px solid rgba(77,166,255,.22); border-radius: 8px; padding: 9px 13px; margin-top: 10px; font-size: 12.5px; color: var(--blue); font-family: 'Space Mono', monospace; }
-.bubble ul { padding-left: 18px; margin-top: 8px; }
-.bubble li { margin-bottom: 5px; font-size: 13.5px; color: #b8b8cc; }
-.bubble .ql { border-left: 2px solid var(--accent); padding-left: 11px; margin: 9px 0; font-size: 13.5px; color: #a0a0be; }
-
-.typing-wrap { display: flex; flex-direction: column; align-items: flex-start; animation: fadeup .25s ease; }
-.typing-bubble { display: flex; align-items: center; gap: 5px; padding: 13px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; border-bottom-left-radius: 3px; }
-.td { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: tdot 1.2s ease-in-out infinite; }
-.td:nth-child(2){animation-delay:.18s} .td:nth-child(3){animation-delay:.36s}
-@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:1}}
-
-.input-wrap { padding: 14px 18px 18px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
-.input-row { display: flex; gap: 9px; align-items: flex-end; }
-
-#inp {
-  flex: 1; background: var(--card); border: 1px solid var(--border2);
-  border-radius: 11px; padding: 11px 15px; color: var(--text);
-  font-family: 'DM Sans', sans-serif; font-size: 14px; resize: none;
-  min-height: 44px; max-height: 110px; line-height: 1.5; transition: border-color .2s;
-}
-#inp:focus { outline: none; border-color: var(--accent); }
-#inp::placeholder { color: var(--muted); }
-
-#send {
-  width: 44px; height: 44px; background: var(--accent);
-  border: none; border-radius: 11px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px; flex-shrink: 0; transition: all .18s;
-}
-#send:hover { background: #e03d12; transform: scale(1.04); }
-#send:active { transform: scale(.95); }
-#send:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-
-.foot { text-align: center; font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 8px; letter-spacing: .4px; }
+  /* Typewriter cursor */
+  .tw-cursor { display:inline-block; width:2px; height:14px; background:var(--accent); margin-left:2px; animation:curBlink .8s ease-in-out infinite; vertical-align:middle; }
+  @keyframes curBlink { 0%,100%{opacity:1} 50%{opacity:0} }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo-wrap">
-    <div class="logo-mark">🧠</div>
-    <div>
-      <div class="logo-name">GRIND</div>
-      <div class="logo-tag">JEE · NEET · REAL TALK</div>
-    </div>
-  </div>
-  <div class="live-badge"><div class="live-dot"></div>Online</div>
-</header>
+<div class="glow-1"></div>
+<div class="glow-2"></div>
 
-<div class="pills">
-  <button class="pill" onclick="qs(`I'm completely burnt out. Haven't studied in days.`)">🔥 Burnt out</button>
-  <button class="pill" onclick="qs('I failed my mock test again. Feeling hopeless.')">😔 Failed mock</button>
-  <button class="pill" onclick="qs(`I'm a dropper. Everyone has moved on and I feel stuck and worthless.`)">😶 Dropper anxiety</button>
-  <button class="pill" onclick="qs(`I can't focus at all. I open the book and just stare at it.`)">🌀 Can't focus</button>
-  <button class="pill" onclick="qs('My friends are scoring way better than me. I feel like a failure.')">📊 Comparison trap</button>
-  <button class="pill" onclick="qs('I wasted 3 days doing nothing. How do I restart without feeling guilty?')">⏪ Restart help</button>
-  <button class="pill" onclick="qs('Give me the most useful 30-minute study plan for right now.')">⚡ 30-min plan</button>
-  <button class="pill" onclick="qs('JEE is in 60 days. What should I prioritise right now?')">📅 60-day plan</button>
-  <button class="pill" onclick="qs('How do I actually improve my Physics score in JEE?')">⚛️ Physics help</button>
-  <button class="pill" onclick="qs('Organic Chemistry GOC and mechanisms make no sense to me.')">🧪 Organic Chem</button>
-  <button class="pill" onclick="qs('Integration never clicks for me no matter how many times I study it.')">∫ Integration</button>
-  <button class="pill" onclick="qs(`My parents keep pressuring me about my rank. I can't take it anymore.`)">👨‍👩‍👦 Family pressure</button>
-</div>
-
-<div id="chat">
-  <div class="welcome">
-    <h2>No fake motivation.<br><em>Just real talk.</em></h2>
-    <p>6 AM wake-ups. Coaching till 9 PM. DPPs that never end. Rank lists on the board. Family watching every move. I know this world. Tell me what's going on.</p>
-    <div class="tag-row">
-      <span class="tag t-red">No sugarcoating</span>
-      <span class="tag t-gold">JEE Main + Advanced</span>
-      <span class="tag t-green">NEET UG</span>
-      <span class="tag t-blue">Dropper support</span>
-    </div>
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🧠</div>
+    <div class="login-title">GRIND</div>
+    <div class="login-sub">No fake motivation. Just real talk.<br>Built for JEE & NEET aspirants.</div>
+    <a href="/auth/google" class="google-btn">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </a>
+    <div class="login-footer">Your chats are saved privately · No ads ever</div>
   </div>
 </div>
 
-<div class="input-wrap">
-  <div class="input-row">
-    <textarea id="inp" placeholder="Tell me what's going on..." rows="1"></textarea>
-    <button id="send" onclick="send()">➤</button>
+<!-- ── ONBOARDING SCREEN ── -->
+<div id="onboarding-screen">
+  <div class="onboard-card">
+    <div style="font-size:28px;margin-bottom:12px">👋</div>
+    <div class="onboard-title">Let's set up your profile</div>
+    <div class="onboard-sub">So GRIND can give you advice that actually fits your situation</div>
+
+    <label class="ob-label">Which exam are you preparing for?</label>
+    <div class="ob-options" id="ob-exam">
+      <div class="ob-opt" data-val="JEE Main">JEE Main</div>
+      <div class="ob-opt" data-val="JEE Advanced">JEE Advanced</div>
+      <div class="ob-opt" data-val="NEET">NEET</div>
+      <div class="ob-opt" data-val="Both JEE & NEET">Both</div>
+    </div>
+
+    <label class="ob-label">Which class/year are you in?</label>
+    <div class="ob-options" id="ob-class">
+      <div class="ob-opt" data-val="Class 11">Class 11</div>
+      <div class="ob-opt" data-val="Class 12">Class 12</div>
+      <div class="ob-opt" data-val="Dropper">Dropper</div>
+    </div>
+
+    <label class="ob-label">Where do you study?</label>
+    <div class="ob-options" id="ob-coaching">
+      <div class="ob-opt" data-val="Allen">Allen</div>
+      <div class="ob-opt" data-val="Aakash">Aakash</div>
+      <div class="ob-opt" data-val="PW">PW</div>
+      <div class="ob-opt" data-val="Narayana">Narayana</div>
+      <div class="ob-opt" data-val="Sri Chaitanya">Sri Chaitanya</div>
+      <div class="ob-opt" data-val="Resonance">Resonance</div>
+      <div class="ob-opt" data-val="Self-Study">Self-Study</div>
+      <div class="ob-opt" data-val="Other">Other</div>
+    </div>
+
+    <label class="ob-label">Biggest struggle right now?</label>
+    <div class="ob-options" id="ob-struggle">
+      <div class="ob-opt" data-val="Focus & Concentration">Focus</div>
+      <div class="ob-opt" data-val="Motivation & Burnout">Motivation</div>
+      <div class="ob-opt" data-val="Concepts not clicking">Concepts</div>
+      <div class="ob-opt" data-val="Time management">Time</div>
+      <div class="ob-opt" data-val="Family pressure">Family pressure</div>
+      <div class="ob-opt" data-val="Exam anxiety">Exam anxiety</div>
+    </div>
+
+    <label class="ob-label">How many hours do you study per day?</label>
+    <div class="ob-options" id="ob-hours">
+      <div class="ob-opt" data-val="Less than 2">Less than 2</div>
+      <div class="ob-opt" data-val="2-4 hours">2-4 hrs</div>
+      <div class="ob-opt" data-val="4-6 hours">4-6 hrs</div>
+      <div class="ob-opt" data-val="6-8 hours">6-8 hrs</div>
+      <div class="ob-opt" data-val="8+ hours">8+ hrs</div>
+    </div>
+
+    <button class="ob-submit" onclick="submitOnboarding()">Start Grinding 🔥</button>
   </div>
-  <div class="foot">Not a replacement for professional support · Built for JEE/NEET aspirants</div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <header>
+    <div class="logo-wrap">
+      <div class="logo-mark">🧠</div>
+      <div>
+        <div class="logo-name">GRIND</div>
+        <div class="logo-sub">JEE · NEET · REAL TALK</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <img id="user-photo" class="user-photo" src="" alt="" style="display:none">
+      <span id="user-name" class="user-name"></span>
+      <button class="clear-btn" onclick="clearHistory()">clear</button>
+      <button class="logout-btn" onclick="window.location='/auth/logout'">logout</button>
+      <div class="live-badge"><div class="live-dot"></div>Online</div>
+    </div>
+  </header>
+
+  <div class="pills">
+    <button class="pill" onclick="qs(`I'm completely burnt out. Haven't studied in days.`)">🔥 Burnt out</button>
+    <button class="pill" onclick="qs('I failed my mock test again. Feeling hopeless.')">😔 Failed mock</button>
+    <button class="pill" onclick="qs(`I'm a dropper. Everyone has moved on and I feel stuck.`)">😶 Dropper anxiety</button>
+    <button class="pill" onclick="qs(`I can't focus at all. I open the book and just stare.`)">🌀 Can't focus</button>
+    <button class="pill" onclick="qs('My friends are scoring way better. I feel like a failure.')">📊 Comparison trap</button>
+    <button class="pill" onclick="qs('I wasted 3 days. How do I restart without guilt?')">⏪ Restart help</button>
+    <button class="pill" onclick="qs('Give me a useful 30-minute study plan for right now.')">⚡ 30-min plan</button>
+    <button class="pill" onclick="qs('JEE is in 60 days. What should I prioritise?')">📅 60-day plan</button>
+    <button class="pill" onclick="qs('How do I actually improve my Physics score in JEE?')">⚛️ Physics help</button>
+    <button class="pill" onclick="qs('Organic Chemistry GOC and mechanisms make no sense.')">🧪 Organic Chem</button>
+    <button class="pill" onclick="qs('Integration never clicks no matter how many times I study.')">∫ Integration</button>
+    <button class="pill" onclick="qs(`My parents keep pressuring me about my rank.`)">👨‍👩‍👦 Family pressure</button>
+  </div>
+
+  <div id="chat">
+    <div class="welcome">
+      <h2>No fake motivation.<br><em>Just real talk.</em></h2>
+      <p>6 AM wake-ups. Coaching till 9 PM. DPPs that never end. Rank lists on the board. I know this world. Tell me what's going on.</p>
+      <div class="tag-row">
+        <span class="tag t-red">No sugarcoating</span>
+        <span class="tag t-gold">JEE Main + Advanced</span>
+        <span class="tag t-green">NEET UG</span>
+        <span class="tag t-blue">Dropper support</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-wrap">
+    <div class="input-row">
+      <textarea id="inp" placeholder="Tell me what's going on..." rows="1"></textarea>
+      <button id="send" onclick="send()">➤</button>
+    </div>
+    <div class="foot">Not a replacement for professional support · Built for JEE/NEET aspirants</div>
+  </div>
 </div>
 
 <script>
@@ -231,17 +465,123 @@ const chatEl = document.getElementById('chat');
 const inp = document.getElementById('inp');
 const sendBtn = document.getElementById('send');
 let history = [];
+let currentUser = null;
 
-inp.addEventListener('input', () => {
-  inp.style.height = 'auto';
-  inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+// ── INIT ─────────────────────────────────────────────────
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+
+  const res = await fetch('/api/me');
+  const data = await res.json();
+  currentUser = data.user;
+
+  if (!currentUser) {
+    document.getElementById('login-screen').style.display = 'flex';
+    return;
+  }
+
+  document.getElementById('login-screen').style.display = 'none';
+
+  if (!currentUser.isOnboarded || params.get('onboarding') === 'true') {
+    document.getElementById('onboarding-screen').style.display = 'flex';
+    return;
+  }
+
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('onboarding-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Set user info in header
+  if (currentUser.photo) {
+    const img = document.getElementById('user-photo');
+    img.src = currentUser.photo;
+    img.style.display = 'block';
+  }
+  document.getElementById('user-name').textContent = currentUser.name.split(' ')[0];
+
+  // Clean URL
+  window.history.replaceState({}, '', '/');
+
+  // Load chat history
+  loadHistory();
+}
+
+// ── ONBOARDING ───────────────────────────────────────────
+document.querySelectorAll('.ob-options').forEach(group => {
+  group.querySelectorAll('.ob-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      group.querySelectorAll('.ob-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+    });
+  });
 });
-inp.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-});
 
-function qs(text) { inp.value = text; send(); }
+async function submitOnboarding() {
+  const getVal = id => document.querySelector(`#${id} .selected`)?.dataset.val || '';
+  const exam = getVal('ob-exam');
+  const cls = getVal('ob-class');
+  const coaching = getVal('ob-coaching');
+  const biggestStruggle = getVal('ob-struggle');
+  const hoursPerDay = getVal('ob-hours');
 
+  if (!exam || !cls) {
+    alert('Please select at least your exam and class 🙏');
+    return;
+  }
+
+  const res = await fetch('/api/user/onboard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ exam, class: cls, coaching, biggestStruggle, hoursPerDay })
+  });
+
+  if (res.ok) {
+    const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+    currentUser = meData.user;
+    showApp();
+  }
+}
+
+// ── LOAD HISTORY ─────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    const data = await res.json();
+    if (data.history && data.history.length > 0) {
+      data.history.forEach(msg => {
+        const role = msg.role === 'assistant' ? 'ai' : 'user';
+        addMsgDirect(role, msg.content);
+        history.push({ role: msg.role, content: msg.content });
+      });
+    }
+  } catch (err) {
+    console.error('Failed to load history:', err);
+  }
+}
+
+async function clearHistory() {
+  if (!confirm('Clear all chat history?')) return;
+  await fetch('/api/history', { method: 'DELETE' });
+  history = [];
+  chatEl.innerHTML = `
+    <div class="welcome">
+      <h2>No fake motivation.<br><em>Just real talk.</em></h2>
+      <p>6 AM wake-ups. Coaching till 9 PM. DPPs that never end. Rank lists on the board. I know this world. Tell me what's going on.</p>
+      <div class="tag-row">
+        <span class="tag t-red">No sugarcoating</span>
+        <span class="tag t-gold">JEE Main + Advanced</span>
+        <span class="tag t-green">NEET UG</span>
+        <span class="tag t-blue">Dropper support</span>
+      </div>
+    </div>`;
+}
+
+// ── MESSAGE HELPERS ──────────────────────────────────────
 function escHtml(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -258,7 +598,21 @@ function fmt(text) {
   return text;
 }
 
-function addMsg(role, text) {
+function makeCopyBtn(text) {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'copy';
+  btn.onclick = () => {
+    navigator.clipboard.writeText(text);
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  };
+  return btn;
+}
+
+// Direct add (for history load — no typewriter)
+function addMsgDirect(role, text) {
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
   const sender = document.createElement('div');
@@ -267,10 +621,43 @@ function addMsg(role, text) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.innerHTML = role === 'ai' ? fmt(text) : escHtml(text);
+  if (role === 'ai') bubble.appendChild(makeCopyBtn(text));
   wrap.appendChild(sender);
   wrap.appendChild(bubble);
   chatEl.appendChild(wrap);
   chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+// Typewriter add (for new AI replies)
+function addAiMsgTypewriter(text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai';
+  const sender = document.createElement('div');
+  sender.className = 'sender';
+  sender.textContent = 'GRIND';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  wrap.appendChild(sender);
+  wrap.appendChild(bubble);
+  chatEl.appendChild(wrap);
+  chatEl.scrollTop = chatEl.scrollHeight;
+
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i < text.length) {
+      bubble.innerHTML = fmt(text.substring(0, i + 1));
+      const cursor = document.createElement('span');
+      cursor.className = 'tw-cursor';
+      bubble.appendChild(cursor);
+      i++;
+      chatEl.scrollTop = chatEl.scrollHeight;
+    } else {
+      clearInterval(interval);
+      bubble.innerHTML = fmt(text);
+      bubble.appendChild(makeCopyBtn(text));
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+  }, 12);
 }
 
 function showTyping() {
@@ -280,22 +667,37 @@ function showTyping() {
   sender.className = 'sender'; sender.textContent = 'GRIND';
   const bubble = document.createElement('div');
   bubble.className = 'typing-bubble';
-  bubble.innerHTML = '<div class="td"></div><div class="td"></div><div class="td"></div>';
+  bubble.innerHTML = `<div class="spinner"></div><span>Thinking...</span><div class="td"></div><div class="td"></div><div class="td"></div>`;
   wrap.appendChild(sender); wrap.appendChild(bubble);
   chatEl.appendChild(wrap);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-function removeTyping() { const el = document.getElementById('typing'); if (el) el.remove(); }
+function removeTyping() {
+  const el = document.getElementById('typing');
+  if (el) el.remove();
+}
 
+function qs(text) { inp.value = text; send(); }
+
+inp.addEventListener('input', () => {
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+});
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// ── SEND MESSAGE ─────────────────────────────────────────
 async function send() {
   const text = inp.value.trim();
   if (!text) return;
   inp.value = ''; inp.style.height = 'auto';
   sendBtn.disabled = true;
-  addMsg('user', text);
+  addMsgDirect('user', text);
   history.push({ role: 'user', content: text });
   showTyping();
+
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -304,16 +706,20 @@ async function send() {
     });
     const data = await res.json();
     removeTyping();
-    const reply = data.reply || data.error || 'Something went wrong.';
+    const reply = data.reply || data.error || 'Something went wrong. Try again.';
     history.push({ role: 'assistant', content: reply });
-    addMsg('ai', reply);
+    addAiMsgTypewriter(reply);
   } catch {
     removeTyping();
-    addMsg('ai', 'Network error. Check your connection and try again.');
+    addAiMsgTypewriter('Network error. Check your connection and try again.');
   }
+
   sendBtn.disabled = false;
   inp.focus();
 }
+
+// ── START ────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
