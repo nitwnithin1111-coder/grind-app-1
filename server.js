@@ -150,7 +150,7 @@ let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
 function buildSystemPrompt(user) {
   const name = user?.name?.split(' ')[0] || 'there';
   const gender = user?.gender || '';
-  const slang = gender === 'female' ? 'yaar' : gender === 'male' ? 'bhai' : 'yaar';
+  const slang = gender === 'female' ? 'Topper' : gender === 'male' ? 'bro' : 'Topper';
   const base = `You are GRIND — an elite AI cognitive coach and JEE/NEET tutor for Indian aspirants. You combine deep academic expertise with emotional intelligence.
  
 STUDENT PROFILE:
@@ -221,7 +221,7 @@ async function fetchWithTimeout(url, options, ms = 7000) {
 async function callGemini(messages, systemPrompt) {
   const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
   const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`,
     {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
