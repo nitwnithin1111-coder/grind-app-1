@@ -157,33 +157,28 @@ function requireAuth(req, res, next) {
 }
 
 // ── API KEYS ─────────────────────────────────────────────
-const GEMINI_KEYS = [
-  process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2,
-  process.env.GEMINI_KEY_3, process.env.GEMINI_KEY_4,
-  process.env.GEMINI_KEY_5
-].filter(Boolean);
-
 const GROQ_KEYS = [
   process.env.GROQ_KEY_1, process.env.GROQ_KEY_2,
   process.env.GROQ_KEY_3, process.env.GROQ_KEY_4,
   process.env.GROQ_KEY_5
 ].filter(Boolean);
-
+const GEMINI_KEYS = [
+  process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2,
+  process.env.GEMINI_KEY_3, process.env.GEMINI_KEY_4,
+  process.env.GEMINI_KEY_5
+].filter(Boolean);
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2,
   process.env.OPENROUTER_KEY_3, process.env.OPENROUTER_KEY_4,
   process.env.OPENROUTER_KEY_5
 ].filter(Boolean);
-
 const OPENROUTER_MODELS = [
   'mistralai/mistral-7b-instruct:free',
   'huggingfaceh4/zephyr-7b-beta:free',
   'openchat/openchat-7b:free',
   'nousresearch/nous-capybara-7b:free'
 ];
-
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
-
 // ── SYSTEM PROMPT ────────────────────────────────────────
 function buildSystemPrompt(user, plannerContext = '') {
   const name = user?.name?.split(' ')[0] || 'there';
