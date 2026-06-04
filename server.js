@@ -40,7 +40,6 @@ const userSchema = new mongoose.Schema({
   lastActive:       { type: Date, default: Date.now },
   responseSpeed:    { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
   examDate:         { type: Date, default: null },
-  // Quiz achievements
   quizXP:           { type: Number, default: 0 },
   quizLevel:        { type: Number, default: 1 },
   totalQSolved:     { type: Number, default: 0 },
@@ -50,6 +49,8 @@ const userSchema = new mongoose.Schema({
   achievements:     [{ id: String, name: String, icon: String, unlockedAt: Date }],
   weeklyXP:         { type: Number, default: 0 },
   weeklyXPReset:    { type: Date, default: Date.now },
+  // Adaptive quiz state persisted per user
+  weakTopics:       { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
   createdAt:        { type: Date, default: Date.now }
 });
 
@@ -66,16 +67,24 @@ const sessionSchema = new mongoose.Schema({
 });
 
 const mistakeSchema = new mongoose.Schema({
-  userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  question:     String,
-  subject:      String,
-  chapter:      String,
-  topic:        String,
-  explanation:  String,
-  userAnswer:   String,
-  correctAnswer:String,
-  note:         String,
-  createdAt:    { type: Date, default: Date.now }
+  userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  questionId:    { type: String, default: '' },
+  question:      String,
+  subject:       String,
+  chapter:       String,
+  topic:         String,
+  explanation:   String,
+  cheatSheet:    { type: String, default: '' },
+  trapAlert:     { type: String, default: '' },
+  userAnswer:    String,
+  correctAnswer: String,
+  note:          { type: String, default: '' },
+  isPYQ:         { type: Boolean, default: false },
+  pyqYear:       { type: String, default: '' },
+  pyqExam:       { type: String, default: '' },
+  pyqShift:      { type: String, default: '' },
+  weekKey:       { type: String, default: '' },
+  createdAt:     { type: Date, default: Date.now }
 });
 
 const plannerTaskSchema = new mongoose.Schema({
@@ -102,11 +111,30 @@ const feedbackSchema = new mongoose.Schema({
   createdAt:{ type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
+// PYQ bank — stores verified questions so we never repeat & can cache
+const pyqSchema = new mongoose.Schema({
+  subject:      String,
+  chapter:      String,
+  exam:         String,  // JEE Main | JEE Advanced | NEET
+  year:         String,
+  shift:        String,
+  question:     String,
+  options:      [String],
+  answer:       String,
+  explanation:  String,
+  cheatSheet:   String,
+  trapAlert:    String,
+  wrongPercent: Number,
+  verified:     { type: Boolean, default: false },
+  createdAt:    { type: Date, default: Date.now }
+});
+
+const User        = mongoose.model('User', userSchema);
 const ChatSession = mongoose.model('ChatSession', sessionSchema);
-const Mistake = mongoose.model('Mistake', mistakeSchema);
+const Mistake     = mongoose.model('Mistake', mistakeSchema);
 const PlannerTask = mongoose.model('PlannerTask', plannerTaskSchema);
-const Feedback = mongoose.model('Feedback', feedbackSchema);
+const Feedback    = mongoose.model('Feedback', feedbackSchema);
+const PYQ         = mongoose.model('PYQ', pyqSchema);
 
 // ── SESSION ──────────────────────────────────────────────
 app.use(session({
@@ -132,17 +160,13 @@ passport.use(new GoogleStrategy({
         photo:    profile.photos[0]?.value || ''
       });
     }
-    const now = new Date();
+    const now  = new Date();
     const diff = Math.floor((now - new Date(user.lastActive)) / 86400000);
-    if (diff === 1) user.streak += 1;
-    else if (diff > 1) user.streak = 1;
+    if      (diff === 1) user.streak += 1;
+    else if (diff > 1)  user.streak = 1;
     user.lastActive = now;
-    // Reset weekly XP if needed
     const weekAgo = new Date(now - 7 * 86400000);
-    if (new Date(user.weeklyXPReset) < weekAgo) {
-      user.weeklyXP = 0;
-      user.weeklyXPReset = now;
-    }
+    if (new Date(user.weeklyXPReset) < weekAgo) { user.weeklyXP = 0; user.weeklyXPReset = now; }
     await user.save();
     return done(null, user);
   } catch (err) { return done(err, null); }
@@ -150,14 +174,17 @@ passport.use(new GoogleStrategy({
 
 passport.serializeUser((u, done) => done(null, u._id));
 passport.deserializeUser(async (id, done) => {
-  try { done(null, await User.findById(id)); }
-  catch (e) { done(e, null); }
+  try { done(null, await User.findById(id)); } catch (e) { done(e, null); }
 });
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-const requireAuth = (req, res, next) => req.isAuthenticated() ? next() : res.status(401).json({ error: 'Login required' });
+// ── AUTH GUARD — no guest mode ────────────────────────────
+const requireAuth = (req, res, next) => {
+  if (req.isAuthenticated()) return next();
+  res.status(401).json({ error: 'Login required', loginUrl: '/auth/google' });
+};
 
 // ── API KEYS ─────────────────────────────────────────────
 const GROQ_KEYS = [
@@ -187,12 +214,11 @@ const OPENROUTER_MODELS = [
 
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
 
-// ── SYSTEM PROMPT ────────────────────────────────────────
+// ── SYSTEM PROMPT ─────────────────────────────────────────
 function buildSystemPrompt(user, plannerCtx = '') {
-  const name = user?.name?.split(' ')[0] || 'there';
+  const name   = user?.name?.split(' ')[0] || 'there';
   const gender = user?.gender || '';
-  const slang = gender === 'female' ? 'bestie' : gender === 'male' ? 'bro' : 'yaar';
-
+  const slang  = gender === 'female' ? 'bestie' : gender === 'male' ? 'bro' : 'yaar';
   const speedMap = {
     fast:     'SHORT and PUNCHY — max 3 sentences. Direct. No fluff.',
     balanced: 'Medium length — warm, focused, precise.',
@@ -200,7 +226,6 @@ function buildSystemPrompt(user, plannerCtx = '') {
     ultra:    'ULTRA DEEP — treat this like a research paper. Maximum detail, every edge case, full derivations.'
   };
   const speed = user?.responseSpeed || 'balanced';
-
   return `You are GRIND — elite AI cognitive coach and JEE/NEET tutor for Indian aspirants.
 
 STUDENT: Name=${name} | Gender=${gender}(use "${slang}") | Exam=${user?.exam||'JEE/NEET'} | Class=${user?.class||'?'} | Coaching=${user?.coaching||'self-study'} | Struggle=${user?.biggestStruggle||'?'}
@@ -210,12 +235,7 @@ RESPONSE SPEED MODE: ${speedMap[speed]}
 LANGUAGE: Auto-detect and mirror user's language. Hinglish→Hinglish. Telugu-English→Telugu-English. Tamil-English→Tamil-English. Pure Hindi→Pure Hindi. Never translate unless asked. Be a native speaker.
 
 ${plannerCtx ? `PLANNER CONTEXT:\n${plannerCtx}\n` : ''}
-`You are a JEE Advanced examiner. Stop giving simple, single-formula questions. 
 
-CRITICAL RULES:
-1. Every question MUST mix 2 or more distinct chapters/concepts.
-2. Require at least 4 math/logical steps to solve.
-3. Include deceptive trap options and edge cases.`;
 ACADEMIC MODE:
 - Format: **Concept** → Step-by-Step → ⚡ Shortcut
 - Use LaTeX: $inline$ and $$block$$ for all math/physics formulas
@@ -227,78 +247,56 @@ INTERACTIVE CONVERSATION STYLE:
 - Format inline options as: (A) option1  (B) option2  (C) option3  (D) type your own
 - Always include "D) Type your own answer" as last option
 - Student can reply with just "A", "B", "C" or type their own answer
-- Keep conversation flowing naturally — don't make it feel like a test
 
 INFINITE INTERROGATION (academic topics only):
 - Never give passive answers to concept/formula questions
 - After explaining, ALWAYS end with ONE sharp JEE/NEET-level follow-up question labeled "**YOUR NEXT CHALLENGE:**"
 - Keep the learning loop going until student says "stop", "enough", "break", "bas", "ruk"
-- Do NOT apply this to emotional/personal conversations
 
 EMOTIONAL MODES:
 1. Burnout/anxiety → listen first, validate, then ONE micro-step
 2. Procrastination → direct, urgent, no lecture
 3. Depression/despair → gentle ONLY, never tough-love
 4. Crisis (self-harm/suicide) → STOP academics: Kiran: 1800-599-0019, iCall: 9152987821, Tele-MANAS: 14416
-
-5. If the student is numb or crying, STUDYING IS CANCELLED TONIGHT. Never tell them to open a book or make a study plan.
-6. Force them to focus only on basic physical survival: unlock the door, wash their face, drink water, and eat dinner.
-7. Ban all overly familiar pet names (like baby/babe). Keep the tone warm like an older sibling or a deeply caring mentor.
-
-DAY PLANNER:
-- Ask energy level first: 😴 exhausted / 😐 okay / ⚡ energized
-- Adjust plan intensity based on energy
-- 45-min sprints + 10-min breaks
-- Never give 8hr plans to tired students
+5. If the student is numb or crying, STUDYING IS CANCELLED TONIGHT.
+6. Force them to focus only on: unlock the door, wash face, drink water, eat dinner.
 
 RULES:
 - Address ${name} by name occasionally, use ${slang} naturally
 - No hollow phrases: "You got this!" "Believe in yourself!"
-- No [WIN:] [FOCUS:] [RESTART:] forced tags
 - Bold key terms, use LaTeX for all formulas`;
 }
 
-// ── ACHIEVEMENTS ENGINE ──────────────────────────────────
+// ── ACHIEVEMENTS ENGINE ───────────────────────────────────
 const ACHIEVEMENTS = [
-  { id: 'first_blood',   name: 'First Blood',     icon: '🎯', xpRequired: 0,    condition: 'first_correct' },
-  { id: 'hot_streak_5',  name: 'On Fire!',         icon: '🔥', xpRequired: 0,    condition: 'streak_5' },
-  { id: 'hot_streak_10', name: 'Unstoppable',      icon: '⚡', xpRequired: 0,    condition: 'streak_10' },
-  { id: 'centurion',     name: 'Centurion',         icon: '💯', xpRequired: 0,    condition: 'solved_100' },
-  { id: 'solver_500',    name: 'Problem Destroyer', icon: '🏆', xpRequired: 0,    condition: 'solved_500' },
-  { id: 'level_5',       name: 'Rising Star',       icon: '⭐', xpRequired: 500,  condition: 'level_5' },
-  { id: 'level_10',      name: 'JEE Warrior',       icon: '⚔️', xpRequired: 1500, condition: 'level_10' },
-  { id: 'level_20',      name: 'IIT Bound',         icon: '🚀', xpRequired: 5000, condition: 'level_20' },
-  { id: 'daily_30',      name: 'Grind Mode',        icon: '💪', xpRequired: 0,    condition: 'daily_30_questions' },
-  { id: 'accuracy_90',   name: 'Sniper',            icon: '🎖️', xpRequired: 0,    condition: 'accuracy_90' },
-  { id: 'week_streak_7', name: 'Week Warrior',      icon: '📅', xpRequired: 0,    condition: 'streak_7_days' },
+  { id: 'first_blood',   name: 'First Blood',       icon: '🎯', condition: 'first_correct'       },
+  { id: 'hot_streak_5',  name: 'On Fire!',           icon: '🔥', condition: 'streak_5'            },
+  { id: 'hot_streak_10', name: 'Unstoppable',        icon: '⚡', condition: 'streak_10'           },
+  { id: 'centurion',     name: 'Centurion',          icon: '💯', condition: 'solved_100'          },
+  { id: 'solver_500',    name: 'Problem Destroyer',  icon: '🏆', condition: 'solved_500'          },
+  { id: 'level_5',       name: 'Rising Star',        icon: '⭐', condition: 'level_5'             },
+  { id: 'level_10',      name: 'JEE Warrior',        icon: '⚔️', condition: 'level_10'           },
+  { id: 'level_20',      name: 'IIT Bound',          icon: '🚀', condition: 'level_20'            },
+  { id: 'accuracy_90',   name: 'Sniper',             icon: '🎖️', condition: 'accuracy_90'        },
 ];
 
-function calcLevel(xp) {
-  return Math.floor(Math.sqrt(xp / 100)) + 1;
-}
-
-function xpForNextLevel(level) {
-  return Math.pow(level, 2) * 100;
-}
+function calcLevel(xp) { return Math.floor(Math.sqrt(xp / 100)) + 1; }
 
 async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
   const user = await User.findById(userId);
   if (!user) return { newAchievements: [], levelUp: false };
-
   const oldLevel = calcLevel(user.quizXP);
-  user.quizXP += xp;
-  user.weeklyXP += xp;
-  user.totalQSolved = totalSolved;
+  user.quizXP      += xp;
+  user.weeklyXP    += xp;
+  user.totalQSolved  = totalSolved;
   user.totalQCorrect = totalCorrect;
-  user.quizStreak = newStreak;
+  user.quizStreak    = newStreak;
   if (newStreak > user.maxQuizStreak) user.maxQuizStreak = newStreak;
   const newLevel = calcLevel(user.quizXP);
   user.quizLevel = newLevel;
 
-  // Check achievements
   const newAchievements = [];
   const existingIds = user.achievements.map(a => a.id);
-
   const checks = [
     { id: 'first_blood',   condition: totalCorrect >= 1 },
     { id: 'hot_streak_5',  condition: newStreak >= 5 },
@@ -308,48 +306,32 @@ async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect
     { id: 'level_5',       condition: newLevel >= 5 },
     { id: 'level_10',      condition: newLevel >= 10 },
     { id: 'level_20',      condition: newLevel >= 20 },
-    { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect/totalSolved) >= 0.9 },
+    { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect / totalSolved) >= 0.9 },
   ];
-
   for (const check of checks) {
     if (check.condition && !existingIds.includes(check.id)) {
       const ach = ACHIEVEMENTS.find(a => a.id === check.id);
-      if (ach) {
-        user.achievements.push({ id: ach.id, name: ach.name, icon: ach.icon, unlockedAt: new Date() });
-        newAchievements.push(ach);
-      }
+      if (ach) { user.achievements.push({ ...ach, unlockedAt: new Date() }); newAchievements.push(ach); }
     }
   }
-
   await user.save();
   return { newAchievements, levelUp: newLevel > oldLevel, newLevel, totalXP: user.quizXP };
 }
 
-// ── API HELPERS ──────────────────────────────────────────
+// ── API HELPERS ───────────────────────────────────────────
 async function fetchWithTimeout(url, options, ms = 30000) {
-  const ctrl = new AbortController();
+  const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, { ...options, signal: ctrl.signal });
-    clearTimeout(timer);
-    return res;
-  } catch (err) {
-    clearTimeout(timer);
-    throw err;
-  }
+  try { const res = await fetch(url, { ...options, signal: ctrl.signal }); clearTimeout(timer); return res; }
+  catch (err) { clearTimeout(timer); throw err; }
 }
 
 async function callGroq(messages, prompt) {
-  const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
-  grIdx++;
+  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
   const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 1500,
-      messages: [{ role: 'system', content: prompt }, ...messages]
-    })
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 2000, messages: [{ role: 'system', content: prompt }, ...messages] })
   });
   const d = await res.json();
   if (d.error) throw new Error('GROQ: ' + d.error.message);
@@ -357,27 +339,16 @@ async function callGroq(messages, prompt) {
 }
 
 async function callGemini(messages, prompt, imageBase64 = null) {
-  const key = GEMINI_KEYS[gIdx % GEMINI_KEYS.length];
-  gIdx++;
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
+  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
+  const contents = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
   if (imageBase64 && contents.length > 0) {
     const last = contents[contents.length - 1];
     if (last.role === 'user') last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
   }
   const res = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: prompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 1500, temperature: 0.85 }
-      })
-    }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system_instruction: { parts: [{ text: prompt }] }, contents, generationConfig: { maxOutputTokens: 2000, temperature: 0.85 } }) }
   );
   const d = await res.json();
   if (d.error) throw new Error('GEMINI: ' + d.error.message);
@@ -385,22 +356,12 @@ async function callGemini(messages, prompt, imageBase64 = null) {
 }
 
 async function callOR(messages, prompt) {
-  const key = OPENROUTER_KEYS[orIdx % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx % OPENROUTER_MODELS.length];
-  orIdx++; orMIdx++;
-  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+  const key   = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
+  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
+  const res   = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-      'HTTP-Referer': 'https://grind-ai.onrender.com',
-      'X-Title': 'GRIND AI'
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1500,
-      messages: [{ role: 'system', content: prompt }, ...messages]
-    })
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
+    body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: 'system', content: prompt }, ...messages] })
   });
   const d = await res.json();
   if (d.error) throw new Error('OR: ' + d.error.message);
@@ -409,36 +370,119 @@ async function callOR(messages, prompt) {
 
 async function getReply(messages, prompt, imageBase64 = null) {
   for (let i = 0; i < GROQ_KEYS.length; i++) {
-    try { return await callGroq(messages, prompt); }
-    catch (e) { console.log(`❌ GR${i + 1}:`, e.message); }
+    try { return await callGroq(messages, prompt); } catch (e) { console.log(`❌ GR${i + 1}:`, e.message); }
   }
   for (let i = 0; i < GEMINI_KEYS.length; i++) {
-    try { return await callGemini(messages, prompt, imageBase64); }
-    catch (e) { console.log(`❌ G${i + 1}:`, e.message); }
+    try { return await callGemini(messages, prompt, imageBase64); } catch (e) { console.log(`❌ G${i + 1}:`, e.message); }
   }
   for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
-    try { return await callOR(messages, prompt); }
-    catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
+    try { return await callOR(messages, prompt); } catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
   }
   throw new Error('ALL_EXHAUSTED');
 }
 
-const getAIReply = getReply;
+// ── SAFE JSON PARSE ───────────────────────────────────────
+function safeParseJSON(raw) {
+  let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  // Find first { and last }
+  const start = clean.indexOf('{');
+  const end   = clean.lastIndexOf('}');
+  if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+  return JSON.parse(clean);
+}
 
-// ── PLANNER CONTEXT ──────────────────────────────────────
+// ── PLANNER CONTEXT ───────────────────────────────────────
 async function buildPlannerContext(userId) {
   try {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today    = new Date(); today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    const tasks = await PlannerTask.find({ userId, scheduledDate: { $gte: today, $lt: tomorrow } }).lean();
+    const tasks    = await PlannerTask.find({ userId, scheduledDate: { $gte: today, $lt: tomorrow } }).lean();
     if (!tasks.length) return '';
-    const done = tasks.filter(t => t.status === 'completed').length;
+    const done    = tasks.filter(t => t.status === 'completed').length;
     const pending = tasks.filter(t => t.status === 'pending').length;
     return `Today's Plan: ${done} done, ${pending} pending out of ${tasks.length} tasks.\n${tasks.map(t => `- ${t.title} (${t.subject}, ${t.status})`).join('\n')}`;
   } catch { return ''; }
 }
 
-// ── ROUTES ───────────────────────────────────────────────
+// ── WEEK KEY HELPER ───────────────────────────────────────
+function getWeekKey() {
+  const d    = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+}
+
+// ── PYQ GENERATION PROMPT ─────────────────────────────────
+// Very strict — must cite real exam, real year, real shift.
+function buildPYQPrompt(subject, chapter, exam, difficulty) {
+  const chapterLine = chapter ? `Chapter/Topic: ${chapter}.` : '';
+  const examLine    = exam    ? `Exam: ${exam}.`            : 'Exam: JEE Main or JEE Advanced or NEET (pick whichever has the best real PYQ for this topic).';
+  return `You are a verified JEE/NEET question bank with access to all past papers from 2000–2024.
+
+Task: Retrieve ONE real Previous Year Question (PYQ).
+Subject: ${subject}. ${chapterLine} ${examLine} Difficulty: ${difficulty || 'medium'}.
+
+STRICT RULES — DO NOT VIOLATE:
+1. The question MUST have appeared in an actual exam. Do NOT fabricate.
+2. You MUST provide the exact year, exact exam name, and exact shift/date it appeared.
+3. If you are not at least 90% confident the question is real, generate a NEW question that matches the style and difficulty of a ${exam || 'JEE Main'} PYQ but mark "verified": false.
+4. The answer MUST be the exact answer from the official answer key.
+5. explanation must include: concept name, formula, complete step-by-step working.
+6. wrongPercent is the estimated % of students who got it wrong historically.
+
+Return ONLY this exact JSON (no markdown, no text outside JSON):
+{
+  "question": "full question text with all given data",
+  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+  "answer": "A",
+  "explanation": "Step 1: ... Step 2: ... Final answer: ...",
+  "cheatSheet": "one powerful shortcut or formula trick",
+  "trapAlert": "specific trap NTA/board sets in this type or empty string",
+  "wrongPercent": 72,
+  "year": "2023",
+  "exam": "${exam || 'JEE Main'}",
+  "shift": "January 24, Shift 2",
+  "chapter": "${chapter || subject}",
+  "topic": "${chapter || subject}",
+  "verified": true
+}`;
+}
+
+// ── PRACTICE Q GENERATION PROMPT ─────────────────────────
+function buildPracticePrompt(subject, chapter, topic, difficulty, adaptiveFocus) {
+  const topicLine   = topic   ? `Topic: ${topic}.`   : '';
+  const chapterLine = chapter ? `Chapter: ${chapter}.` : '';
+  const adaptLine   = adaptiveFocus
+    ? `ADAPTIVE MODE: Student previously got this concept wrong. Generate a fresh question on the SAME concept from a different angle to build true mastery. Focus on: ${adaptiveFocus.join(', ')}.`
+    : '';
+  return `You are a JEE/NEET expert question generator.
+Subject: ${subject}. ${chapterLine} ${topicLine} Difficulty: ${difficulty || 'medium'}.
+${adaptLine}
+
+Generate ONE high-quality practice MCQ.
+- Must require at least 3 logical/mathematical steps.
+- Include a deceptive trap option.
+- Explanation must include concept name, formula, and full working.
+
+Return ONLY this exact JSON (no markdown, no text outside JSON):
+{
+  "question": "full question text",
+  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+  "answer": "A",
+  "explanation": "Step 1: ... Step 2: ... Step 3: ... Final answer: ...",
+  "cheatSheet": "one powerful shortcut trick",
+  "trapAlert": "common mistake students make or empty string",
+  "wrongPercent": 65,
+  "year": "",
+  "exam": "",
+  "shift": "",
+  "chapter": "${chapter || subject}",
+  "topic": "${topic || chapter || subject}",
+  "verified": false
+}`;
+}
+
+// ── ROUTES ────────────────────────────────────────────────
 app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -450,8 +494,12 @@ app.get('/auth/google/callback',
 
 app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
 
-app.get('/api/me', (req, res) => {
-  if (!req.user) return res.json({ user: null });
+// Check auth status — frontend uses this to redirect to login instead of showing guest UI
+app.get('/api/auth/status', (req, res) => {
+  res.json({ authenticated: req.isAuthenticated(), user: req.user ? { id: req.user._id, name: req.user.name } : null });
+});
+
+app.get('/api/me', requireAuth, (req, res) => {
   const u = req.user;
   res.json({
     user: {
@@ -463,7 +511,8 @@ app.get('/api/me', (req, res) => {
       quizXP: u.quizXP, quizLevel: u.quizLevel, totalQSolved: u.totalQSolved,
       totalQCorrect: u.totalQCorrect, quizStreak: u.quizStreak,
       maxQuizStreak: u.maxQuizStreak, achievements: u.achievements,
-      weeklyXP: u.weeklyXP
+      weeklyXP: u.weeklyXP,
+      weakTopics: Object.fromEntries(u.weakTopics || new Map())
     }
   });
 });
@@ -482,75 +531,36 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle, hoursPerDay, gender } = req.body;
-    await User.findByIdAndUpdate(req.user._id, {
-      exam, class: cls, coaching, biggestStruggle, hoursPerDay, gender, isOnboarded: true
-    });
+    await User.findByIdAndUpdate(req.user._id, { exam, class: cls, coaching, biggestStruggle, hoursPerDay, gender, isOnboarded: true });
     res.json({ success: true });
   } catch { res.status(500).json({ error: 'Something went wrong.' }); }
 });
 
-// ── LEADERBOARD ──────────────────────────────────────────
+// ── LEADERBOARD ───────────────────────────────────────────
 app.get('/api/leaderboard', requireAuth, async (req, res) => {
   try {
-    const { type } = req.query; // weekly, alltime
+    const { type } = req.query;
     const sortField = type === 'weekly' ? 'weeklyXP' : 'quizXP';
     const users = await User.find({ isOnboarded: true })
       .select('name photo quizXP weeklyXP quizLevel totalQSolved maxQuizStreak achievements')
-      .sort({ [sortField]: -1 })
-      .limit(50)
-      .lean();
-
+      .sort({ [sortField]: -1 }).limit(50).lean();
     const board = users.map((u, i) => ({
       rank: i + 1,
       name: u.name?.split(' ')[0] || 'Student',
       photo: u.photo,
-      xp: type === 'weekly' ? u.weeklyXP : u.quizXP,
+      xp:   type === 'weekly' ? u.weeklyXP : u.quizXP,
       level: u.quizLevel || 1,
       solved: u.totalQSolved || 0,
       maxStreak: u.maxQuizStreak || 0,
       badges: (u.achievements || []).length,
       isMe: u._id?.toString() === req.user._id?.toString()
     }));
-
     res.json({ board });
   } catch { res.status(500).json({ error: 'Could not load leaderboard.' }); }
 });
 
 // ── QUIZ XP AWARD ─────────────────────────────────────────
-app.post('/api/quiz/question', async (req, res) => {
-  res.status(503).json({ error: 'Solo quiz coming soon! Use multiplayer for now.' });
-});
-  const { subject, chapter, difficulty, pyqMode, exam } = req.body;
-
-  const qPrompt = `You are a JEE/NEET question bank expert.
-Subject: ${subject || 'Physics'}. ${chapter ? 'Chapter: ' + chapter : ''} Difficulty: ${difficulty || 'medium'}.
-${pyqMode ? `This MUST be a real verified Previous Year Question from ${exam || 'JEE Main'}.
-Include actual exam year, date and shift. Include real % of students who got it wrong.` : 'Generate a fresh high quality practice question.'}
-
-Return ONLY this JSON, nothing else, no markdown:
-{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"step by step solution with concept and formula","cheatSheet":"one powerful shortcut trick","trapAlert":"common mistake or empty string","wrongPercent":68,"year":"${pyqMode ? '2023' : ''}","exam":"${pyqMode ? exam || 'JEE Main' : ''}","shift":"${pyqMode ? 'Jan 24 Shift 1' : ''}","chapter":"${chapter || subject || ''}"}`;
-
-  try {
-    const reply = await getReply(
-      [{ role: 'user', content: qPrompt }],
-      'You are a JEE/NEET question generator. Return ONLY valid compact JSON. No markdown. No extra text. No explanation outside JSON.'
-    );
-
-    let clean = reply.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // Fix incomplete JSON
-    if (!clean.endsWith('}')) {
-      const lastBrace = clean.lastIndexOf('}');
-      if (lastBrace > 0) clean = clean.substring(0, lastBrace + 1);
-    }
-
-    const q = JSON.parse(clean);
-    res.json({ question: q });
-  } catch (err) {
-    console.error('Solo quiz error:', err.message);
-    res.status(500).json({ error: 'Could not generate question. Try again.' });
-  }
-});
+app.post('/api/quiz/award-xp', requireAuth, async (req, res) => {
   try {
     const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
     const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
@@ -558,7 +568,64 @@ Return ONLY this JSON, nothing else, no markdown:
   } catch { res.status(500).json({ error: 'Could not award XP.' }); }
 });
 
-// ── SESSIONS ─────────────────────────────────────────────
+// ── QUIZ: WEAK TOPICS SYNC ────────────────────────────────
+// Frontend sends updated weakTopics map, server persists it
+app.post('/api/quiz/sync-weak-topics', requireAuth, async (req, res) => {
+  try {
+    const { weakTopics } = req.body;
+    await User.findByIdAndUpdate(req.user._id, { weakTopics: new Map(Object.entries(weakTopics || {})) });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not sync weak topics.' }); }
+});
+
+// ── QUIZ: SOLO QUESTION (PRACTICE) ───────────────────────
+app.post('/api/quiz/question', requireAuth, async (req, res) => {
+  const { subject, chapter, topic, difficulty, pyqMode, exam } = req.body;
+
+  // Build adaptive context from user's persisted weak topics
+  const user         = req.user;
+  const wk           = getWeekKey();
+  const weakMap      = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+  const adaptTopics  = [];
+  for (const [t, v] of weakMap.entries()) {
+    if (v?.weeks?.includes(wk)) adaptTopics.push(t);
+  }
+
+  const prompt = pyqMode
+    ? buildPYQPrompt(subject || 'Physics', chapter, exam, difficulty)
+    : buildPracticePrompt(subject || 'Physics', chapter, topic, difficulty, adaptTopics.length ? adaptTopics : null);
+
+  try {
+    const reply = await getReply([{ role: 'user', content: prompt }],
+      'You are an expert JEE/NEET question generator. Return ONLY valid compact JSON, no markdown, no extra text.');
+    const q = safeParseJSON(reply);
+    // Validate minimal structure before sending
+    if (!q.question || !q.options || !q.answer) throw new Error('Incomplete question structure');
+    res.json({ question: q, adaptive: adaptTopics.length > 0, adaptiveTopics: adaptTopics });
+  } catch (err) {
+    console.error('Quiz gen error:', err.message);
+    res.status(500).json({ error: 'Could not generate question. Please try again.' });
+  }
+});
+
+// ── QUIZ: LOG WRONG ANSWER (ADAPTIVE ENGINE) ─────────────
+// Called by frontend when student answers wrong, updates DB weakness map
+app.post('/api/quiz/log-wrong', requireAuth, async (req, res) => {
+  try {
+    const { topic, subject, chapter } = req.body;
+    const user  = req.user;
+    const wk    = getWeekKey();
+    const wMap  = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+    const entry = wMap.get(topic) || { count: 0, weeks: [], subject, chapter };
+    entry.count += 1;
+    if (!entry.weeks.includes(wk)) entry.weeks.push(wk);
+    wMap.set(topic, entry);
+    await User.findByIdAndUpdate(req.user._id, { weakTopics: wMap });
+    res.json({ success: true, weeklyWeakTopics: [...wMap.entries()].filter(([, v]) => v.weeks?.includes(wk)).map(([t]) => t) });
+  } catch { res.status(500).json({ error: 'Could not log wrong answer.' }); }
+});
+
+// ── SESSIONS ──────────────────────────────────────────────
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
     const sessions = await ChatSession.find({ userId: req.user._id })
@@ -589,31 +656,26 @@ app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── MAIN CHAT ────────────────────────────────────────────
+// ── MAIN CHAT ─────────────────────────────────────────────
 app.post('/api/chat', requireAuth, async (req, res) => {
   const { messages, sessionId, imageBase64 } = req.body;
   const user = req.user;
-
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Invalid request.' });
-
-  const recent = messages.slice(-20);
+  const recent     = messages.slice(-20);
   const plannerCtx = await buildPlannerContext(user._id);
-  const prompt = buildSystemPrompt(user, plannerCtx);
-
+  const prompt     = buildSystemPrompt(user, plannerCtx);
   try {
     const reply = await getReply(recent, prompt, imageBase64 || null);
-
-    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId !== 'guest' && sessionId.length === 24) {
+    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId.length === 24) {
       try {
         const userMsg = messages[messages.length - 1];
-        const title = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
+        const title   = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
         await ChatSession.findByIdAndUpdate(sessionId, {
           $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
-          $set: { updatedAt: new Date(), ...(title ? { title } : {}) }
+          $set:  { updatedAt: new Date(), ...(title ? { title } : {}) }
         }, { upsert: true });
       } catch (e) { console.error('Session save:', e.message); }
     }
-
     res.json({ reply });
   } catch (err) {
     console.error('AI error:', err.message);
@@ -621,45 +683,21 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   }
 });
 
-// ── QUIZ QUESTION GENERATION ──────────────────────────────
-app.post('/api/quiz/question', requireAuth, async (req, res) => {
-  const { subject, chapter, topic, difficulty, pyqMode, exam } = req.body;
-  const chapterInfo = chapter ? ` from chapter "${chapter}"` : '';
-  const topicInfo = topic ? `, specifically about "${topic}"` : '';
-  const diffInfo = difficulty || 'mixed';
-
-  const prompt = pyqMode
-    ? `Generate a real Previous Year Question for ${exam || 'JEE Main'} from ${subject}${chapterInfo}${topicInfo}. Difficulty: ${diffInfo}.
-Return ONLY valid JSON (no markdown):
-{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Complete step-by-step solution with concept name, formula used, and full working","cheatSheet":"One powerful shortcut or memory trick","trapAlert":"Specific NTA trap or common mistake students make, or empty string","wrongPercent":68,"year":"2024","exam":"JEE Main","shift":"January 24, Shift 1","chapter":"${chapter || subject}"}`
-    : `Generate a high-quality JEE/NEET MCQ for ${subject}${chapterInfo}${topicInfo}. Difficulty: ${diffInfo}.
-Return ONLY valid JSON (no markdown):
-{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Complete step-by-step solution with concept name, formula used, and full working","cheatSheet":"One powerful shortcut or memory trick","trapAlert":"Specific common mistake or empty string","wrongPercent":65,"year":"","exam":"","shift":"","chapter":"${chapter || subject}"}`;
-
-  try {
-    const reply = await getReply(
-      [{ role: 'user', content: prompt }],
-      'You are an expert JEE/NEET question generator. Return ONLY valid compact JSON, no markdown, no extra text, no explanation outside JSON.'
-    );
-    const clean = reply.replace(/```json|```/g, '').trim();
-    const q = JSON.parse(clean);
-    res.json({ question: q });
-  } catch (err) {
-    console.error('Quiz gen error:', err.message);
-    res.status(500).json({ error: 'Could not generate question. Try again.' });
-  }
-});
-
-// ── MISTAKES ─────────────────────────────────────────────
+// ── MISTAKES ──────────────────────────────────────────────
 app.get('/api/mistakes', requireAuth, async (req, res) => {
   try {
-    res.json({ mistakes: await Mistake.find({ userId: req.user._id }).sort({ createdAt: -1 }) });
+    const { subject, weekKey } = req.query;
+    const filter = { userId: req.user._id };
+    if (subject) filter.subject = subject;
+    if (weekKey) filter.weekKey = weekKey;
+    res.json({ mistakes: await Mistake.find(filter).sort({ createdAt: -1 }) });
   } catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
 app.post('/api/mistakes', requireAuth, async (req, res) => {
   try {
-    const m = await Mistake.create({ userId: req.user._id, ...req.body });
+    const wk = getWeekKey();
+    const m  = await Mistake.create({ userId: req.user._id, weekKey: wk, ...req.body });
     res.json({ mistake: m });
   } catch { res.status(500).json({ error: 'Could not save.' }); }
 });
@@ -671,22 +709,19 @@ app.delete('/api/mistakes/:id', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── PLANNER ──────────────────────────────────────────────
+// ── PLANNER ───────────────────────────────────────────────
 app.get('/api/planner/tasks', requireAuth, async (req, res) => {
   try {
     const { view } = req.query;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today    = new Date(); today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
-
-    let filter = { userId: req.user._id };
-    if (view === 'today') { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
-    else if (view === 'week') { filter.scheduledDate = { $gte: today, $lt: weekEnd }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    const weekEnd  = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+    let filter     = { userId: req.user._id };
+    if (view === 'today')     { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    else if (view === 'week') { filter.scheduledDate = { $gte: today, $lt: weekEnd };  filter.status = { $in: ['pending', 'completed', 'missed'] }; }
     else if (view === 'completed') { filter.status = 'completed'; }
     else { filter.scheduledDate = { $gte: today, $lt: tomorrow }; }
-
-    const tasks = await PlannerTask.find(filter).sort({ priority: 1, scheduledDate: 1 });
-    res.json({ tasks });
+    res.json({ tasks: await PlannerTask.find(filter).sort({ priority: 1, scheduledDate: 1 }) });
   } catch { res.status(500).json({ error: 'Could not load tasks.' }); }
 });
 
@@ -716,45 +751,22 @@ app.delete('/api/planner/tasks/:id', requireAuth, async (req, res) => {
 app.post('/api/planner/generate', requireAuth, async (req, res) => {
   try {
     const { period, energyLevel, targetDate, customNote } = req.body;
-    const user = req.user;
+    const user   = req.user;
     const prompt = `Generate a ${period || 'daily'} study plan:
 - Exam: ${user.exam || 'JEE'} | Class: ${user.class || '12th'} | Hours: ${user.hoursPerDay || '6'}/day
 - Energy: ${energyLevel || 'medium'} | Struggle: ${user.biggestStruggle || 'concepts'}
 - Note: ${customNote || 'none'}
 Return ONLY JSON array (no markdown): [{"title":"...","subject":"...","priority":"high/medium/low","estimatedMins":45,"notes":"..."}]
 Rules: Max 6 tasks if tired, 8 medium, 10 energized. Include short breaks. Be realistic.`;
-
-    const reply = await getAIReply([{ role: 'user', content: prompt }], 'Return only valid JSON array, no markdown.');
+    const reply = await getReply([{ role: 'user', content: prompt }], 'Return only valid JSON array, no markdown.');
     const tasks = JSON.parse(reply.replace(/```json|```/g, '').trim());
-    const date = new Date(targetDate || new Date()); date.setHours(6, 0, 0, 0);
+    const date  = new Date(targetDate || new Date()); date.setHours(6, 0, 0, 0);
     const saved = [];
-    for (const t of tasks) {
-      saved.push(await PlannerTask.create({ userId: user._id, ...t, scheduledDate: date, aiGenerated: true }));
-    }
+    for (const t of tasks) saved.push(await PlannerTask.create({ userId: user._id, ...t, scheduledDate: date, aiGenerated: true }));
     res.json({ tasks: saved });
-  } catch (err) {
-    console.error('Planner gen:', err.message);
-    res.status(500).json({ error: 'Could not generate plan.' });
-  }
+  } catch (err) { console.error('Planner gen:', err.message); res.status(500).json({ error: 'Could not generate plan.' }); }
 });
 
-// ── FEEDBACK ─────────────────────────────────────────────
-app.post('/api/feedback', async (req, res) => {
-  try {
-    await Feedback.create({ userId: req.user?._id, name: req.user?.name || 'User', ...req.body });
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not save feedback.' }); }
-});
-
-app.get('/api/admin/feedback', async (req, res) => {
-  if (req.query.key !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
-  try {
-    const feedback = await Feedback.find().sort({ createdAt: -1 }).limit(200);
-    res.json({ feedback });
-  } catch { res.status(500).json({ error: 'Could not load.' }); }
-});
-
-// ── PLANNER ROLLOVER ──────────────────────────────────────
 app.post('/api/planner/rollover', requireAuth, async (req, res) => {
   try {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -766,7 +778,21 @@ app.post('/api/planner/rollover', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Rollover failed.' }); }
 });
 
-// ── SOCKET.IO QUIZ ROOMS ─────────────────────────────────
+// ── FEEDBACK ──────────────────────────────────────────────
+app.post('/api/feedback', async (req, res) => {
+  try {
+    await Feedback.create({ userId: req.user?._id, name: req.user?.name || 'User', ...req.body });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not save feedback.' }); }
+});
+
+app.get('/api/admin/feedback', async (req, res) => {
+  if (req.query.key !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
+  try { res.json({ feedback: await Feedback.find().sort({ createdAt: -1 }).limit(200) }); }
+  catch { res.status(500).json({ error: 'Could not load.' }); }
+});
+
+// ── SOCKET.IO QUIZ ROOMS ──────────────────────────────────
 const quizRooms = {};
 
 io.on('connection', socket => {
@@ -809,8 +835,8 @@ io.on('connection', socket => {
     player.total = (player.total || 0) + 1;
     const correct = answer === room.currentAnswer;
     if (correct) {
-      player.score += 10 + Math.floor((timeLeft || 0) / 3);
-      player.streak = (player.streak || 0) + 1;
+      player.score  += 10 + Math.floor((timeLeft || 0) / 3);
+      player.streak  = (player.streak || 0) + 1;
       player.correct = (player.correct || 0) + 1;
     } else {
       player.streak = 0;
@@ -850,45 +876,28 @@ io.on('connection', socket => {
 async function startMultiQuestion(code) {
   const room = quizRooms[code];
   if (!room) return;
-
   const totalQ = room.config?.questionCount || 10;
   if (room.currentQ >= totalQ) {
     io.to(code).emit('game-over', { players: room.players });
     delete quizRooms[code];
     return;
   }
+  const subjects  = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
+  const subject   = subjects[room.currentQ % subjects.length];
+  const chapters  = room.config?.chapters?.length ? room.config.chapters.join(', ') : '';
+  const difficulty= room.config?.difficulty || 'mixed';
+  const pyqMode   = room.config?.pyqMode || false;
 
-  const subjects = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
-  const subject = subjects[room.currentQ % subjects.length];
-  const chapters = room.config?.chapters?.length ? `from chapters: ${room.config.chapters.join(', ')}` : '';
-  const difficulty = room.config?.difficulty || 'mixed';
-  const pyqMode = room.config?.pyqMode || false;
-const qPrompt = `You are a JEE/NEET question bank. Generate question #${room.currentQ + 1}.
-Subject: ${subject}. ${chapters ? 'Chapter: ' + chapters : ''} Difficulty: ${difficulty}.
-${pyqMode ? `This MUST be a real verified Previous Year Question from JEE Main/Advanced or NEET.
-Include the actual exam year, date and shift it appeared in.
-Include the real approximate percentage of students who got it wrong based on historical data.` : 'Generate a fresh practice question.'}
-
-Return ONLY this exact JSON structure, nothing else:
-{
-  "question": "complete question text here",
-  "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
-  "answer": "A",
-  "explanation": "step by step solution with formula and concept name",
-  "cheatSheet": "one powerful shortcut trick",
-  "trapAlert": "common mistake students make or leave empty",
-  "wrongPercent": 72,
-  "year": "${pyqMode ? 'actual year like 2023' : ''}",
-  "exam": "${pyqMode ? 'JEE Main or JEE Advanced or NEET' : ''}",
-  "shift": "${pyqMode ? 'actual shift like January 24 Shift 2' : ''}"
-}`;
+  const qPrompt = pyqMode
+    ? buildPYQPrompt(subject, chapters, room.config?.exam || 'JEE Main', difficulty)
+    : buildPracticePrompt(subject, chapters, null, difficulty, null);
 
   try {
     const reply = await getReply([{ role: 'user', content: qPrompt }], 'Return ONLY valid JSON, no markdown.');
-    const q = JSON.parse(reply.replace(/```json|```/g, '').trim());
+    const q     = safeParseJSON(reply);
+    if (!q.question || !q.options || !q.answer) throw new Error('Bad structure');
     room.currentAnswer = q.answer;
     io.to(code).emit('new-question', { ...q, timeLimit: 45, questionNumber: room.currentQ + 1, totalQuestions: totalQ });
-
     setTimeout(() => {
       io.to(code).emit('question-ended', { correctAnswer: q.answer, explanation: q.explanation, cheatSheet: q.cheatSheet });
       setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 8000);
@@ -900,11 +909,13 @@ Return ONLY this exact JSON structure, nothing else:
   }
 }
 
-// ── SERVE ────────────────────────────────────────────────
+// ── SERVE ─────────────────────────────────────────────────
+// All non-API routes → index.html (SPA). If not authenticated, index.html
+// must handle redirect to /auth/google for protected pages.
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v6 on port ${PORT}`);
+  console.log(`🧠 GRIND AI v7 on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
