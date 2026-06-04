@@ -561,7 +561,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   try {
     const reply = await getReply(recent, prompt, imageBase64 || null);
 
-    if (sessionId && sessionId !== 'new') {
+    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId !== 'guest' && sessionId.length === 24) {
       try {
         const userMsg = messages[messages.length - 1];
         const title = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
