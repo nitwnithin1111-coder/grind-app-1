@@ -1,7 +1,7 @@
 {
-  "name": "grind-jee-neet",
-  "version": "4.0.0",
-  "description": "GRIND AI — Elite JEE/NEET companion",
+  "name": "grind-ai-v5",
+  "version": "5.0.0",
+  "description": "GRIND AI — Elite JEE/NEET companion v5",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
