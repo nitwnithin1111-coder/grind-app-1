@@ -509,6 +509,8 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
 
 // ── QUIZ XP AWARD ─────────────────────────────────────────
 app.post('/api/quiz/question', async (req, res) => {
+  res.status(503).json({ error: 'Solo quiz coming soon! Use multiplayer for now.' });
+});
   const { subject, chapter, difficulty, pyqMode, exam } = req.body;
 
   const qPrompt = `You are a JEE/NEET question bank expert.
