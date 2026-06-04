@@ -869,21 +869,6 @@ Return ONLY valid JSON:
     io.to(code).emit('quiz-error', 'Question generation failed.');
   }
 }
-// Keep AI generation alive when tab is hidden
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // Keep fetch alive with a no-sleep lock if supported
-    if (navigator.wakeLock) {
-      navigator.wakeLock.request('screen').catch(() => {});
-    }
-  }
-});
-
-// Fix fetch getting killed on tab switch
-const originalFetch = window.fetch;
-window.fetch = function(...args) {
-  return originalFetch(...args);
-};
 // ── SERVE ────────────────────────────────────────────────
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
