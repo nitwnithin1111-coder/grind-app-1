@@ -15,46 +15,50 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
 
 // ── MONGODB ──────────────────────────────────────────────
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err.message));
+  .catch(err => console.error('❌ MongoDB:', err.message));
 
 // ── SCHEMAS ──────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
-  googleId:        { type: String, unique: true, sparse: true },
-  email:           { type: String },
-  name:            { type: String, required: true },
-  photo:           { type: String, default: '' },
-  gender:          { type: String, default: '' },
-  exam:            { type: String, default: '' },
-  class:           { type: String, default: '' },
-  coaching:        { type: String, default: '' },
-  biggestStruggle: { type: String, default: '' },
-  hoursPerDay:     { type: String, default: '' },
-  isOnboarded:     { type: Boolean, default: false },
-  streak:          { type: Number, default: 0 },
-  lastActive:      { type: Date, default: Date.now },
-  createdAt:       { type: Date, default: Date.now },
-  // Settings
-  responseSpeed:   { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
-  preferredLang:   { type: String, default: 'auto' },
-  // Exam countdown
-  examDate:        { type: Date, default: null },
-  // Burnout tracking
-  burnoutScore:    { type: Number, default: 0 },
-  lastBurnoutCheck:{ type: Date, default: null }
+  googleId:         { type: String, unique: true, sparse: true },
+  email:            String,
+  name:             { type: String, required: true },
+  photo:            { type: String, default: '' },
+  gender:           { type: String, default: '' },
+  exam:             { type: String, default: '' },
+  class:            { type: String, default: '' },
+  coaching:         { type: String, default: '' },
+  biggestStruggle:  { type: String, default: '' },
+  hoursPerDay:      { type: String, default: '' },
+  isOnboarded:      { type: Boolean, default: false },
+  streak:           { type: Number, default: 0 },
+  lastActive:       { type: Date, default: Date.now },
+  responseSpeed:    { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
+  examDate:         { type: Date, default: null },
+  // Quiz achievements
+  quizXP:           { type: Number, default: 0 },
+  quizLevel:        { type: Number, default: 1 },
+  totalQSolved:     { type: Number, default: 0 },
+  totalQCorrect:    { type: Number, default: 0 },
+  quizStreak:       { type: Number, default: 0 },
+  maxQuizStreak:    { type: Number, default: 0 },
+  achievements:     [{ id: String, name: String, icon: String, unlockedAt: Date }],
+  weeklyXP:         { type: Number, default: 0 },
+  weeklyXPReset:    { type: Date, default: Date.now },
+  createdAt:        { type: Date, default: Date.now }
 });
 
 const sessionSchema = new mongoose.Schema({
-  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  title:     { type: String, default: 'New Conversation' },
-  messages:  [{
+  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title:    { type: String, default: 'New Conversation' },
+  messages: [{
     role:      { type: String, enum: ['user', 'assistant'] },
-    content:   { type: String },
+    content:   String,
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -62,18 +66,18 @@ const sessionSchema = new mongoose.Schema({
 });
 
 const mistakeSchema = new mongoose.Schema({
-  userId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  question:    { type: String, required: true },
-  subject:     { type: String, default: '' },
-  topic:       { type: String, default: '' },
-  note:        { type: String, default: '' },
-  explanation: { type: String, default: '' },
-  userAnswer:  { type: String, default: '' },
-  correctAnswer:{ type: String, default: '' },
-  createdAt:   { type: Date, default: Date.now }
+  userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  question:     String,
+  subject:      String,
+  chapter:      String,
+  topic:        String,
+  explanation:  String,
+  userAnswer:   String,
+  correctAnswer:String,
+  note:         String,
+  createdAt:    { type: Date, default: Date.now }
 });
 
-// ── PLANNER SCHEMAS ──────────────────────────────────────
 const plannerTaskSchema = new mongoose.Schema({
   userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   title:         { type: String, required: true },
@@ -89,28 +93,25 @@ const plannerTaskSchema = new mongoose.Schema({
   updatedAt:     { type: Date, default: Date.now }
 });
 
-const plannerStatsSchema = new mongoose.Schema({
-  userId:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-  totalTasksDone: { type: Number, default: 0 },
-  totalTasksMissed:{ type: Number, default: 0 },
-  weeklyDone:     { type: [Number], default: [0,0,0,0,0,0,0] }, // Sun-Sat
-  subjectHours:   { type: Map, of: Number, default: {} },
-  weeklyReport:   { type: String, default: '' },
-  lastReportDate: { type: Date, default: null },
-  updatedAt:      { type: Date, default: Date.now }
+const feedbackSchema = new mongoose.Schema({
+  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', sparse: true },
+  name:     String,
+  rating:   Number,
+  message:  String,
+  type:     { type: String, default: 'exit' },
+  createdAt:{ type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
 const ChatSession = mongoose.model('ChatSession', sessionSchema);
 const Mistake = mongoose.model('Mistake', mistakeSchema);
 const PlannerTask = mongoose.model('PlannerTask', plannerTaskSchema);
-const PlannerStats = mongoose.model('PlannerStats', plannerStatsSchema);
+const Feedback = mongoose.model('Feedback', feedbackSchema);
 
 // ── SESSION ──────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'grindai-secret-2025',
-  resave: false,
-  saveUninitialized: false,
+  resave: false, saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
   cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
 }));
@@ -120,7 +121,7 @@ passport.use(new GoogleStrategy({
   clientID:     process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL:  process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+}, async (at, rt, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
     if (!user) {
@@ -132,29 +133,31 @@ passport.use(new GoogleStrategy({
       });
     }
     const now = new Date();
-    const last = new Date(user.lastActive);
-    const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
-    if (diffDays === 1) user.streak += 1;
-    else if (diffDays > 1) user.streak = 1;
+    const diff = Math.floor((now - new Date(user.lastActive)) / 86400000);
+    if (diff === 1) user.streak += 1;
+    else if (diff > 1) user.streak = 1;
     user.lastActive = now;
+    // Reset weekly XP if needed
+    const weekAgo = new Date(now - 7 * 86400000);
+    if (new Date(user.weeklyXPReset) < weekAgo) {
+      user.weeklyXP = 0;
+      user.weeklyXPReset = now;
+    }
     await user.save();
     return done(null, user);
   } catch (err) { return done(err, null); }
 }));
 
-passport.serializeUser((user, done) => done(null, user._id));
+passport.serializeUser((u, done) => done(null, u._id));
 passport.deserializeUser(async (id, done) => {
   try { done(null, await User.findById(id)); }
-  catch (err) { done(err, null); }
+  catch (e) { done(e, null); }
 });
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-function requireAuth(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  res.status(401).json({ error: 'Login required' });
-}
+const requireAuth = (req, res, next) => req.isAuthenticated() ? next() : res.status(401).json({ error: 'Login required' });
 
 // ── API KEYS ─────────────────────────────────────────────
 const GROQ_KEYS = [
@@ -162,168 +165,171 @@ const GROQ_KEYS = [
   process.env.GROQ_KEY_3, process.env.GROQ_KEY_4,
   process.env.GROQ_KEY_5
 ].filter(Boolean);
+
 const GEMINI_KEYS = [
   process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2,
   process.env.GEMINI_KEY_3, process.env.GEMINI_KEY_4,
   process.env.GEMINI_KEY_5
 ].filter(Boolean);
+
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2,
   process.env.OPENROUTER_KEY_3, process.env.OPENROUTER_KEY_4,
   process.env.OPENROUTER_KEY_5
 ].filter(Boolean);
+
 const OPENROUTER_MODELS = [
   'mistralai/mistral-7b-instruct:free',
   'huggingfaceh4/zephyr-7b-beta:free',
   'openchat/openchat-7b:free',
   'nousresearch/nous-capybara-7b:free'
 ];
+
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
+
 // ── SYSTEM PROMPT ────────────────────────────────────────
-function buildSystemPrompt(user, plannerContext = '') {
+function buildSystemPrompt(user, plannerCtx = '') {
   const name = user?.name?.split(' ')[0] || 'there';
   const gender = user?.gender || '';
   const slang = gender === 'female' ? 'bestie' : gender === 'male' ? 'bro' : 'yaar';
 
-  const speedInstructions = {
-    fast: 'Keep responses SHORT and PUNCHY — max 3-4 sentences. Speed over depth.',
-    balanced: 'Keep responses focused — medium length, warm, precise.',
-    deep: 'Give DEEP, thorough responses with full explanations, multiple examples, and rich reasoning. Take your time.'
+  const speedMap = {
+    fast:     'SHORT and PUNCHY — max 3 sentences. Direct. No fluff.',
+    balanced: 'Medium length — warm, focused, precise.',
+    deep:     'DEEP and thorough — full explanations, multiple examples, rich reasoning.',
+    ultra:    'ULTRA DEEP — treat this like a research paper. Maximum detail, every edge case, full derivations.'
   };
   const speed = user?.responseSpeed || 'balanced';
 
-  return `You are GRIND — an elite AI cognitive coach and JEE/NEET tutor for Indian aspirants. You combine deep academic expertise with emotional intelligence.
+  return `You are GRIND — elite AI cognitive coach and JEE/NEET tutor for Indian aspirants.
 
-STUDENT PROFILE:
-- Name: ${name}
-- Gender: ${gender || 'not specified'} → use "${slang}" naturally
-- Exam: ${user?.exam || 'JEE/NEET'}
-- Class: ${user?.class || 'not specified'}
-- Coaching: ${user?.coaching || 'self-study'}
-- Biggest struggle: ${user?.biggestStruggle || 'not specified'}
-- Study hours/day: ${user?.hoursPerDay || 'not specified'}
+STUDENT: Name=${name} | Gender=${gender}(use "${slang}") | Exam=${user?.exam||'JEE/NEET'} | Class=${user?.class||'?'} | Coaching=${user?.coaching||'self-study'} | Struggle=${user?.biggestStruggle||'?'}
 
-RESPONSE SPEED: ${speedInstructions[speed]}
+RESPONSE SPEED MODE: ${speedMap[speed]}
 
-LANGUAGE RULES:
-- Automatically detect the user's language from their message.
-- Reply in the SAME language/mix the user uses — Hinglish, Telugu-English, Tamil-English, pure Hindi, pure English — whatever they write in.
-- Mirror regional slang and cultural expressions naturally.
-- Never translate unless asked.
-- If they write in Hindi, reply in Hindi. If Hinglish, reply Hinglish. Be a native speaker.
+LANGUAGE: Auto-detect and mirror user's language. Hinglish→Hinglish. Telugu-English→Telugu-English. Tamil-English→Tamil-English. Pure Hindi→Pure Hindi. Never translate unless asked. Be a native speaker.
 
-${plannerContext ? `PLANNER CONTEXT (reference this in replies):
-${plannerContext}` : ''}
+${plannerCtx ? `PLANNER CONTEXT:\n${plannerCtx}\n` : ''}
 
-ACADEMIC EXPERTISE:
-- You know every JEE/NEET topic deeply: Rotational Motion, Electrostatics, Organic GOC, Integration, Genetics, etc.
-- For academic questions, use: Concept → Step-by-Step → Shortcut Trick
-- For numerical problems, show clear steps with units. Use LaTeX math notation: $formula$ for inline, $$formula$$ for block.
-- For conceptual: give the intuition FIRST then the formula
-- 15-16 lakh students appear for JEE every year. Only 16,000 IIT seats.
+ACADEMIC MODE:
+- Format: **Concept** → Step-by-Step → ⚡ Shortcut
+- Use LaTeX: $inline$ and $$block$$ for all math/physics formulas
+- 15-16 lakh students appear for JEE. Only 16,000 IIT seats.
 - Books: HC Verma, DC Pandey, MS Chouhan, VK Jaiswal, Cengage, NCERT
 
-EMOTIONAL INTELLIGENCE — 3 MODES:
-1. COMPASSIONATE MODE (burnout/anxiety/failure): Drop everything. Listen first. Validate. Then ONE micro-step.
-2. ACCOUNTABILITY MODE (lazy/procrastinating): Direct, urgent, sharp. No lecture. Just action.
-3. MEMORY MODE: Reference past patterns gently.
+INTERACTIVE CONVERSATION STYLE:
+- During normal chat, naturally inject MCQ-style questions to reduce typing fatigue
+- Format inline options as: (A) option1  (B) option2  (C) option3  (D) type your own
+- Always include "D) Type your own answer" as last option
+- Student can reply with just "A", "B", "C" or type their own answer
+- Keep conversation flowing naturally — don't make it feel like a test
 
-DEPRESSION/CRISIS PROTOCOL:
-- If student shows deep despair, worthlessness, crying → NEVER use tough-love. Be gentle and protective.
-- If student mentions self-harm or suicide → Stop all academics. Provide: Kiran Helpline: 1800-599-0019, iCall: 9152987821, Tele-MANAS: 14416. Their life > any exam.
+INFINITE INTERROGATION (academic topics only):
+- Never give passive answers to concept/formula questions
+- After explaining, ALWAYS end with ONE sharp JEE/NEET-level follow-up question labeled "**YOUR NEXT CHALLENGE:**"
+- Keep the learning loop going until student says "stop", "enough", "break", "bas", "ruk"
+- Do NOT apply this to emotional/personal conversations
 
-🚨 INFINITE INTERROGATION RULE (for academic topics):
-- NEVER give a passive answer to any concept/formula/topic question.
-- After explaining, ALWAYS end with ONE sharp, specific, JEE Advanced/NEET-level concept-testing question.
-- Keep throwing the next logical question, pattern, or numerical — trap them in a productive learning loop.
-- Do NOT stop the questioning loop unless the student explicitly says "stop", "enough", "break", "bas", "ruk", or "dont ask".
-- This rule does NOT apply when the student is venting, asking for plans, or in emotional distress.
+EMOTIONAL MODES:
+1. Burnout/anxiety → listen first, validate, then ONE micro-step
+2. Procrastination → direct, urgent, no lecture
+3. Depression/despair → gentle ONLY, never tough-love
+4. Crisis (self-harm/suicide) → STOP academics: Kiran: 1800-599-0019, iCall: 9152987821, Tele-MANAS: 14416
 
-DAY PLANNER MODE:
-- When asked about today's plan or study schedule, FIRST ask: "Before I plan your day — how are you feeling right now? Rate yourself: 😴 exhausted / 😐 okay / ⚡ energized"
-- Based on their energy, adjust the plan intensity accordingly.
-- Never give 8+ hour plans to someone who's tired. Give 2-3 realistic targets.
-- Use 45-min sprints + 10-min breaks format.
-- End with 3 quick clickable options for them to confirm/adjust.
+DAY PLANNER:
+- Ask energy level first: 😴 exhausted / 😐 okay / ⚡ energized
+- Adjust plan intensity based on energy
+- 45-min sprints + 10-min breaks
+- Never give 8hr plans to tired students
 
-RESPONSE RULES:
+RULES:
 - Address ${name} by name occasionally, use ${slang} naturally
-- No hollow phrases like "You got this!" or "Believe in yourself!"
-- No [WIN:], [FOCUS:], [RESTART:] tags
-- For academic questions: use **bold** for key terms, use $math$ for formulas
-- Always end academic answers with a follow-up question (the interrogation rule above)`;
+- No hollow phrases: "You got this!" "Believe in yourself!"
+- No [WIN:] [FOCUS:] [RESTART:] forced tags
+- Bold key terms, use LaTeX for all formulas`;
+}
+
+// ── ACHIEVEMENTS ENGINE ──────────────────────────────────
+const ACHIEVEMENTS = [
+  { id: 'first_blood',   name: 'First Blood',     icon: '🎯', xpRequired: 0,    condition: 'first_correct' },
+  { id: 'hot_streak_5',  name: 'On Fire!',         icon: '🔥', xpRequired: 0,    condition: 'streak_5' },
+  { id: 'hot_streak_10', name: 'Unstoppable',      icon: '⚡', xpRequired: 0,    condition: 'streak_10' },
+  { id: 'centurion',     name: 'Centurion',         icon: '💯', xpRequired: 0,    condition: 'solved_100' },
+  { id: 'solver_500',    name: 'Problem Destroyer', icon: '🏆', xpRequired: 0,    condition: 'solved_500' },
+  { id: 'level_5',       name: 'Rising Star',       icon: '⭐', xpRequired: 500,  condition: 'level_5' },
+  { id: 'level_10',      name: 'JEE Warrior',       icon: '⚔️', xpRequired: 1500, condition: 'level_10' },
+  { id: 'level_20',      name: 'IIT Bound',         icon: '🚀', xpRequired: 5000, condition: 'level_20' },
+  { id: 'daily_30',      name: 'Grind Mode',        icon: '💪', xpRequired: 0,    condition: 'daily_30_questions' },
+  { id: 'accuracy_90',   name: 'Sniper',            icon: '🎖️', xpRequired: 0,    condition: 'accuracy_90' },
+  { id: 'week_streak_7', name: 'Week Warrior',      icon: '📅', xpRequired: 0,    condition: 'streak_7_days' },
+];
+
+function calcLevel(xp) {
+  return Math.floor(Math.sqrt(xp / 100)) + 1;
+}
+
+function xpForNextLevel(level) {
+  return Math.pow(level, 2) * 100;
+}
+
+async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
+  const user = await User.findById(userId);
+  if (!user) return { newAchievements: [], levelUp: false };
+
+  const oldLevel = calcLevel(user.quizXP);
+  user.quizXP += xp;
+  user.weeklyXP += xp;
+  user.totalQSolved = totalSolved;
+  user.totalQCorrect = totalCorrect;
+  user.quizStreak = newStreak;
+  if (newStreak > user.maxQuizStreak) user.maxQuizStreak = newStreak;
+  const newLevel = calcLevel(user.quizXP);
+  user.quizLevel = newLevel;
+
+  // Check achievements
+  const newAchievements = [];
+  const existingIds = user.achievements.map(a => a.id);
+
+  const checks = [
+    { id: 'first_blood',   condition: totalCorrect >= 1 },
+    { id: 'hot_streak_5',  condition: newStreak >= 5 },
+    { id: 'hot_streak_10', condition: newStreak >= 10 },
+    { id: 'centurion',     condition: totalSolved >= 100 },
+    { id: 'solver_500',    condition: totalSolved >= 500 },
+    { id: 'level_5',       condition: newLevel >= 5 },
+    { id: 'level_10',      condition: newLevel >= 10 },
+    { id: 'level_20',      condition: newLevel >= 20 },
+    { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect/totalSolved) >= 0.9 },
+  ];
+
+  for (const check of checks) {
+    if (check.condition && !existingIds.includes(check.id)) {
+      const ach = ACHIEVEMENTS.find(a => a.id === check.id);
+      if (ach) {
+        user.achievements.push({ id: ach.id, name: ach.name, icon: ach.icon, unlockedAt: new Date() });
+        newAchievements.push(ach);
+      }
+    }
+  }
+
+  await user.save();
+  return { newAchievements, levelUp: newLevel > oldLevel, newLevel, totalXP: user.quizXP };
 }
 
 // ── API HELPERS ──────────────────────────────────────────
-async function fetchWithTimeout(url, options, ms = 12000) async function callGroq(messages, prompt) {
-  const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
-  grIdx++;
-  const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 1024,
-      messages: [{ role: 'system', content: prompt }, ...messages]
-    })
-  }, 30000);
-  const d = await res.json();
-  if (d.error) throw new Error('GROQ: ' + d.error.message);
-  return d.choices[0].message.content;
-}
-
-async function callGemini(messages, prompt, imageBase64 = null) {
-  const key = GEMINI_KEYS[gIdx % GEMINI_KEYS.length];
-  gIdx++;
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-  if (imageBase64 && contents.length > 0) {
-    const last = contents[contents.length - 1];
-    if (last.role === 'user') last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+async function fetchWithTimeout(url, options, ms = 30000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
   }
-  const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: prompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
-      })
-    }, 30000);
-  const d = await res.json();
-  if (d.error) throw new Error('GEMINI: ' + d.error.message);
-  return d.candidates[0].content.parts[0].text;
 }
 
-async function callOR(messages, prompt) {
-  const key = OPENROUTER_KEYS[orIdx % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx % OPENROUTER_MODELS.length];
-  orIdx++; orMIdx++;
-  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-      'HTTP-Referer': 'https://grind-ai.onrender.com',
-      'X-Title': 'GRIND AI'
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      messages: [{ role: 'system', content: prompt }, ...messages]
-    })
-  }, 30000);
-  const d = await res.json();
-  if (d.error) throw new Error('OR: ' + d.error.message);
-  return d.choices[0].message.content;
-}
-
-// Alias for planner routes that use getAIReply
-const getAIReply = getReply;
 async function callGroq(messages, prompt) {
   const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
   grIdx++;
@@ -332,10 +338,10 @@ async function callGroq(messages, prompt) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: 1024,
+      max_tokens: 1500,
       messages: [{ role: 'system', content: prompt }, ...messages]
     })
-  }, 30000);
+  });
   const d = await res.json();
   if (d.error) throw new Error('GROQ: ' + d.error.message);
   return d.choices[0].message.content;
@@ -360,9 +366,10 @@ async function callGemini(messages, prompt, imageBase64 = null) {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: prompt }] },
         contents,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+        generationConfig: { maxOutputTokens: 1500, temperature: 0.85 }
       })
-    }, 30000);
+    }
+  );
   const d = await res.json();
   if (d.error) throw new Error('GEMINI: ' + d.error.message);
   return d.candidates[0].content.parts[0].text;
@@ -382,111 +389,76 @@ async function callOR(messages, prompt) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 1500,
       messages: [{ role: 'system', content: prompt }, ...messages]
     })
-  }, 30000);
+  });
   const d = await res.json();
   if (d.error) throw new Error('OR: ' + d.error.message);
   return d.choices[0].message.content;
 }
 
-// Alias for planner routes that use getAIReply
-const getAIReply = getReply;
-{
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, { ...options, signal: ctrl.signal });
-    clearTimeout(timer); return res;
-  } catch (err) { clearTimeout(timer); throw err; }
-}
-
-async function getReply(messages, prompt, imageBase64=null) {
+async function getReply(messages, prompt, imageBase64 = null) {
   for (let i = 0; i < GROQ_KEYS.length; i++) {
     try { return await callGroq(messages, prompt); }
-    catch(e) { console.log(`❌ GR${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ GR${i + 1}:`, e.message); }
   }
   for (let i = 0; i < GEMINI_KEYS.length; i++) {
     try { return await callGemini(messages, prompt, imageBase64); }
-    catch(e) { console.log(`❌ G${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ G${i + 1}:`, e.message); }
   }
   for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
     try { return await callOR(messages, prompt); }
-    catch(e) { console.log(`❌ OR${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
   }
   throw new Error('ALL_EXHAUSTED');
-  const getAIReply = getReply;
 }
-// ── PLANNER CONTEXT BUILDER ──────────────────────────────
+
+const getAIReply = getReply;
+
+// ── PLANNER CONTEXT ──────────────────────────────────────
 async function buildPlannerContext(userId) {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const todayTasks = await PlannerTask.find({
-      userId,
-      scheduledDate: { $gte: today, $lt: tomorrow }
-    }).lean();
-
-    const completedToday = todayTasks.filter(t => t.status === 'completed').length;
-    const pendingToday = todayTasks.filter(t => t.status === 'pending').length;
-    const missedToday = todayTasks.filter(t => t.status === 'missed').length;
-
-    if (todayTasks.length === 0) return '';
-
-    const taskList = todayTasks.map(t =>
-      `- ${t.title} (${t.subject}, ${t.status})`
-    ).join('\n');
-
-    return `Today's Planner (${today.toDateString()}):
-${taskList}
-Summary: ${completedToday} done, ${pendingToday} pending, ${missedToday} missed out of ${todayTasks.length} tasks.`;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const tasks = await PlannerTask.find({ userId, scheduledDate: { $gte: today, $lt: tomorrow } }).lean();
+    if (!tasks.length) return '';
+    const done = tasks.filter(t => t.status === 'completed').length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    return `Today's Plan: ${done} done, ${pending} pending out of ${tasks.length} tasks.\n${tasks.map(t => `- ${t.title} (${t.subject}, ${t.status})`).join('\n')}`;
   } catch { return ''; }
 }
 
-// ── AUTH ROUTES ──────────────────────────────────────────
-app.get('/ping', (req, res) => res.json({ status: 'alive' }));
+// ── ROUTES ───────────────────────────────────────────────
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
-  (req, res) => {
-    // Always redirect properly — never fall into guest mode
-    if (req.user.isOnboarded) {
-      res.redirect('/?loggedin=true');
-    } else {
-      res.redirect('/?onboarding=true');
-    }
-  }
+  (req, res) => res.redirect(req.user.isOnboarded ? '/?loggedin=true' : '/?onboarding=true')
 );
 
 app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
 
 app.get('/api/me', (req, res) => {
   if (!req.user) return res.json({ user: null });
-  res.json({ user: {
-    id:            req.user._id,
-    name:          req.user.name,
-    email:         req.user.email,
-    photo:         req.user.photo,
-    isOnboarded:   req.user.isOnboarded,
-    exam:          req.user.exam,
-    class:         req.user.class,
-    coaching:      req.user.coaching,
-    gender:        req.user.gender,
-    streak:        req.user.streak,
-    responseSpeed: req.user.responseSpeed || 'balanced',
-    examDate:      req.user.examDate,
-    hoursPerDay:   req.user.hoursPerDay,
-    biggestStruggle: req.user.biggestStruggle
-  }});
+  const u = req.user;
+  res.json({
+    user: {
+      id: u._id, name: u.name, email: u.email, photo: u.photo,
+      isOnboarded: u.isOnboarded, exam: u.exam, class: u.class,
+      coaching: u.coaching, gender: u.gender, streak: u.streak,
+      responseSpeed: u.responseSpeed || 'balanced', examDate: u.examDate,
+      hoursPerDay: u.hoursPerDay, biggestStruggle: u.biggestStruggle,
+      quizXP: u.quizXP, quizLevel: u.quizLevel, totalQSolved: u.totalQSolved,
+      totalQCorrect: u.totalQCorrect, quizStreak: u.quizStreak,
+      maxQuizStreak: u.maxQuizStreak, achievements: u.achievements,
+      weeklyXP: u.weeklyXP
+    }
+  });
 });
 
-// ── SETTINGS ─────────────────────────────────────────────
 app.post('/api/user/settings', requireAuth, async (req, res) => {
   try {
     const { responseSpeed, examDate } = req.body;
@@ -498,7 +470,6 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not save settings.' }); }
 });
 
-// ── ONBOARDING ───────────────────────────────────────────
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle, hoursPerDay, gender } = req.body;
@@ -509,85 +480,96 @@ app.post('/api/user/onboard', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Something went wrong.' }); }
 });
 
-// ── CHAT SESSIONS ────────────────────────────────────────
+// ── LEADERBOARD ──────────────────────────────────────────
+app.get('/api/leaderboard', requireAuth, async (req, res) => {
+  try {
+    const { type } = req.query; // weekly, alltime
+    const sortField = type === 'weekly' ? 'weeklyXP' : 'quizXP';
+    const users = await User.find({ isOnboarded: true })
+      .select('name photo quizXP weeklyXP quizLevel totalQSolved maxQuizStreak achievements')
+      .sort({ [sortField]: -1 })
+      .limit(50)
+      .lean();
+
+    const board = users.map((u, i) => ({
+      rank: i + 1,
+      name: u.name?.split(' ')[0] || 'Student',
+      photo: u.photo,
+      xp: type === 'weekly' ? u.weeklyXP : u.quizXP,
+      level: u.quizLevel || 1,
+      solved: u.totalQSolved || 0,
+      maxStreak: u.maxQuizStreak || 0,
+      badges: (u.achievements || []).length,
+      isMe: u._id?.toString() === req.user._id?.toString()
+    }));
+
+    res.json({ board });
+  } catch { res.status(500).json({ error: 'Could not load leaderboard.' }); }
+});
+
+// ── QUIZ XP AWARD ─────────────────────────────────────────
+app.post('/api/quiz/award', requireAuth, async (req, res) => {
+  try {
+    const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
+    const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
+    res.json(result);
+  } catch { res.status(500).json({ error: 'Could not award XP.' }); }
+});
+
+// ── SESSIONS ─────────────────────────────────────────────
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
     const sessions = await ChatSession.find({ userId: req.user._id })
-      .select('title createdAt updatedAt')
-      .sort({ updatedAt: -1 })
-      .limit(30);
+      .select('title createdAt updatedAt').sort({ updatedAt: -1 }).limit(30);
     res.json({ sessions });
-  } catch { res.status(500).json({ error: 'Could not load history.' }); }
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
 app.get('/api/sessions/:id', requireAuth, async (req, res) => {
   try {
-    const session = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
-    if (!session) return res.status(404).json({ error: 'Session not found.' });
-    res.json({ session });
-  } catch { res.status(500).json({ error: 'Could not load session.' }); }
+    const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!s) return res.status(404).json({ error: 'Not found.' });
+    res.json({ session: s });
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
+});
+
+app.post('/api/sessions/new', requireAuth, async (req, res) => {
+  try {
+    const s = await ChatSession.create({ userId: req.user._id, title: 'New Conversation', messages: [] });
+    res.json({ sessionId: s._id });
+  } catch { res.status(500).json({ error: 'Could not create.' }); }
 });
 
 app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
   try {
     await ChatSession.deleteOne({ _id: req.params.id, userId: req.user._id });
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not delete session.' }); }
+  } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-app.post('/api/sessions/new', requireAuth, async (req, res) => {
-  try {
-    const session = await ChatSession.create({
-      userId: req.user._id, title: 'New Conversation', messages: []
-    });
-    res.json({ sessionId: session._id });
-  } catch { res.status(500).json({ error: 'Could not create session.' }); }
-});
-
-// ── MAIN CHAT ROUTE ──────────────────────────────────────
-app.post('/api/chat', async (req, res) => {
-  const { messages, sessionId, isGuest } = req.body;
+// ── MAIN CHAT ────────────────────────────────────────────
+app.post('/api/chat', requireAuth, async (req, res) => {
+  const { messages, sessionId, imageBase64 } = req.body;
   const user = req.user;
 
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid request.' });
-  }
+  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Invalid request.' });
 
-  const recentMessages = messages.slice(-20);
-  const speed = user?.responseSpeed || 'balanced';
-
-  // Build planner context for logged-in users
-  let plannerContext = '';
-  if (user) {
-    plannerContext = await buildPlannerContext(user._id);
-  }
-
-  const systemPrompt = buildSystemPrompt(user, plannerContext);
+  const recent = messages.slice(-20);
+  const plannerCtx = await buildPlannerContext(user._id);
+  const prompt = buildSystemPrompt(user, plannerCtx);
 
   try {
-    const reply = await getReply(recentMessages, systemPrompt, speed);
+    const reply = await getReply(recent, prompt, imageBase64 || null);
 
-    if (user && sessionId && sessionId !== 'guest') {
+    if (sessionId && sessionId !== 'new') {
       try {
         const userMsg = messages[messages.length - 1];
-        let title = 'Conversation';
-        if (messages.length <= 2) {
-          title = userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '');
-        }
-        await ChatSession.findByIdAndUpdate(
-          sessionId,
-          {
-            $push: {
-              messages: [
-                { role: 'user', content: userMsg.content },
-                { role: 'assistant', content: reply }
-              ]
-            },
-            $set: { title, updatedAt: new Date() }
-          },
-          { upsert: true, new: true }
-        );
-      } catch (err) { console.error('Session save error:', err.message); }
+        const title = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
+        await ChatSession.findByIdAndUpdate(sessionId, {
+          $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
+          $set: { updatedAt: new Date(), ...(title ? { title } : {}) }
+        }, { upsert: true });
+      } catch (e) { console.error('Session save:', e.message); }
     }
 
     res.json({ reply });
@@ -597,22 +579,46 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// ── MISTAKE BOOK ─────────────────────────────────────────
+// ── QUIZ QUESTION GENERATION ──────────────────────────────
+app.post('/api/quiz/question', requireAuth, async (req, res) => {
+  const { subject, chapter, topic, difficulty, pyqMode, exam } = req.body;
+  const chapterInfo = chapter ? ` from chapter "${chapter}"` : '';
+  const topicInfo = topic ? `, specifically about "${topic}"` : '';
+  const diffInfo = difficulty || 'mixed';
+
+  const prompt = pyqMode
+    ? `Generate a real Previous Year Question for ${exam || 'JEE Main'} from ${subject}${chapterInfo}${topicInfo}. Difficulty: ${diffInfo}.
+Return ONLY valid JSON (no markdown):
+{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Complete step-by-step solution with concept name, formula used, and full working","cheatSheet":"One powerful shortcut or memory trick","trapAlert":"Specific NTA trap or common mistake students make, or empty string","wrongPercent":68,"year":"2024","exam":"JEE Main","shift":"January 24, Shift 1","chapter":"${chapter || subject}"}`
+    : `Generate a high-quality JEE/NEET MCQ for ${subject}${chapterInfo}${topicInfo}. Difficulty: ${diffInfo}.
+Return ONLY valid JSON (no markdown):
+{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Complete step-by-step solution with concept name, formula used, and full working","cheatSheet":"One powerful shortcut or memory trick","trapAlert":"Specific common mistake or empty string","wrongPercent":65,"year":"","exam":"","shift":"","chapter":"${chapter || subject}"}`;
+
+  try {
+    const reply = await getReply(
+      [{ role: 'user', content: prompt }],
+      'You are an expert JEE/NEET question generator. Return ONLY valid compact JSON, no markdown, no extra text, no explanation outside JSON.'
+    );
+    const clean = reply.replace(/```json|```/g, '').trim();
+    const q = JSON.parse(clean);
+    res.json({ question: q });
+  } catch (err) {
+    console.error('Quiz gen error:', err.message);
+    res.status(500).json({ error: 'Could not generate question. Try again.' });
+  }
+});
+
+// ── MISTAKES ─────────────────────────────────────────────
 app.get('/api/mistakes', requireAuth, async (req, res) => {
   try {
-    const mistakes = await Mistake.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.json({ mistakes });
-  } catch { res.status(500).json({ error: 'Could not load mistake book.' }); }
+    res.json({ mistakes: await Mistake.find({ userId: req.user._id }).sort({ createdAt: -1 }) });
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
 app.post('/api/mistakes', requireAuth, async (req, res) => {
   try {
-    const { question, subject, topic, note, explanation, userAnswer, correctAnswer } = req.body;
-    const mistake = await Mistake.create({
-      userId: req.user._id, question, subject, topic, note,
-      explanation: explanation || '', userAnswer: userAnswer || '', correctAnswer: correctAnswer || ''
-    });
-    res.json({ mistake });
+    const m = await Mistake.create({ userId: req.user._id, ...req.body });
+    res.json({ mistake: m });
   } catch { res.status(500).json({ error: 'Could not save.' }); }
 });
 
@@ -623,39 +629,19 @@ app.delete('/api/mistakes/:id', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── PLANNER ROUTES ────────────────────────────────────────
+// ── PLANNER ──────────────────────────────────────────────
 app.get('/api/planner/tasks', requireAuth, async (req, res) => {
   try {
-    const { view } = req.query; // today, tomorrow, week, month, completed, archived
-    const now = new Date();
-    const today = new Date(now); today.setHours(0,0,0,0);
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-    const dayAfter = new Date(tomorrow); dayAfter.setDate(dayAfter.getDate()+1);
-    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate()+7);
-    const monthEnd = new Date(today); monthEnd.setDate(monthEnd.getDate()+30);
+    const { view } = req.query;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
 
     let filter = { userId: req.user._id };
-
-    if (view === 'today') {
-      filter.scheduledDate = { $gte: today, $lt: tomorrow };
-      filter.status = { $in: ['pending', 'completed', 'missed'] };
-    } else if (view === 'tomorrow') {
-      filter.scheduledDate = { $gte: tomorrow, $lt: dayAfter };
-      filter.status = { $in: ['pending', 'completed', 'missed'] };
-    } else if (view === 'week') {
-      filter.scheduledDate = { $gte: today, $lt: weekEnd };
-      filter.status = { $in: ['pending', 'completed', 'missed'] };
-    } else if (view === 'month') {
-      filter.scheduledDate = { $gte: today, $lt: monthEnd };
-      filter.status = { $in: ['pending', 'completed', 'missed'] };
-    } else if (view === 'completed') {
-      filter.status = 'completed';
-    } else if (view === 'archived') {
-      filter.status = 'archived';
-    } else {
-      // default today
-      filter.scheduledDate = { $gte: today, $lt: tomorrow };
-    }
+    if (view === 'today') { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    else if (view === 'week') { filter.scheduledDate = { $gte: today, $lt: weekEnd }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    else if (view === 'completed') { filter.status = 'completed'; }
+    else { filter.scheduledDate = { $gte: today, $lt: tomorrow }; }
 
     const tasks = await PlannerTask.find(filter).sort({ priority: 1, scheduledDate: 1 });
     res.json({ tasks });
@@ -664,235 +650,104 @@ app.get('/api/planner/tasks', requireAuth, async (req, res) => {
 
 app.post('/api/planner/tasks', requireAuth, async (req, res) => {
   try {
-    const { title, subject, priority, estimatedMins, scheduledDate, notes, aiGenerated } = req.body;
-    const task = await PlannerTask.create({
-      userId: req.user._id, title, subject, priority: priority || 'medium',
-      estimatedMins: estimatedMins || 60, scheduledDate: new Date(scheduledDate),
-      notes: notes || '', aiGenerated: aiGenerated || false
-    });
+    const task = await PlannerTask.create({ userId: req.user._id, ...req.body, scheduledDate: new Date(req.body.scheduledDate) });
     res.json({ task });
-  } catch { res.status(500).json({ error: 'Could not create task.' }); }
+  } catch { res.status(500).json({ error: 'Could not create.' }); }
 });
 
 app.patch('/api/planner/tasks/:id', requireAuth, async (req, res) => {
   try {
     const update = { ...req.body, updatedAt: new Date() };
-    if (req.body.status === 'completed') {
-      update.completedAt = new Date();
-      // Update stats
-      await PlannerStats.findOneAndUpdate(
-        { userId: req.user._id },
-        { $inc: { totalTasksDone: 1 }, $set: { updatedAt: new Date() } },
-        { upsert: true }
-      );
-    }
-    if (req.body.status === 'missed') {
-      await PlannerStats.findOneAndUpdate(
-        { userId: req.user._id },
-        { $inc: { totalTasksMissed: 1 }, $set: { updatedAt: new Date() } },
-        { upsert: true }
-      );
-    }
-    const task = await PlannerTask.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
-      update, { new: true }
-    );
+    if (req.body.status === 'completed') update.completedAt = new Date();
+    const task = await PlannerTask.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, update, { new: true });
     res.json({ task });
-  } catch { res.status(500).json({ error: 'Could not update task.' }); }
+  } catch { res.status(500).json({ error: 'Could not update.' }); }
 });
 
 app.delete('/api/planner/tasks/:id', requireAuth, async (req, res) => {
   try {
     await PlannerTask.deleteOne({ _id: req.params.id, userId: req.user._id });
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not delete task.' }); }
+  } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── AI PLANNER GENERATION ─────────────────────────────────
 app.post('/api/planner/generate', requireAuth, async (req, res) => {
   try {
     const { period, energyLevel, targetDate, customNote } = req.body;
     const user = req.user;
+    const prompt = `Generate a ${period || 'daily'} study plan:
+- Exam: ${user.exam || 'JEE'} | Class: ${user.class || '12th'} | Hours: ${user.hoursPerDay || '6'}/day
+- Energy: ${energyLevel || 'medium'} | Struggle: ${user.biggestStruggle || 'concepts'}
+- Note: ${customNote || 'none'}
+Return ONLY JSON array (no markdown): [{"title":"...","subject":"...","priority":"high/medium/low","estimatedMins":45,"notes":"..."}]
+Rules: Max 6 tasks if tired, 8 medium, 10 energized. Include short breaks. Be realistic.`;
 
-    // Get past performance stats
-    const stats = await PlannerStats.findOne({ userId: user._id }).lean();
-    const completionRate = stats
-      ? Math.round((stats.totalTasksDone / Math.max(1, stats.totalTasksDone + stats.totalTasksMissed)) * 100)
-      : 75;
-
-    const prompt = `Generate a ${period || 'daily'} study plan for a student with this profile:
-- Exam: ${user.exam || 'JEE'}
-- Class: ${user.class || '12th'}
-- Study hours available: ${user.hoursPerDay || '6'} hours/day
-- Coaching: ${user.coaching || 'self-study'}
-- Biggest struggle: ${user.biggestStruggle || 'concepts'}
-- Energy level right now: ${energyLevel || 'medium'} (adjust intensity accordingly)
-- Past task completion rate: ${completionRate}% (${completionRate < 60 ? 'reduce workload, they struggle to complete tasks' : completionRate > 85 ? 'can handle slightly more tasks' : 'keep workload realistic'})
-- Additional note: ${customNote || 'none'}
-- Target date: ${targetDate || new Date().toDateString()}
-
-Return ONLY valid JSON array (no markdown):
-[{"title":"Task name","subject":"Physics","priority":"high","estimatedMins":45,"notes":"What to cover"}]
-
-Rules:
-- Max 6 tasks for 'tired/low' energy, 8 for 'medium', 10 for 'high'
-- Include breaks as tasks (title: "Break", subject: "Rest", estimatedMins: 10)
-- Prioritize weak subjects
-- Be realistic — better to finish 6 tasks than miss 10`;
-
-    const reply = await getAIReply([{ role: 'user', content: prompt }],
-      'You are a JEE/NEET study planner. Return only valid JSON arrays, no markdown, no explanation.');
-
-    const clean = reply.replace(/```json|```/g, '').trim();
-    const tasks = JSON.parse(clean);
-
-    const targetDateObj = new Date(targetDate || new Date());
-    targetDateObj.setHours(6, 0, 0, 0);
-
-    const savedTasks = [];
+    const reply = await getAIReply([{ role: 'user', content: prompt }], 'Return only valid JSON array, no markdown.');
+    const tasks = JSON.parse(reply.replace(/```json|```/g, '').trim());
+    const date = new Date(targetDate || new Date()); date.setHours(6, 0, 0, 0);
+    const saved = [];
     for (const t of tasks) {
-      const task = await PlannerTask.create({
-        userId: user._id,
-        title: t.title,
-        subject: t.subject || '',
-        priority: t.priority || 'medium',
-        estimatedMins: t.estimatedMins || 45,
-        scheduledDate: targetDateObj,
-        notes: t.notes || '',
-        aiGenerated: true
-      });
-      savedTasks.push(task);
+      saved.push(await PlannerTask.create({ userId: user._id, ...t, scheduledDate: date, aiGenerated: true }));
     }
-
-    res.json({ tasks: savedTasks });
+    res.json({ tasks: saved });
   } catch (err) {
-    console.error('Planner gen error:', err.message);
-    res.status(500).json({ error: 'Could not generate plan. Try again.' });
+    console.error('Planner gen:', err.message);
+    res.status(500).json({ error: 'Could not generate plan.' });
   }
 });
 
-// ── PLANNER STATS ─────────────────────────────────────────
-app.get('/api/planner/stats', requireAuth, async (req, res) => {
+// ── FEEDBACK ─────────────────────────────────────────────
+app.post('/api/feedback', async (req, res) => {
   try {
-    const stats = await PlannerStats.findOne({ userId: req.user._id }).lean();
-
-    // Calculate week completion
-    const weekStart = new Date(); weekStart.setHours(0,0,0,0);
-    weekStart.setDate(weekStart.getDate() - 7);
-    const weekTasks = await PlannerTask.find({
-      userId: req.user._id,
-      scheduledDate: { $gte: weekStart },
-      status: { $in: ['completed', 'missed', 'pending'] }
-    }).lean();
-
-    const weekDone = weekTasks.filter(t => t.status === 'completed').length;
-    const weekTotal = weekTasks.length;
-    const weekRate = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
-
-    // Subject hours
-    const subjectMap = {};
-    weekTasks.filter(t => t.status === 'completed').forEach(t => {
-      if (t.subject && t.subject !== 'Rest') {
-        subjectMap[t.subject] = (subjectMap[t.subject] || 0) + (t.estimatedMins / 60);
-      }
-    });
-
-    res.json({
-      totalDone: stats?.totalTasksDone || 0,
-      totalMissed: stats?.totalTasksMissed || 0,
-      weekRate,
-      weekDone,
-      weekTotal,
-      subjectHours: subjectMap
-    });
-  } catch { res.status(500).json({ error: 'Could not load stats.' }); }
+    await Feedback.create({ userId: req.user?._id, name: req.user?.name || 'User', ...req.body });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not save feedback.' }); }
 });
 
-// ── MIDNIGHT TASK ROLLOVER (called by client or cron) ────
+app.get('/api/admin/feedback', async (req, res) => {
+  if (req.query.key !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const feedback = await Feedback.find().sort({ createdAt: -1 }).limit(200);
+    res.json({ feedback });
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
+});
+
+// ── PLANNER ROLLOVER ──────────────────────────────────────
 app.post('/api/planner/rollover', requireAuth, async (req, res) => {
   try {
-    const today = new Date(); today.setHours(0,0,0,0);
-    // Mark all pending tasks from yesterday as missed
-    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     await PlannerTask.updateMany(
       { userId: req.user._id, scheduledDate: { $lt: today }, status: 'pending' },
       { $set: { status: 'missed', updatedAt: new Date() } }
     );
-    // Count newly missed
-    const missed = await PlannerTask.countDocuments({
-      userId: req.user._id, scheduledDate: { $gte: yesterday, $lt: today }, status: 'missed'
-    });
-    if (missed > 0) {
-      await PlannerStats.findOneAndUpdate(
-        { userId: req.user._id },
-        { $inc: { totalTasksMissed: missed } },
-        { upsert: true }
-      );
-    }
-    res.json({ success: true, missedCount: missed });
+    res.json({ success: true });
   } catch { res.status(500).json({ error: 'Rollover failed.' }); }
-});
-
-// ── WEEKLY REPORT ─────────────────────────────────────────
-app.post('/api/planner/weekly-report', requireAuth, async (req, res) => {
-  try {
-    const user = req.user;
-    const weekStart = new Date(); weekStart.setHours(0,0,0,0);
-    weekStart.setDate(weekStart.getDate()-7);
-
-    const tasks = await PlannerTask.find({
-      userId: user._id, scheduledDate: { $gte: weekStart }
-    }).lean();
-
-    const done = tasks.filter(t => t.status === 'completed');
-    const missed = tasks.filter(t => t.status === 'missed');
-
-    const prompt = `Generate a short weekly study report for a JEE/NEET student:
-- Tasks completed: ${done.length}
-- Tasks missed: ${missed.length}
-- Completion rate: ${Math.round(done.length / Math.max(1, tasks.length) * 100)}%
-- Subjects covered: ${[...new Set(done.map(t=>t.subject).filter(Boolean))].join(', ') || 'none'}
-- Subjects missed: ${[...new Set(missed.map(t=>t.subject).filter(Boolean))].join(', ') || 'none'}
-
-Write a 3-4 sentence warm, honest weekly report. Be specific. End with one actionable suggestion for next week. Keep it under 80 words.`;
-
-    const report = await getAIReply([{ role: 'user', content: prompt }],
-      'You are a supportive JEE/NEET coach writing a short weekly report. Be honest, warm, specific.');
-
-    await PlannerStats.findOneAndUpdate(
-      { userId: user._id },
-      { $set: { weeklyReport: report, lastReportDate: new Date() } },
-      { upsert: true }
-    );
-
-    res.json({ report });
-  } catch { res.status(500).json({ error: 'Could not generate report.' }); }
 });
 
 // ── SOCKET.IO QUIZ ROOMS ─────────────────────────────────
 const quizRooms = {};
 
-io.on('connection', (socket) => {
-  socket.on('create-room', ({ name, subject, config }) => {
+io.on('connection', socket => {
+  socket.on('create-room', ({ name, config }) => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     quizRooms[code] = {
-      host: socket.id, subject,
-      config: config || { questionCount: 10, difficulty: 'mixed', pyqMode: false, subjects: [subject], chapters: [] },
-      players: [{ id: socket.id, name, score: 0, streak: 0 }],
-      started: false, currentQ: 0, sabotages: {}
+      host: socket.id,
+      config: config || { questionCount: 10, difficulty: 'mixed', pyqMode: false, subjects: ['Physics'], chapters: [] },
+      players: [{ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 }],
+      started: false, currentQ: 0, currentAnswer: ''
     };
     socket.join(code);
-    socket.emit('room-created', { code, config: quizRooms[code].config });
+    socket.emit('room-created', { code });
     io.to(code).emit('players-update', quizRooms[code].players);
   });
 
   socket.on('join-room', ({ code, name }) => {
     const room = quizRooms[code];
-    if (!room) return socket.emit('room-error', 'Room not found.');
+    if (!room) return socket.emit('room-error', 'Room not found. Check the code.');
     if (room.started) return socket.emit('room-error', 'Game already started.');
-    room.players.push({ id: socket.id, name, score: 0, streak: 0 });
+    room.players.push({ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 });
     socket.join(code);
-    socket.emit('room-joined', { code, subject: room.subject, config: room.config });
+    socket.emit('room-joined', { code, config: room.config });
     io.to(code).emit('players-update', room.players);
   });
 
@@ -900,8 +755,8 @@ io.on('connection', (socket) => {
     const room = quizRooms[code];
     if (!room || room.host !== socket.id) return;
     room.started = true;
-    io.to(code).emit('game-started', { totalQuestions: room.config?.questionCount || 10 });
-    startQuestion(code);
+    io.to(code).emit('game-started', { totalQ: room.config?.questionCount || 10 });
+    startMultiQuestion(code);
   });
 
   socket.on('submit-answer', ({ code, answer, timeLeft }) => {
@@ -909,14 +764,16 @@ io.on('connection', (socket) => {
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
-    const isCorrect = answer === room.currentAnswer;
-    if (isCorrect) {
-      player.score += 10 + Math.floor(timeLeft / 3);
+    player.total = (player.total || 0) + 1;
+    const correct = answer === room.currentAnswer;
+    if (correct) {
+      player.score += 10 + Math.floor((timeLeft || 0) / 3);
       player.streak = (player.streak || 0) + 1;
+      player.correct = (player.correct || 0) + 1;
     } else {
       player.streak = 0;
     }
-    socket.emit('answer-result', { correct: isCorrect, correctAnswer: room.currentAnswer });
+    socket.emit('answer-result', { correct, correctAnswer: room.currentAnswer });
     io.to(code).emit('players-update', room.players);
   });
 
@@ -924,7 +781,7 @@ io.on('connection', (socket) => {
     const room = quizRooms[code];
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
-    if (!player || player.streak < 3) return;
+    if (!player || (player.streak || 0) < 3) return;
     player.streak = 0;
     socket.to(code).emit('sabotage-activated', { type, by: player.name });
   });
@@ -936,83 +793,63 @@ io.on('connection', (socket) => {
     io.to(code).emit('emoji-broadcast', { emoji, name: player?.name || 'Someone' });
   });
 
-  socket.on('add-time', ({ code }) => {
-    // +10 seconds for solo is handled client-side
-    const room = quizRooms[code];
-    if (room) io.to(code).emit('time-added', { seconds: 10 });
-  });
-
   socket.on('disconnect', () => {
     Object.keys(quizRooms).forEach(code => {
       const room = quizRooms[code];
       if (room) {
         room.players = room.players.filter(p => p.id !== socket.id);
         io.to(code).emit('players-update', room.players);
-        if (room.players.length === 0) delete quizRooms[code];
+        if (!room.players.length) delete quizRooms[code];
       }
     });
   });
 });
 
-async function startQuestion(code) {
+async function startMultiQuestion(code) {
   const room = quizRooms[code];
   if (!room) return;
 
   const totalQ = room.config?.questionCount || 10;
   if (room.currentQ >= totalQ) {
     io.to(code).emit('game-over', { players: room.players });
+    delete quizRooms[code];
     return;
   }
 
-  const subjects = room.config?.subjects?.length ? room.config.subjects : [room.subject || 'Physics'];
+  const subjects = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
   const subject = subjects[room.currentQ % subjects.length];
+  const chapters = room.config?.chapters?.length ? `from chapters: ${room.config.chapters.join(', ')}` : '';
   const difficulty = room.config?.difficulty || 'mixed';
   const pyqMode = room.config?.pyqMode || false;
-  const chapters = room.config?.chapters?.length ? `from chapters: ${room.config.chapters.join(', ')}` : '';
 
-  const prompt = pyqMode
-    ? `Generate a real PYQ (Previous Year Question) for JEE/NEET from subject: ${subject} ${chapters}.
-Difficulty: ${difficulty}. Return ONLY valid JSON:
-{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Full detailed solution with concept, formula and step-by-step working","cheatSheet":"One-line shortcut trick","trapAlert":"Common NTA trap or empty string","wrongPercent":65,"year":"2023","exam":"JEE Main","shift":"Morning Shift"}`
-    : `Generate a JEE/NEET MCQ for subject: ${subject} ${chapters}. Difficulty: ${difficulty}.
-Return ONLY valid JSON:
-{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"Full detailed solution with concept, formula and step-by-step working","cheatSheet":"One-line shortcut trick","trapAlert":"Common NTA trap or empty string","wrongPercent":65,"year":"","exam":"","shift":""}`;
+  const qPrompt = pyqMode
+    ? `Generate a real PYQ for JEE/NEET from ${subject} ${chapters}. Difficulty: ${difficulty}.
+Return ONLY valid JSON: {"question":"...","options":["A)...","B)...","C)...","D)..."],"answer":"A","explanation":"Complete solution with steps","cheatSheet":"shortcut","trapAlert":"trap or empty","wrongPercent":65,"year":"2024","exam":"JEE Main","shift":"Jan 24 Shift 1"}`
+    : `Generate a JEE/NEET MCQ for ${subject} ${chapters}. Difficulty: ${difficulty}.
+Return ONLY valid JSON: {"question":"...","options":["A)...","B)...","C)...","D)..."],"answer":"A","explanation":"Complete solution with steps","cheatSheet":"shortcut","trapAlert":"trap or empty","wrongPercent":65,"year":"","exam":"","shift":""}`;
 
   try {
-    const reply = await getAIReply(
-      [{ role: 'user', content: prompt }],
-      'You are a JEE/NEET question generator. Return only valid JSON, no markdown.'
-    );
-    const clean = reply.replace(/```json|```/g, '').trim();
-    const qData = JSON.parse(clean);
-    room.currentAnswer = qData.answer;
-    io.to(code).emit('new-question', {
-      ...qData,
-      timeLimit: 45,
-      questionNumber: room.currentQ + 1,
-      totalQuestions: totalQ
-    });
+    const reply = await getReply([{ role: 'user', content: qPrompt }], 'Return ONLY valid JSON, no markdown.');
+    const q = JSON.parse(reply.replace(/```json|```/g, '').trim());
+    room.currentAnswer = q.answer;
+    io.to(code).emit('new-question', { ...q, timeLimit: 45, questionNumber: room.currentQ + 1, totalQuestions: totalQ });
+
     setTimeout(() => {
-      io.to(code).emit('question-ended', {
-        correctAnswer: qData.answer,
-        explanation: qData.explanation,
-        cheatSheet: qData.cheatSheet
-      });
-      setTimeout(() => {
-        room.currentQ++;
-        startQuestion(code);
-      }, 8000);
+      io.to(code).emit('question-ended', { correctAnswer: q.answer, explanation: q.explanation, cheatSheet: q.cheatSheet });
+      setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 8000);
     }, 45000);
   } catch (err) {
-    console.error('Quiz question error:', err.message);
-    io.to(code).emit('quiz-error', 'Question generation failed.');
+    console.error('Multi quiz error:', err.message);
+    io.to(code).emit('quiz-error', 'Question failed. Skipping...');
+    setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 3000);
   }
 }
+
 // ── SERVE ────────────────────────────────────────────────
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v5 running on port ${PORT}`);
-  console.log(`🔑 Keys: Gemini=${GEMINI_KEYS.length} Groq=${GROQ_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
+  console.log(`🧠 GRIND AI v6 on port ${PORT}`);
+  console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
