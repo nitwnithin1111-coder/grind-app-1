@@ -508,7 +508,7 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
 });
 
 // ── QUIZ XP AWARD ─────────────────────────────────────────
-app.post('/api/quiz/award', requireAuth, async (req, res) => {
+app.post('/api/quiz/question', async (req, res) => {
   try {
     const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
     const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
