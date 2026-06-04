@@ -416,6 +416,7 @@ async function getReply(messages, prompt, imageBase64=null) {
     catch(e) { console.log(`❌ OR${i+1}:`, e.message); }
   }
   throw new Error('ALL_EXHAUSTED');
+  const getAIReply = getReply;
 }
 // ── PLANNER CONTEXT BUILDER ──────────────────────────────
 async function buildPlannerContext(userId) {
