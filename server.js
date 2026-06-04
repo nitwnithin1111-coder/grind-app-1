@@ -255,7 +255,145 @@ RESPONSE RULES:
 }
 
 // ── API HELPERS ──────────────────────────────────────────
-async function fetchWithTimeout(url, options, ms = 12000) {
+async function fetchWithTimeout(url, options, ms = 12000) async function callGroq(messages, prompt) {
+  const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
+  grIdx++;
+  const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('GROQ: ' + d.error.message);
+  return d.choices[0].message.content;
+}
+
+async function callGemini(messages, prompt, imageBase64 = null) {
+  const key = GEMINI_KEYS[gIdx % GEMINI_KEYS.length];
+  gIdx++;
+  const contents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+  if (imageBase64 && contents.length > 0) {
+    const last = contents[contents.length - 1];
+    if (last.role === 'user') last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+  }
+  const res = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: prompt }] },
+        contents,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+      })
+    }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('GEMINI: ' + d.error.message);
+  return d.candidates[0].content.parts[0].text;
+}
+
+async function callOR(messages, prompt) {
+  const key = OPENROUTER_KEYS[orIdx % OPENROUTER_KEYS.length];
+  const model = OPENROUTER_MODELS[orMIdx % OPENROUTER_MODELS.length];
+  orIdx++; orMIdx++;
+  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+      'HTTP-Referer': 'https://grind-ai.onrender.com',
+      'X-Title': 'GRIND AI'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('OR: ' + d.error.message);
+  return d.choices[0].message.content;
+}
+
+// Alias for planner routes that use getAIReply
+const getAIReply = getReply;
+async function callGroq(messages, prompt) {
+  const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
+  grIdx++;
+  const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('GROQ: ' + d.error.message);
+  return d.choices[0].message.content;
+}
+
+async function callGemini(messages, prompt, imageBase64 = null) {
+  const key = GEMINI_KEYS[gIdx % GEMINI_KEYS.length];
+  gIdx++;
+  const contents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+  if (imageBase64 && contents.length > 0) {
+    const last = contents[contents.length - 1];
+    if (last.role === 'user') last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+  }
+  const res = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: prompt }] },
+        contents,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 }
+      })
+    }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('GEMINI: ' + d.error.message);
+  return d.candidates[0].content.parts[0].text;
+}
+
+async function callOR(messages, prompt) {
+  const key = OPENROUTER_KEYS[orIdx % OPENROUTER_KEYS.length];
+  const model = OPENROUTER_MODELS[orMIdx % OPENROUTER_MODELS.length];
+  orIdx++; orMIdx++;
+  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+      'HTTP-Referer': 'https://grind-ai.onrender.com',
+      'X-Title': 'GRIND AI'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  }, 30000);
+  const d = await res.json();
+  if (d.error) throw new Error('OR: ' + d.error.message);
+  return d.choices[0].message.content;
+}
+
+// Alias for planner routes that use getAIReply
+const getAIReply = getReply;
+{
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
