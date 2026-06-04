@@ -821,12 +821,25 @@ async function startMultiQuestion(code) {
   const chapters = room.config?.chapters?.length ? `from chapters: ${room.config.chapters.join(', ')}` : '';
   const difficulty = room.config?.difficulty || 'mixed';
   const pyqMode = room.config?.pyqMode || false;
+const qPrompt = `You are a JEE/NEET question bank. Generate question #${room.currentQ + 1}.
+Subject: ${subject}. ${chapters ? 'Chapter: ' + chapters : ''} Difficulty: ${difficulty}.
+${pyqMode ? `This MUST be a real verified Previous Year Question from JEE Main/Advanced or NEET.
+Include the actual exam year, date and shift it appeared in.
+Include the real approximate percentage of students who got it wrong based on historical data.` : 'Generate a fresh practice question.'}
 
-  const qPrompt = pyqMode
-    ? `Generate a real PYQ for JEE/NEET from ${subject} ${chapters}. Difficulty: ${difficulty}.
-Return ONLY valid JSON: {"question":"...","options":["A)...","B)...","C)...","D)..."],"answer":"A","explanation":"Complete solution with steps","cheatSheet":"shortcut","trapAlert":"trap or empty","wrongPercent":65,"year":"2024","exam":"JEE Main","shift":"Jan 24 Shift 1"}`
-    : `Generate a JEE/NEET MCQ for ${subject} ${chapters}. Difficulty: ${difficulty}.
-Return ONLY valid JSON: {"question":"...","options":["A)...","B)...","C)...","D)..."],"answer":"A","explanation":"Complete solution with steps","cheatSheet":"shortcut","trapAlert":"trap or empty","wrongPercent":65,"year":"","exam":"","shift":""}`;
+Return ONLY this exact JSON structure, nothing else:
+{
+  "question": "complete question text here",
+  "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
+  "answer": "A",
+  "explanation": "step by step solution with formula and concept name",
+  "cheatSheet": "one powerful shortcut trick",
+  "trapAlert": "common mistake students make or leave empty",
+  "wrongPercent": 72,
+  "year": "${pyqMode ? 'actual year like 2023' : ''}",
+  "exam": "${pyqMode ? 'JEE Main or JEE Advanced or NEET' : ''}",
+  "shift": "${pyqMode ? 'actual shift like January 24 Shift 2' : ''}"
+}`;
 
   try {
     const reply = await getReply([{ role: 'user', content: qPrompt }], 'Return ONLY valid JSON, no markdown.');
