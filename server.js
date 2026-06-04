@@ -426,7 +426,7 @@ app.post('/api/chat', async (req, res) => {
   const systemPrompt = buildSystemPrompt(user, plannerContext);
 
   try {
-    const reply = await getAIReply(recentMessages, systemPrompt, speed);
+    const reply = await getReply(recentMessages, systemPrompt, speed);
 
     if (user && sessionId && sessionId !== 'guest') {
       try {
