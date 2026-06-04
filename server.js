@@ -509,6 +509,37 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
 
 // ── QUIZ XP AWARD ─────────────────────────────────────────
 app.post('/api/quiz/question', async (req, res) => {
+  const { subject, chapter, difficulty, pyqMode, exam } = req.body;
+
+  const qPrompt = `You are a JEE/NEET question bank expert.
+Subject: ${subject || 'Physics'}. ${chapter ? 'Chapter: ' + chapter : ''} Difficulty: ${difficulty || 'medium'}.
+${pyqMode ? `This MUST be a real verified Previous Year Question from ${exam || 'JEE Main'}.
+Include actual exam year, date and shift. Include real % of students who got it wrong.` : 'Generate a fresh high quality practice question.'}
+
+Return ONLY this JSON, nothing else, no markdown:
+{"question":"full question text","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A","explanation":"step by step solution with concept and formula","cheatSheet":"one powerful shortcut trick","trapAlert":"common mistake or empty string","wrongPercent":68,"year":"${pyqMode ? '2023' : ''}","exam":"${pyqMode ? exam || 'JEE Main' : ''}","shift":"${pyqMode ? 'Jan 24 Shift 1' : ''}","chapter":"${chapter || subject || ''}"}`;
+
+  try {
+    const reply = await getReply(
+      [{ role: 'user', content: qPrompt }],
+      'You are a JEE/NEET question generator. Return ONLY valid compact JSON. No markdown. No extra text. No explanation outside JSON.'
+    );
+
+    let clean = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Fix incomplete JSON
+    if (!clean.endsWith('}')) {
+      const lastBrace = clean.lastIndexOf('}');
+      if (lastBrace > 0) clean = clean.substring(0, lastBrace + 1);
+    }
+
+    const q = JSON.parse(clean);
+    res.json({ question: q });
+  } catch (err) {
+    console.error('Solo quiz error:', err.message);
+    res.status(500).json({ error: 'Could not generate question. Try again.' });
+  }
+});
   try {
     const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
     const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
