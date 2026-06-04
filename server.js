@@ -264,84 +264,21 @@ async function fetchWithTimeout(url, options, ms = 12000) {
   } catch (err) { clearTimeout(timer); throw err; }
 }
 
-async function callGemini(messages, systemPrompt, speed = 'balanced') {
-  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
-  const tokenMap = { fast: 400, balanced: 700, deep: 1200 };
-  const tempMap  = { fast: 0.7, balanced: 0.85, deep: 0.9 };
-  const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: messages.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        })),
-        generationConfig: {
-          maxOutputTokens: tokenMap[speed] || 700,
-          temperature: tempMap[speed] || 0.85
-        }
-      })
-    }, speed === 'deep' ? 20000 : 12000
-  );
-  const data = await res.json();
-  if (data.error) throw new Error('GEMINI: ' + data.error.message);
-  return data.candidates[0].content.parts[0].text;
-}
-
-async function callGroq(messages, systemPrompt, speed = 'balanced') {
-  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
-  const tokenMap = { fast: 400, balanced: 700, deep: 1200 };
-  const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: tokenMap[speed] || 700,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages]
-    })
-  }, speed === 'deep' ? 20000 : 12000);
-  const data = await res.json();
-  if (data.error) throw new Error('GROQ: ' + data.error.message);
-  return data.choices[0].message.content;
-}
-
-async function callOpenRouter(messages, systemPrompt) {
-  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
-  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`,
-      'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI'
-    },
-    body: JSON.stringify({
-      model, max_tokens: 700,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages]
-    })
-  });
-  const data = await res.json();
-  if (data.error) throw new Error('OPENROUTER: ' + data.error.message);
-  return data.choices[0].message.content;
-}
-
-async function getAIReply(messages, systemPrompt, speed = 'balanced') {
-  for (let i = 0; i < GEMINI_KEYS.length; i++) {
-    try { return await callGemini(messages, systemPrompt, speed); }
-    catch (err) { console.log(`❌ Gemini ${i+1}:`, err.message); }
-  }
+async function getReply(messages, prompt, imageBase64=null) {
   for (let i = 0; i < GROQ_KEYS.length; i++) {
-    try { return await callGroq(messages, systemPrompt, speed); }
-    catch (err) { console.log(`❌ Groq ${i+1}:`, err.message); }
+    try { return await callGroq(messages, prompt); }
+    catch(e) { console.log(`❌ GR${i+1}:`, e.message); }
+  }
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    try { return await callGemini(messages, prompt, imageBase64); }
+    catch(e) { console.log(`❌ G${i+1}:`, e.message); }
   }
   for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
-    try { return await callOpenRouter(messages, systemPrompt); }
-    catch (err) { console.log(`❌ OpenRouter ${i+1}:`, err.message); }
+    try { return await callOR(messages, prompt); }
+    catch(e) { console.log(`❌ OR${i+1}:`, e.message); }
   }
-  throw new Error('ALL_KEYS_EXHAUSTED');
+  throw new Error('ALL_EXHAUSTED');
 }
-
 // ── PLANNER CONTEXT BUILDER ──────────────────────────────
 async function buildPlannerContext(userId) {
   try {
@@ -932,7 +869,21 @@ Return ONLY valid JSON:
     io.to(code).emit('quiz-error', 'Question generation failed.');
   }
 }
+// Keep AI generation alive when tab is hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Keep fetch alive with a no-sleep lock if supported
+    if (navigator.wakeLock) {
+      navigator.wakeLock.request('screen').catch(() => {});
+    }
+  }
+});
 
+// Fix fetch getting killed on tab switch
+const originalFetch = window.fetch;
+window.fetch = function(...args) {
+  return originalFetch(...args);
+};
 // ── SERVE ────────────────────────────────────────────────
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
