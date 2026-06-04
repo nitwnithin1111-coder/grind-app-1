@@ -274,7 +274,7 @@ async function callGemini(messages, systemPrompt, speed = 'balanced') {
   const tokenMap = { fast: 400, balanced: 700, deep: 1200 };
   const tempMap  = { fast: 0.7, balanced: 0.85, deep: 0.9 };
   const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
     {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
