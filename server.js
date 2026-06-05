@@ -1,57 +1,58 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const mongoose = require('mongoose');
-const session = require('express-session');
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const mongoose   = require('mongoose');
+const session    = require('express-session');
 const MongoStore = require('connect-mongo');
-const passport = require('passport');
+const passport   = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const http = require('http');
+const http       = require('http');
 const { Server } = require('socket.io');
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io     = new Server(server, { cors: { origin: '*' } });
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
 
-// ── MONGODB ──────────────────────────────────────────────
+// ── MONGODB ───────────────────────────────────────────────
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB:', err.message));
 
-// ── SCHEMAS ──────────────────────────────────────────────
+// ── SCHEMAS ───────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
-  googleId:         { type: String, unique: true, sparse: true },
-  email:            String,
-  name:             { type: String, required: true },
-  photo:            { type: String, default: '' },
-  gender:           { type: String, default: '' },
-  exam:             { type: String, default: '' },
-  class:            { type: String, default: '' },
-  coaching:         { type: String, default: '' },
-  biggestStruggle:  { type: String, default: '' },
-  hoursPerDay:      { type: String, default: '' },
-  isOnboarded:      { type: Boolean, default: false },
-  streak:           { type: Number, default: 0 },
-  lastActive:       { type: Date, default: Date.now },
-  responseSpeed:    { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
-  examDate:         { type: Date, default: null },
-  quizXP:           { type: Number, default: 0 },
-  quizLevel:        { type: Number, default: 1 },
-  totalQSolved:     { type: Number, default: 0 },
-  totalQCorrect:    { type: Number, default: 0 },
-  quizStreak:       { type: Number, default: 0 },
-  maxQuizStreak:    { type: Number, default: 0 },
-  achievements:     [{ id: String, name: String, icon: String, unlockedAt: Date }],
-  weeklyXP:         { type: Number, default: 0 },
-  weeklyXPReset:    { type: Date, default: Date.now },
-  // Adaptive quiz state persisted per user
-  weakTopics:       { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
-  createdAt:        { type: Date, default: Date.now }
+  googleId:        { type: String, unique: true, sparse: true },
+  email:           String,
+  name:            { type: String, required: true },
+  photo:           { type: String, default: '' },
+  gender:          { type: String, default: '' },
+  exam:            { type: String, default: '' },
+  class:           { type: String, default: '' },
+  coaching:        { type: String, default: '' },
+  biggestStruggle: { type: String, default: '' },
+  hoursPerDay:     { type: String, default: '' },
+  isOnboarded:     { type: Boolean, default: false },
+  streak:          { type: Number, default: 0 },
+  lastActive:      { type: Date, default: Date.now },
+  responseSpeed:   { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
+  examDate:        { type: Date, default: null },
+  quizXP:          { type: Number, default: 0 },
+  quizLevel:       { type: Number, default: 1 },
+  totalQSolved:    { type: Number, default: 0 },
+  totalQCorrect:   { type: Number, default: 0 },
+  quizStreak:      { type: Number, default: 0 },
+  maxQuizStreak:   { type: Number, default: 0 },
+  achievements:    [{ id: String, name: String, icon: String, unlockedAt: Date }],
+  weeklyXP:        { type: Number, default: 0 },
+  weeklyXPReset:   { type: Date, default: Date.now },
+  weakTopics:      { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+  // NEW: stores feedback irritation flags for adaptive tone
+  feedbackFlags:   { type: Map, of: String, default: {} },
+  createdAt:       { type: Date, default: Date.now }
 });
 
 const sessionSchema = new mongoose.Schema({
@@ -84,6 +85,8 @@ const mistakeSchema = new mongoose.Schema({
   pyqExam:       { type: String, default: '' },
   pyqShift:      { type: String, default: '' },
   weekKey:       { type: String, default: '' },
+  // NEW: raw [MISTAKE_START]...[MISTAKE_END] extracted from chat
+  mistakeBookEntry: { type: String, default: '' },
   createdAt:     { type: Date, default: Date.now }
 });
 
@@ -103,19 +106,21 @@ const plannerTaskSchema = new mongoose.Schema({
 });
 
 const feedbackSchema = new mongoose.Schema({
-  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', sparse: true },
-  name:     String,
-  rating:   Number,
-  message:  String,
-  type:     { type: String, default: 'exit' },
-  createdAt:{ type: Date, default: Date.now }
+  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', sparse: true },
+  name:      String,
+  rating:    Number,
+  message:   String,
+  type:      { type: String, default: 'exit' },
+  // NEW: structured irritation tags parsed from message
+  flags:     [String],
+  createdAt: { type: Date, default: Date.now }
 });
 
-// PYQ bank — stores verified questions so we never repeat & can cache
+// PYQ bank — verified cache so we never repeat across sessions
 const pyqSchema = new mongoose.Schema({
   subject:      String,
   chapter:      String,
-  exam:         String,  // JEE Main | JEE Advanced | NEET
+  exam:         String,
   year:         String,
   shift:        String,
   question:     String,
@@ -136,15 +141,15 @@ const PlannerTask = mongoose.model('PlannerTask', plannerTaskSchema);
 const Feedback    = mongoose.model('Feedback', feedbackSchema);
 const PYQ         = mongoose.model('PYQ', pyqSchema);
 
-// ── SESSION ──────────────────────────────────────────────
+// ── SESSION ───────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'grindai-secret-2025',
   resave: false, saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+  store:  MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
   cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
 }));
 
-// ── PASSPORT ─────────────────────────────────────────────
+// ── PASSPORT ──────────────────────────────────────────────
 passport.use(new GoogleStrategy({
   clientID:     process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -163,7 +168,7 @@ passport.use(new GoogleStrategy({
     const now  = new Date();
     const diff = Math.floor((now - new Date(user.lastActive)) / 86400000);
     if      (diff === 1) user.streak += 1;
-    else if (diff > 1)  user.streak = 1;
+    else if (diff > 1)  user.streak  = 1;
     user.lastActive = now;
     const weekAgo = new Date(now - 7 * 86400000);
     if (new Date(user.weeklyXPReset) < weekAgo) { user.weeklyXP = 0; user.weeklyXPReset = now; }
@@ -180,13 +185,13 @@ passport.deserializeUser(async (id, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ── AUTH GUARD — no guest mode ────────────────────────────
+// ── AUTH GUARD — strictly no guest mode ──────────────────
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) return next();
   res.status(401).json({ error: 'Login required', loginUrl: '/auth/google' });
 };
 
-// ── API KEYS ─────────────────────────────────────────────
+// ── API KEYS ──────────────────────────────────────────────
 const GROQ_KEYS = [
   process.env.GROQ_KEY_1, process.env.GROQ_KEY_2,
   process.env.GROQ_KEY_3, process.env.GROQ_KEY_4,
@@ -214,11 +219,56 @@ const OPENROUTER_MODELS = [
 
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
 
-// ── SYSTEM PROMPT ─────────────────────────────────────────
-function buildSystemPrompt(user, plannerCtx = '') {
+// ── HELPERS ───────────────────────────────────────────────
+function getWeekKey() {
+  const d    = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+}
+
+function calcLevel(xp) { return Math.floor(Math.sqrt(xp / 100)) + 1; }
+
+function safeParseJSON(raw) {
+  let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const start = clean.indexOf('{');
+  const end   = clean.lastIndexOf('}');
+  if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+  return JSON.parse(clean);
+}
+
+// NEW: extract [MISTAKE_START]...[MISTAKE_END] blocks from AI reply
+function extractMistakeEntries(text) {
+  const matches = [];
+  const re      = /\[MISTAKE_START\]([\s\S]*?)\[MISTAKE_END\]/g;
+  let m;
+  while ((m = re.exec(text)) !== null) matches.push(m[1].trim());
+  return matches;
+}
+
+// NEW: parse feedback irritation flags from message text
+function parseFeedbackFlags(message = '') {
+  const flags  = [];
+  const lower  = message.toLowerCase();
+  if (lower.includes('confus') || lower.includes('unclear') || lower.includes('didn\'t understand'))
+    flags.push('USER_FEEDBACK_IRRITATION:confusing_explanation');
+  if (lower.includes('too fast') || lower.includes('too quick') || lower.includes('slow down'))
+    flags.push('USER_FEEDBACK_IRRITATION:too_fast');
+  if (lower.includes('more detail') || lower.includes('step by step') || lower.includes('elaborate'))
+    flags.push('USER_REQUESTED_UPGRADE:more_detail');
+  if (lower.includes('ncert') || lower.includes('textbook'))
+    flags.push('USER_REQUESTED_UPGRADE:ncert_bound');
+  return flags;
+}
+
+// ── SYSTEM PROMPT BUILDER ─────────────────────────────────
+// NEW: full rebuild with Grind AI persona spec, proactive weakness challenge,
+//      mistake book markers, feedback irritation adaptation, no guest mode language
+function buildSystemPrompt(user, plannerCtx = '', todayMistakes = [], feedbackFlags = []) {
   const name   = user?.name?.split(' ')[0] || 'there';
   const gender = user?.gender || '';
   const slang  = gender === 'female' ? 'bestie' : gender === 'male' ? 'bro' : 'yaar';
+
   const speedMap = {
     fast:     'SHORT and PUNCHY — max 3 sentences. Direct. No fluff.',
     balanced: 'Medium length — warm, focused, precise.',
@@ -226,99 +276,200 @@ function buildSystemPrompt(user, plannerCtx = '') {
     ultra:    'ULTRA DEEP — treat this like a research paper. Maximum detail, every edge case, full derivations.'
   };
   const speed = user?.responseSpeed || 'balanced';
-  return `You are GRIND — elite AI cognitive coach and JEE/NEET tutor for Indian aspirants.
 
-STUDENT: Name=${name} | Gender=${gender}(use "${slang}") | Exam=${user?.exam||'JEE/NEET'} | Class=${user?.class||'?'} | Coaching=${user?.coaching||'self-study'} | Struggle=${user?.biggestStruggle||'?'}
+  // Build weak topic context for proactive opening challenge
+  const wk         = getWeekKey();
+  const weakMap     = user?.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user?.weakTopics || {}));
+  const weeklyWeak  = [...weakMap.entries()].filter(([, v]) => v?.weeks?.includes(wk)).map(([t]) => t);
+  const topWeak     = weeklyWeak.slice(0, 3).join(', ') || 'none identified yet';
+
+  // Build today's mistake context
+  const mistakeCtx = todayMistakes.length > 0
+    ? `TODAY'S MISTAKE LOG (from this session):\n${todayMistakes.map(m => `- [${m.topic}] ${m.mistakeBookEntry || m.question?.slice(0, 80)}`).join('\n')}`
+    : '';
+
+  // Build feedback irritation adaptation directive
+  let feedbackAdapt = '';
+  if (feedbackFlags.includes('USER_FEEDBACK_IRRITATION:confusing_explanation') || feedbackFlags.includes('USER_FEEDBACK_IRRITATION:too_fast')) {
+    feedbackAdapt = 'FEEDBACK ADAPTATION: This student previously flagged explanations as confusing or too fast. You MUST break down every concept mathematically step-by-step. Never skip a single algebraic step. Use numbered substeps.';
+  }
+  if (feedbackFlags.includes('USER_REQUESTED_UPGRADE:more_detail')) {
+    feedbackAdapt += '\nFEEDBACK ADAPTATION: Student requested more detail. Expand every answer to ultra-deep mode regardless of responseSpeed setting.';
+  }
+  if (feedbackFlags.includes('USER_REQUESTED_UPGRADE:ncert_bound')) {
+    feedbackAdapt += '\nFEEDBACK ADAPTATION: Student wants NCERT-grounded answers. Cite exact NCERT chapter/page references and use only NCERT-approved terminology.';
+  }
+
+  return `You are GRIND — a premium, brutally honest, hyper-focused academic mentor, senior NTA question setter, and elite exam specialist for Indian IIT-JEE and NEET aspirants.
+
+========================================================
+CRITICAL IDENTITY RULES
+========================================================
+- You are strictly accessible ONLY to authenticated, registered users. There is NO guest mode, NO trial, NO free tier inside this interface. Never mention or offer any.
+- You are NOT a generic AI. You are an elite Indian exam specialist. Every response must be anchored in the specific realities of NTA exam patterns.
+- Use authentic Indian coaching terminology: NCERT line-by-line, PYQs, Mock Tests, Allen/Aakash/FIITJEE test series, Error Books, Backlogs, Silly Mistakes.
+
+========================================================
+STUDENT PROFILE
+========================================================
+Name: ${name} | Gender: ${gender} (use "${slang}") 
+Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || '?'} 
+Coaching: ${user?.coaching || 'self-study'} | Biggest Struggle: ${user?.biggestStruggle || '?'}
+Weekly Weak Topics: ${topWeak}
 
 RESPONSE SPEED MODE: ${speedMap[speed]}
 
-LANGUAGE: Auto-detect and mirror user's language. Hinglish→Hinglish. Telugu-English→Telugu-English. Tamil-English→Tamil-English. Pure Hindi→Pure Hindi. Never translate unless asked. Be a native speaker.
+${feedbackAdapt ? feedbackAdapt + '\n' : ''}
+${plannerCtx ? 'PLANNER CONTEXT:\n' + plannerCtx + '\n' : ''}
+${mistakeCtx ? mistakeCtx + '\n' : ''}
 
-${plannerCtx ? `PLANNER CONTEXT:\n${plannerCtx}\n` : ''}
+========================================================
+DYNAMIC PROACTIVE SESSION OPENING
+========================================================
+When this is the first message in a session AND weekly weak topics exist, open the conversation with:
+"Welcome back to the Grind. Earlier today, you struggled with [top weak topic]. Let's make sure that concept error is dead before you move forward. Answer this right now: [Insert 1 high-yield conceptual question targeting that exact weakness]."
+Do NOT do this on subsequent messages in the same session.
 
-ACADEMIC MODE:
-- Format: **Concept** → Step-by-Step → ⚡ Shortcut
-- Use LaTeX: $inline$ and $$block$$ for all math/physics formulas
-- 15-16 lakh students appear for JEE. Only 16,000 IIT seats.
-- Books: HC Verma, DC Pandey, MS Chouhan, VK Jaiswal, Cengage, NCERT
+========================================================
+LANGUAGE & TONE
+========================================================
+- Auto-detect and mirror user's language exactly: Hinglish→Hinglish, Telugu-English→Telugu-English, Tamil-English→Tamil-English, Pure Hindi→Pure Hindi. Never translate unless asked.
+- Maintain strict, urgent, yet deeply motivating tone. Reference competition: 15-25 lakh+ aspirants, only ~16,000 IIT seats.
+- Reference standard books: Physics → HC Verma, Irodov, DC Pandey | Chemistry → MS Chouhan (Organic), Narendra Awasthi (Physical), NCERT (Inorganic) | Biology → NCERT word-for-word.
 
-INTERACTIVE CONVERSATION STYLE:
-- During normal chat, naturally inject MCQ-style questions to reduce typing fatigue
-- Format inline options as: (A) option1  (B) option2  (C) option3  (D) type your own
-- Always include "D) Type your own answer" as last option
-- Student can reply with just "A", "B", "C" or type their own answer
+========================================================
+ACADEMIC RESPONSE FORMAT
+========================================================
+- Format: **Concept Name** → Step-by-Step derivation → ⚡ Shortcut/trick
+- Use LaTeX: $inline$ and $$block$$ for ALL math/physics formulas. Never write formulas in plain text.
+- After every academic explanation, end with ONE sharp challenge labeled "**YOUR NEXT CHALLENGE:**" — keep the learning loop active until student says: "stop", "enough", "break", "bas", "ruk", "done".
+- During normal chat, inject MCQ-style micro-questions: (A) opt1  (B) opt2  (C) opt3  (D) type your own
 
-INFINITE INTERROGATION (academic topics only):
-- Never give passive answers to concept/formula questions
-- After explaining, ALWAYS end with ONE sharp JEE/NEET-level follow-up question labeled "**YOUR NEXT CHALLENGE:**"
-- Keep the learning loop going until student says "stop", "enough", "break", "bas", "ruk"
+========================================================
+MISTAKE BOOK AUTO-TAGGING (CRITICAL)
+========================================================
+Whenever you detect a student's calculation error, conceptual gap, or formula misapplication during a chat session:
+1. Explain the error rigorously with full derivation.
+2. At the END of your technical explanation, append this exact marker block so the backend can extract it:
+[MISTAKE_START] Concept: [Name of Topic] | Context: [One sentence — what went wrong and the exact fix] [MISTAKE_END]
+This marker must appear for EVERY identified mistake. Never skip it. Never modify the tag format.
 
-EMOTIONAL MODES:
-1. Burnout/anxiety → listen first, validate, then ONE micro-step
+========================================================
+PYQ & QUIZ GENERATION (when asked to generate questions)
+========================================================
+DIFFICULTY RULES:
+- JEE Main / NEET: Single or dual-concept application problems. Algebraic accuracy, NCERT traps, trick options that punish formula-misapplication.
+- JEE Advanced: Deep multi-concept fusion (e.g. Electrostatics + Rotational Dynamics). First-principles thinking, structural visualization, advanced math manipulation.
+
+STRUCTURE MANDATE:
+- Match official formats: Single Correct MCQ, Multi-Correct MCQ, Numerical/Integer Type, or Matrix Match. Never create direct formula-substitution questions.
+- 3 distractor options must represent EXACT values obtained through common student errors (factor of 1/2 forgotten, sign error, wrong condition applied).
+
+When outputting quiz JSON, use this exact schema (no markdown code blocks):
+{
+  "questions": [
+    {
+      "question_text": "problem statement with LaTeX for all math",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+      "correct_index": 0,
+      "explanation": "rigorous step-by-step mathematical derivation"
+    }
+  ]
+}
+
+========================================================
+EMOTIONAL SUPPORT MODES
+========================================================
+1. Burnout/anxiety → validate first, then ONE micro-step only
 2. Procrastination → direct, urgent, no lecture
 3. Depression/despair → gentle ONLY, never tough-love
-4. Crisis (self-harm/suicide) → STOP academics: Kiran: 1800-599-0019, iCall: 9152987821, Tele-MANAS: 14416
-5. If the student is numb or crying, STUDYING IS CANCELLED TONIGHT.
-6. Force them to focus only on: unlock the door, wash face, drink water, eat dinner.
+4. Crisis (self-harm/suicidal) → STOP all academics immediately. Provide: Kiran: 1800-599-0019 | iCall: 9152987821 | Tele-MANAS: 14416
+5. Student numb/crying → STUDYING IS CANCELLED. Focus ONLY on: unlock the door, wash face, drink water, eat dinner.
 
-RULES:
-- Address ${name} by name occasionally, use ${slang} naturally
-- No hollow phrases: "You got this!" "Believe in yourself!"
-- Bold key terms, use LaTeX for all formulas`;
+========================================================
+HARD RULES
+========================================================
+- Address ${name} by name occasionally, use "${slang}" naturally
+- NEVER say: "You got this!" / "Believe in yourself!" / "Great question!" — no hollow filler phrases
+- NEVER mention guest mode, free trial, or unauthenticated access
+- NEVER give passive, vague, or generic answers — always anchor to NTA exam reality`;
 }
 
-// ── ACHIEVEMENTS ENGINE ───────────────────────────────────
-const ACHIEVEMENTS = [
-  { id: 'first_blood',   name: 'First Blood',       icon: '🎯', condition: 'first_correct'       },
-  { id: 'hot_streak_5',  name: 'On Fire!',           icon: '🔥', condition: 'streak_5'            },
-  { id: 'hot_streak_10', name: 'Unstoppable',        icon: '⚡', condition: 'streak_10'           },
-  { id: 'centurion',     name: 'Centurion',          icon: '💯', condition: 'solved_100'          },
-  { id: 'solver_500',    name: 'Problem Destroyer',  icon: '🏆', condition: 'solved_500'          },
-  { id: 'level_5',       name: 'Rising Star',        icon: '⭐', condition: 'level_5'             },
-  { id: 'level_10',      name: 'JEE Warrior',        icon: '⚔️', condition: 'level_10'           },
-  { id: 'level_20',      name: 'IIT Bound',          icon: '🚀', condition: 'level_20'            },
-  { id: 'accuracy_90',   name: 'Sniper',             icon: '🎖️', condition: 'accuracy_90'        },
-];
+// ── PYQ GENERATION PROMPT ─────────────────────────────────
+function buildPYQPrompt(subject, chapter, exam, difficulty) {
+  const chapterLine = chapter ? `Chapter/Topic: ${chapter}.` : '';
+  const examLine    = exam
+    ? `Exam: ${exam}.`
+    : 'Exam: JEE Main or JEE Advanced or NEET (pick whichever has the best real PYQ for this topic).';
+  return `You are a verified JEE/NEET question bank with access to all past papers from 2000–2024.
 
-function calcLevel(xp) { return Math.floor(Math.sqrt(xp / 100)) + 1; }
+Task: Retrieve ONE real Previous Year Question (PYQ).
+Subject: ${subject}. ${chapterLine} ${examLine} Difficulty: ${difficulty || 'medium'}.
 
-async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
-  const user = await User.findById(userId);
-  if (!user) return { newAchievements: [], levelUp: false };
-  const oldLevel = calcLevel(user.quizXP);
-  user.quizXP      += xp;
-  user.weeklyXP    += xp;
-  user.totalQSolved  = totalSolved;
-  user.totalQCorrect = totalCorrect;
-  user.quizStreak    = newStreak;
-  if (newStreak > user.maxQuizStreak) user.maxQuizStreak = newStreak;
-  const newLevel = calcLevel(user.quizXP);
-  user.quizLevel = newLevel;
+STRICT RULES — NEVER VIOLATE:
+1. The question MUST have appeared in an actual exam. DO NOT fabricate.
+2. Provide the exact year, exact exam name, and exact shift/date it appeared.
+3. If you are less than 90% confident the question is real, generate a NEW question matching the style and difficulty of that exam BUT mark "verified": false.
+4. The answer MUST match the official answer key.
+5. Explanation: concept name + formula + complete step-by-step working.
+6. wrongPercent: estimated % of students who historically got it wrong.
+7. The 3 wrong options MUST be calculated using common student errors (sign mistake, factor of 2 error, wrong formula variant).
 
-  const newAchievements = [];
-  const existingIds = user.achievements.map(a => a.id);
-  const checks = [
-    { id: 'first_blood',   condition: totalCorrect >= 1 },
-    { id: 'hot_streak_5',  condition: newStreak >= 5 },
-    { id: 'hot_streak_10', condition: newStreak >= 10 },
-    { id: 'centurion',     condition: totalSolved >= 100 },
-    { id: 'solver_500',    condition: totalSolved >= 500 },
-    { id: 'level_5',       condition: newLevel >= 5 },
-    { id: 'level_10',      condition: newLevel >= 10 },
-    { id: 'level_20',      condition: newLevel >= 20 },
-    { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect / totalSolved) >= 0.9 },
-  ];
-  for (const check of checks) {
-    if (check.condition && !existingIds.includes(check.id)) {
-      const ach = ACHIEVEMENTS.find(a => a.id === check.id);
-      if (ach) { user.achievements.push({ ...ach, unlockedAt: new Date() }); newAchievements.push(ach); }
-    }
-  }
-  await user.save();
-  return { newAchievements, levelUp: newLevel > oldLevel, newLevel, totalXP: user.quizXP };
+Return ONLY this exact JSON — no markdown, no text outside JSON:
+{
+  "question": "full question text with all given data",
+  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+  "answer": "A",
+  "explanation": "Step 1: ... Step 2: ... Step 3: ... Final answer: ...",
+  "cheatSheet": "one powerful shortcut or formula trick",
+  "trapAlert": "specific NTA trap in this type of question or empty string",
+  "wrongPercent": 72,
+  "year": "2023",
+  "exam": "${exam || 'JEE Main'}",
+  "shift": "January 24, Shift 2",
+  "chapter": "${chapter || subject}",
+  "topic": "${chapter || subject}",
+  "verified": true
+}`;
 }
 
-// ── API HELPERS ───────────────────────────────────────────
+// ── PRACTICE Q GENERATION PROMPT ─────────────────────────
+function buildPracticePrompt(subject, chapter, topic, difficulty, adaptiveFocus) {
+  const topicLine   = topic   ? `Topic: ${topic}.`     : '';
+  const chapterLine = chapter ? `Chapter: ${chapter}.` : '';
+  const adaptLine   = adaptiveFocus?.length
+    ? `ADAPTIVE MODE: This student previously answered incorrectly on this concept. Generate a fresh question testing the SAME concept from a DIFFERENT angle to build mastery. Focus on: ${adaptiveFocus.join(', ')}.`
+    : '';
+  return `You are a premium JEE/NEET expert question setter following NTA exam patterns.
+Subject: ${subject}. ${chapterLine} ${topicLine} Difficulty: ${difficulty || 'medium'}.
+${adaptLine}
+
+Generate ONE high-quality practice MCQ.
+Rules:
+- Requires at least 3 logical/mathematical steps to solve. No direct formula substitution.
+- 3 distractor options must represent values computed from real student errors (wrong sign, missing factor, misapplied condition).
+- Include a conceptual trap that punishes shallow knowledge.
+- Explanation must include: concept name, formula, full step-by-step working.
+
+Return ONLY this exact JSON — no markdown, no text outside JSON:
+{
+  "question": "full question text",
+  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+  "answer": "A",
+  "explanation": "Concept: ... | Formula: ... | Step 1: ... Step 2: ... Step 3: ... Final: ...",
+  "cheatSheet": "one powerful shortcut trick",
+  "trapAlert": "specific common mistake or empty string",
+  "wrongPercent": 65,
+  "year": "",
+  "exam": "",
+  "shift": "",
+  "chapter": "${chapter || subject}",
+  "topic": "${topic || chapter || subject}",
+  "verified": false
+}`;
+}
+
+// ── API CALL HELPERS ──────────────────────────────────────
 async function fetchWithTimeout(url, options, ms = 30000) {
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -339,7 +490,7 @@ async function callGroq(messages, prompt) {
 }
 
 async function callGemini(messages, prompt, imageBase64 = null) {
-  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
+  const key      = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
   const contents = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
   if (imageBase64 && contents.length > 0) {
     const last = contents[contents.length - 1];
@@ -381,14 +532,52 @@ async function getReply(messages, prompt, imageBase64 = null) {
   throw new Error('ALL_EXHAUSTED');
 }
 
-// ── SAFE JSON PARSE ───────────────────────────────────────
-function safeParseJSON(raw) {
-  let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
-  // Find first { and last }
-  const start = clean.indexOf('{');
-  const end   = clean.lastIndexOf('}');
-  if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
-  return JSON.parse(clean);
+// ── ACHIEVEMENTS ENGINE ───────────────────────────────────
+const ACHIEVEMENTS = [
+  { id: 'first_blood',   name: 'First Blood',      icon: '🎯' },
+  { id: 'hot_streak_5',  name: 'On Fire!',          icon: '🔥' },
+  { id: 'hot_streak_10', name: 'Unstoppable',       icon: '⚡' },
+  { id: 'centurion',     name: 'Centurion',         icon: '💯' },
+  { id: 'solver_500',    name: 'Problem Destroyer', icon: '🏆' },
+  { id: 'level_5',       name: 'Rising Star',       icon: '⭐' },
+  { id: 'level_10',      name: 'JEE Warrior',       icon: '⚔️' },
+  { id: 'level_20',      name: 'IIT Bound',         icon: '🚀' },
+  { id: 'accuracy_90',   name: 'Sniper',            icon: '🎖️' },
+];
+
+async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
+  const user = await User.findById(userId);
+  if (!user) return { newAchievements: [], levelUp: false };
+  const oldLevel         = calcLevel(user.quizXP);
+  user.quizXP           += xp;
+  user.weeklyXP         += xp;
+  user.totalQSolved      = totalSolved;
+  user.totalQCorrect     = totalCorrect;
+  user.quizStreak        = newStreak;
+  if (newStreak > user.maxQuizStreak) user.maxQuizStreak = newStreak;
+  const newLevel  = calcLevel(user.quizXP);
+  user.quizLevel  = newLevel;
+  const newAchievements = [];
+  const existingIds     = user.achievements.map(a => a.id);
+  const checks = [
+    { id: 'first_blood',   condition: totalCorrect >= 1 },
+    { id: 'hot_streak_5',  condition: newStreak >= 5 },
+    { id: 'hot_streak_10', condition: newStreak >= 10 },
+    { id: 'centurion',     condition: totalSolved >= 100 },
+    { id: 'solver_500',    condition: totalSolved >= 500 },
+    { id: 'level_5',       condition: newLevel >= 5 },
+    { id: 'level_10',      condition: newLevel >= 10 },
+    { id: 'level_20',      condition: newLevel >= 20 },
+    { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect / totalSolved) >= 0.9 },
+  ];
+  for (const check of checks) {
+    if (check.condition && !existingIds.includes(check.id)) {
+      const ach = ACHIEVEMENTS.find(a => a.id === check.id);
+      if (ach) { user.achievements.push({ ...ach, unlockedAt: new Date() }); newAchievements.push(ach); }
+    }
+  }
+  await user.save();
+  return { newAchievements, levelUp: newLevel > oldLevel, newLevel, totalXP: user.quizXP };
 }
 
 // ── PLANNER CONTEXT ───────────────────────────────────────
@@ -404,86 +593,27 @@ async function buildPlannerContext(userId) {
   } catch { return ''; }
 }
 
-// ── WEEK KEY HELPER ───────────────────────────────────────
-function getWeekKey() {
-  const d    = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-  return `${d.getFullYear()}-W${week}`;
+// NEW: fetch today's mistakes for a user to pass into system prompt
+async function getTodayMistakes(userId) {
+  try {
+    const today    = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    return await Mistake.find({ userId, createdAt: { $gte: today, $lt: tomorrow } })
+      .select('topic mistakeBookEntry question').limit(10).lean();
+  } catch { return []; }
 }
 
-// ── PYQ GENERATION PROMPT ─────────────────────────────────
-// Very strict — must cite real exam, real year, real shift.
-function buildPYQPrompt(subject, chapter, exam, difficulty) {
-  const chapterLine = chapter ? `Chapter/Topic: ${chapter}.` : '';
-  const examLine    = exam    ? `Exam: ${exam}.`            : 'Exam: JEE Main or JEE Advanced or NEET (pick whichever has the best real PYQ for this topic).';
-  return `You are a verified JEE/NEET question bank with access to all past papers from 2000–2024.
-
-Task: Retrieve ONE real Previous Year Question (PYQ).
-Subject: ${subject}. ${chapterLine} ${examLine} Difficulty: ${difficulty || 'medium'}.
-
-STRICT RULES — DO NOT VIOLATE:
-1. The question MUST have appeared in an actual exam. Do NOT fabricate.
-2. You MUST provide the exact year, exact exam name, and exact shift/date it appeared.
-3. If you are not at least 90% confident the question is real, generate a NEW question that matches the style and difficulty of a ${exam || 'JEE Main'} PYQ but mark "verified": false.
-4. The answer MUST be the exact answer from the official answer key.
-5. explanation must include: concept name, formula, complete step-by-step working.
-6. wrongPercent is the estimated % of students who got it wrong historically.
-
-Return ONLY this exact JSON (no markdown, no text outside JSON):
-{
-  "question": "full question text with all given data",
-  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-  "answer": "A",
-  "explanation": "Step 1: ... Step 2: ... Final answer: ...",
-  "cheatSheet": "one powerful shortcut or formula trick",
-  "trapAlert": "specific trap NTA/board sets in this type or empty string",
-  "wrongPercent": 72,
-  "year": "2023",
-  "exam": "${exam || 'JEE Main'}",
-  "shift": "January 24, Shift 2",
-  "chapter": "${chapter || subject}",
-  "topic": "${chapter || subject}",
-  "verified": true
-}`;
-}
-
-// ── PRACTICE Q GENERATION PROMPT ─────────────────────────
-function buildPracticePrompt(subject, chapter, topic, difficulty, adaptiveFocus) {
-  const topicLine   = topic   ? `Topic: ${topic}.`   : '';
-  const chapterLine = chapter ? `Chapter: ${chapter}.` : '';
-  const adaptLine   = adaptiveFocus
-    ? `ADAPTIVE MODE: Student previously got this concept wrong. Generate a fresh question on the SAME concept from a different angle to build true mastery. Focus on: ${adaptiveFocus.join(', ')}.`
-    : '';
-  return `You are a JEE/NEET expert question generator.
-Subject: ${subject}. ${chapterLine} ${topicLine} Difficulty: ${difficulty || 'medium'}.
-${adaptLine}
-
-Generate ONE high-quality practice MCQ.
-- Must require at least 3 logical/mathematical steps.
-- Include a deceptive trap option.
-- Explanation must include concept name, formula, and full working.
-
-Return ONLY this exact JSON (no markdown, no text outside JSON):
-{
-  "question": "full question text",
-  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-  "answer": "A",
-  "explanation": "Step 1: ... Step 2: ... Step 3: ... Final answer: ...",
-  "cheatSheet": "one powerful shortcut trick",
-  "trapAlert": "common mistake students make or empty string",
-  "wrongPercent": 65,
-  "year": "",
-  "exam": "",
-  "shift": "",
-  "chapter": "${chapter || subject}",
-  "topic": "${topic || chapter || subject}",
-  "verified": false
-}`;
+// NEW: fetch user's feedback flags from DB
+async function getUserFeedbackFlags(userId) {
+  try {
+    const feedbacks = await Feedback.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
+    const allFlags  = feedbacks.flatMap(f => f.flags || []);
+    return [...new Set(allFlags)]; // deduplicate
+  } catch { return []; }
 }
 
 // ── ROUTES ────────────────────────────────────────────────
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v8' }));
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
@@ -494,7 +624,6 @@ app.get('/auth/google/callback',
 
 app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
 
-// Check auth status — frontend uses this to redirect to login instead of showing guest UI
 app.get('/api/auth/status', (req, res) => {
   res.json({ authenticated: req.isAuthenticated(), user: req.user ? { id: req.user._id, name: req.user.name } : null });
 });
@@ -559,34 +688,76 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not load leaderboard.' }); }
 });
 
-// ── QUIZ XP AWARD ─────────────────────────────────────────
-app.post('/api/quiz/award-xp', requireAuth, async (req, res) => {
+// ── MAIN CHAT ─────────────────────────────────────────────
+app.post('/api/chat', requireAuth, async (req, res) => {
+  const { messages, sessionId, imageBase64 } = req.body;
+  const user = req.user;
+  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Invalid request.' });
+
+  const recent        = messages.slice(-20);
+  const plannerCtx    = await buildPlannerContext(user._id);
+  const todayMistakes = await getTodayMistakes(user._id);    // NEW
+  const feedbackFlags = await getUserFeedbackFlags(user._id); // NEW
+
+  const prompt = buildSystemPrompt(user, plannerCtx, todayMistakes, feedbackFlags);
+
   try {
-    const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
-    const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
-    res.json(result);
-  } catch { res.status(500).json({ error: 'Could not award XP.' }); }
+    const reply = await getReply(recent, prompt, imageBase64 || null);
+
+    // NEW: auto-extract [MISTAKE_START]...[MISTAKE_END] blocks and save to DB
+    const mistakeEntries = extractMistakeEntries(reply);
+    for (const entry of mistakeEntries) {
+      try {
+        // Parse "Concept: X | Context: Y" format
+        const conceptMatch = entry.match(/Concept:\s*([^|]+)/i);
+        const contextMatch = entry.match(/Context:\s*(.+)/i);
+        const topic   = conceptMatch?.[1]?.trim() || 'General';
+        const context = contextMatch?.[1]?.trim() || entry;
+        await Mistake.create({
+          userId:           user._id,
+          topic,
+          subject:          user.exam?.includes('NEET') ? 'Biology' : 'General',
+          mistakeBookEntry: context,
+          question:         context,
+          weekKey:          getWeekKey()
+        });
+        // Also update weakTopics map
+        const wk   = getWeekKey();
+        const wMap = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+        const ent  = wMap.get(topic) || { count: 0, weeks: [] };
+        ent.count += 1;
+        if (!ent.weeks.includes(wk)) ent.weeks.push(wk);
+        wMap.set(topic, ent);
+        await User.findByIdAndUpdate(user._id, { weakTopics: wMap });
+      } catch (e) { console.error('Auto-mistake save:', e.message); }
+    }
+
+    // Save chat to session
+    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId.length === 24) {
+      try {
+        const userMsg = messages[messages.length - 1];
+        const title   = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
+        await ChatSession.findByIdAndUpdate(sessionId, {
+          $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
+          $set:  { updatedAt: new Date(), ...(title ? { title } : {}) }
+        }, { upsert: true });
+      } catch (e) { console.error('Session save:', e.message); }
+    }
+
+    res.json({ reply, autoMistakes: mistakeEntries.length }); // let frontend know how many were auto-logged
+  } catch (err) {
+    console.error('AI error:', err.message);
+    res.status(500).json({ error: 'Our AI is taking a short break. Please try again.' });
+  }
 });
 
-// ── QUIZ: WEAK TOPICS SYNC ────────────────────────────────
-// Frontend sends updated weakTopics map, server persists it
-app.post('/api/quiz/sync-weak-topics', requireAuth, async (req, res) => {
-  try {
-    const { weakTopics } = req.body;
-    await User.findByIdAndUpdate(req.user._id, { weakTopics: new Map(Object.entries(weakTopics || {})) });
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not sync weak topics.' }); }
-});
-
-// ── QUIZ: SOLO QUESTION (PRACTICE) ───────────────────────
+// ── QUIZ: SOLO QUESTION ───────────────────────────────────
 app.post('/api/quiz/question', requireAuth, async (req, res) => {
   const { subject, chapter, topic, difficulty, pyqMode, exam } = req.body;
-
-  // Build adaptive context from user's persisted weak topics
-  const user         = req.user;
-  const wk           = getWeekKey();
-  const weakMap      = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
-  const adaptTopics  = [];
+  const user      = req.user;
+  const wk        = getWeekKey();
+  const weakMap   = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+  const adaptTopics = [];
   for (const [t, v] of weakMap.entries()) {
     if (v?.weeks?.includes(wk)) adaptTopics.push(t);
   }
@@ -596,11 +767,12 @@ app.post('/api/quiz/question', requireAuth, async (req, res) => {
     : buildPracticePrompt(subject || 'Physics', chapter, topic, difficulty, adaptTopics.length ? adaptTopics : null);
 
   try {
-    const reply = await getReply([{ role: 'user', content: prompt }],
-      'You are an expert JEE/NEET question generator. Return ONLY valid compact JSON, no markdown, no extra text.');
+    const reply = await getReply(
+      [{ role: 'user', content: prompt }],
+      'You are an expert JEE/NEET question generator. Return ONLY valid compact JSON, no markdown, no extra text.'
+    );
     const q = safeParseJSON(reply);
-    // Validate minimal structure before sending
-    if (!q.question || !q.options || !q.answer) throw new Error('Incomplete question structure');
+    if (!q.question || !q.options || !q.answer) throw new Error('Incomplete structure');
     res.json({ question: q, adaptive: adaptTopics.length > 0, adaptiveTopics: adaptTopics });
   } catch (err) {
     console.error('Quiz gen error:', err.message);
@@ -608,21 +780,45 @@ app.post('/api/quiz/question', requireAuth, async (req, res) => {
   }
 });
 
-// ── QUIZ: LOG WRONG ANSWER (ADAPTIVE ENGINE) ─────────────
-// Called by frontend when student answers wrong, updates DB weakness map
+// ── QUIZ: AWARD XP ────────────────────────────────────────
+app.post('/api/quiz/award-xp', requireAuth, async (req, res) => {
+  try {
+    const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
+    const result = await awardXP(req.user._id, xpEarned || (correct ? 10 : 2), correct, streak, totalSolved, totalCorrect);
+    res.json(result);
+  } catch { res.status(500).json({ error: 'Could not award XP.' }); }
+});
+
+// ── QUIZ: LOG WRONG ANSWER ────────────────────────────────
 app.post('/api/quiz/log-wrong', requireAuth, async (req, res) => {
   try {
-    const { topic, subject, chapter } = req.body;
-    const user  = req.user;
-    const wk    = getWeekKey();
-    const wMap  = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
-    const entry = wMap.get(topic) || { count: 0, weeks: [], subject, chapter };
-    entry.count += 1;
-    if (!entry.weeks.includes(wk)) entry.weeks.push(wk);
-    wMap.set(topic, entry);
+    const { topic, subject, chapter, question, userAnswer, correctAnswer, explanation, cheatSheet, trapAlert, isPYQ, pyqYear, pyqExam, pyqShift } = req.body;
+    const wk   = getWeekKey();
+    const wMap = req.user.weakTopics instanceof Map ? req.user.weakTopics : new Map(Object.entries(req.user.weakTopics || {}));
+    const ent  = wMap.get(topic) || { count: 0, weeks: [], subject, chapter };
+    ent.count += 1;
+    if (!ent.weeks.includes(wk)) ent.weeks.push(wk);
+    wMap.set(topic, ent);
     await User.findByIdAndUpdate(req.user._id, { weakTopics: wMap });
-    res.json({ success: true, weeklyWeakTopics: [...wMap.entries()].filter(([, v]) => v.weeks?.includes(wk)).map(([t]) => t) });
+    // Also auto-save to mistake book
+    await Mistake.create({
+      userId: req.user._id, topic, subject, chapter, question,
+      userAnswer, correctAnswer, explanation, cheatSheet, trapAlert,
+      isPYQ: isPYQ || false, pyqYear: pyqYear || '', pyqExam: pyqExam || '', pyqShift: pyqShift || '',
+      weekKey: wk
+    });
+    const weeklyWeakTopics = [...wMap.entries()].filter(([, v]) => v.weeks?.includes(wk)).map(([t]) => t);
+    res.json({ success: true, weeklyWeakTopics });
   } catch { res.status(500).json({ error: 'Could not log wrong answer.' }); }
+});
+
+// ── QUIZ: SYNC WEAK TOPICS ────────────────────────────────
+app.post('/api/quiz/sync-weak-topics', requireAuth, async (req, res) => {
+  try {
+    const { weakTopics } = req.body;
+    await User.findByIdAndUpdate(req.user._id, { weakTopics: new Map(Object.entries(weakTopics || {})) });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not sync weak topics.' }); }
 });
 
 // ── SESSIONS ──────────────────────────────────────────────
@@ -656,33 +852,6 @@ app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── MAIN CHAT ─────────────────────────────────────────────
-app.post('/api/chat', requireAuth, async (req, res) => {
-  const { messages, sessionId, imageBase64 } = req.body;
-  const user = req.user;
-  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Invalid request.' });
-  const recent     = messages.slice(-20);
-  const plannerCtx = await buildPlannerContext(user._id);
-  const prompt     = buildSystemPrompt(user, plannerCtx);
-  try {
-    const reply = await getReply(recent, prompt, imageBase64 || null);
-    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId.length === 24) {
-      try {
-        const userMsg = messages[messages.length - 1];
-        const title   = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
-        await ChatSession.findByIdAndUpdate(sessionId, {
-          $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
-          $set:  { updatedAt: new Date(), ...(title ? { title } : {}) }
-        }, { upsert: true });
-      } catch (e) { console.error('Session save:', e.message); }
-    }
-    res.json({ reply });
-  } catch (err) {
-    console.error('AI error:', err.message);
-    res.status(500).json({ error: 'Our AI is taking a short break. Please try again.' });
-  }
-});
-
 // ── MISTAKES ──────────────────────────────────────────────
 app.get('/api/mistakes', requireAuth, async (req, res) => {
   try {
@@ -696,8 +865,7 @@ app.get('/api/mistakes', requireAuth, async (req, res) => {
 
 app.post('/api/mistakes', requireAuth, async (req, res) => {
   try {
-    const wk = getWeekKey();
-    const m  = await Mistake.create({ userId: req.user._id, weekKey: wk, ...req.body });
+    const m = await Mistake.create({ userId: req.user._id, weekKey: getWeekKey(), ...req.body });
     res.json({ mistake: m });
   } catch { res.status(500).json({ error: 'Could not save.' }); }
 });
@@ -717,10 +885,10 @@ app.get('/api/planner/tasks', requireAuth, async (req, res) => {
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     const weekEnd  = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
     let filter     = { userId: req.user._id };
-    if (view === 'today')     { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
-    else if (view === 'week') { filter.scheduledDate = { $gte: today, $lt: weekEnd };  filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    if (view === 'today')          { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    else if (view === 'week')      { filter.scheduledDate = { $gte: today, $lt: weekEnd };  filter.status = { $in: ['pending', 'completed', 'missed'] }; }
     else if (view === 'completed') { filter.status = 'completed'; }
-    else { filter.scheduledDate = { $gte: today, $lt: tomorrow }; }
+    else                           { filter.scheduledDate = { $gte: today, $lt: tomorrow }; }
     res.json({ tasks: await PlannerTask.find(filter).sort({ priority: 1, scheduledDate: 1 }) });
   } catch { res.status(500).json({ error: 'Could not load tasks.' }); }
 });
@@ -757,7 +925,7 @@ app.post('/api/planner/generate', requireAuth, async (req, res) => {
 - Energy: ${energyLevel || 'medium'} | Struggle: ${user.biggestStruggle || 'concepts'}
 - Note: ${customNote || 'none'}
 Return ONLY JSON array (no markdown): [{"title":"...","subject":"...","priority":"high/medium/low","estimatedMins":45,"notes":"..."}]
-Rules: Max 6 tasks if tired, 8 medium, 10 energized. Include short breaks. Be realistic.`;
+Rules: Max 6 tasks if tired, 8 medium, 10 energized. Include breaks. Be realistic.`;
     const reply = await getReply([{ role: 'user', content: prompt }], 'Return only valid JSON array, no markdown.');
     const tasks = JSON.parse(reply.replace(/```json|```/g, '').trim());
     const date  = new Date(targetDate || new Date()); date.setHours(6, 0, 0, 0);
@@ -779,10 +947,25 @@ app.post('/api/planner/rollover', requireAuth, async (req, res) => {
 });
 
 // ── FEEDBACK ──────────────────────────────────────────────
+// NEW: auto-parses irritation flags and stores them, syncs to user feedbackFlags
 app.post('/api/feedback', async (req, res) => {
   try {
-    await Feedback.create({ userId: req.user?._id, name: req.user?.name || 'User', ...req.body });
-    res.json({ success: true });
+    const { message, rating, type } = req.body;
+    const flags = parseFeedbackFlags(message || '');
+    const fb    = await Feedback.create({
+      userId: req.user?._id,
+      name:   req.user?.name || 'User',
+      rating, message, type, flags
+    });
+    // Persist flags to user doc for fast access in system prompt
+    if (req.user && flags.length > 0) {
+      const existing = req.user.feedbackFlags instanceof Map
+        ? req.user.feedbackFlags
+        : new Map(Object.entries(req.user.feedbackFlags || {}));
+      flags.forEach(f => existing.set(f, new Date().toISOString()));
+      await User.findByIdAndUpdate(req.user._id, { feedbackFlags: existing });
+    }
+    res.json({ success: true, flagsDetected: flags });
   } catch { res.status(500).json({ error: 'Could not save feedback.' }); }
 });
 
@@ -792,7 +975,7 @@ app.get('/api/admin/feedback', async (req, res) => {
   catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
-// ── SOCKET.IO QUIZ ROOMS ──────────────────────────────────
+// ── SOCKET.IO MULTIPLAYER QUIZ ROOMS ─────────────────────
 const quizRooms = {};
 
 io.on('connection', socket => {
@@ -832,7 +1015,7 @@ io.on('connection', socket => {
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player) return;
-    player.total = (player.total || 0) + 1;
+    player.total  = (player.total || 0) + 1;
     const correct = answer === room.currentAnswer;
     if (correct) {
       player.score  += 10 + Math.floor((timeLeft || 0) / 3);
@@ -846,7 +1029,7 @@ io.on('connection', socket => {
   });
 
   socket.on('use-sabotage', ({ code, type }) => {
-    const room = quizRooms[code];
+    const room   = quizRooms[code];
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     if (!player || (player.streak || 0) < 3) return;
@@ -855,7 +1038,7 @@ io.on('connection', socket => {
   });
 
   socket.on('send-emoji', ({ code, emoji }) => {
-    const room = quizRooms[code];
+    const room   = quizRooms[code];
     if (!room) return;
     const player = room.players.find(p => p.id === socket.id);
     io.to(code).emit('emoji-broadcast', { emoji, name: player?.name || 'Someone' });
@@ -874,7 +1057,7 @@ io.on('connection', socket => {
 });
 
 async function startMultiQuestion(code) {
-  const room = quizRooms[code];
+  const room   = quizRooms[code];
   if (!room) return;
   const totalQ = room.config?.questionCount || 10;
   if (room.currentQ >= totalQ) {
@@ -882,11 +1065,11 @@ async function startMultiQuestion(code) {
     delete quizRooms[code];
     return;
   }
-  const subjects  = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
-  const subject   = subjects[room.currentQ % subjects.length];
-  const chapters  = room.config?.chapters?.length ? room.config.chapters.join(', ') : '';
-  const difficulty= room.config?.difficulty || 'mixed';
-  const pyqMode   = room.config?.pyqMode || false;
+  const subjects   = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
+  const subject    = subjects[room.currentQ % subjects.length];
+  const chapters   = room.config?.chapters?.length ? room.config.chapters.join(', ') : '';
+  const difficulty = room.config?.difficulty || 'mixed';
+  const pyqMode    = room.config?.pyqMode || false;
 
   const qPrompt = pyqMode
     ? buildPYQPrompt(subject, chapters, room.config?.exam || 'JEE Main', difficulty)
@@ -909,13 +1092,11 @@ async function startMultiQuestion(code) {
   }
 }
 
-// ── SERVE ─────────────────────────────────────────────────
-// All non-API routes → index.html (SPA). If not authenticated, index.html
-// must handle redirect to /auth/google for protected pages.
+// ── SERVE SPA ─────────────────────────────────────────────
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v7 on port ${PORT}`);
+  console.log(`🧠 GRIND AI v8 on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
