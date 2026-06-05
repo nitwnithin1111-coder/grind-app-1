@@ -510,7 +510,7 @@ async function fetchWithTimeout(url, options, ms = 30000) {
 // OPENROUTER
 // =========================
 
-async function callOpenRouter(messages, prompt) {
+async function callOR(messages, prompt) {
 
   const key =
     OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
