@@ -471,68 +471,285 @@ Return ONLY this exact JSON — no markdown, no text outside JSON:
 
 // ── API CALL HELPERS ──────────────────────────────────────
 // Optimized for text-only JEE problem solving using deep reasoning models first
-// Global Configuration Variables
-let orIdx = 0, orMIdx = 0, gIdx = 0, grIdx = 0;
-
-// Model designations for routing
-const OPENROUTER_MODELS = ['deepseek/deepseek-r1', 'openai/o1-mini'];
-const GEMINI_MODEL      = 'gemini-3.5-flash'; // Google's absolute latest production model
-const GROQ_MODEL        = 'llama-3.3-70b-versatile';
+// Global Configuration Variableserror.message);
+ // =========================
+// AI PRIORITY ORDER
+// 1. OpenRouter (Best Reasoning)
+// 2. Gemini
+// 3. Groq
+// =========================
 
 async function fetchWithTimeout(url, options, ms = 30000) {
-  const ctrl  = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try { const res = await fetch(url, { ...options, signal: ctrl.signal }); clearTimeout(timer); return res; }
-  catch (err) { clearTimeout(timer); throw err; }
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, ms);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`${response.status} - ${text}`);
+    }
+
+    return response;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
 }
 
-async function callOR(messages, prompt) {
-  const key   = OPENROUTER_KEYS[orIdx % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx % OPENROUTER_MODELS.length];
-  orIdx++; orMIdx++; 
+// =========================
+// OPENROUTER
+// =========================
 
-  const res = await fetchWithTimeout('https://openrouter.ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`, 'HTTP-Referer': 'https://onrender.com', 'X-Title': 'GRIND AI' },
-    body: JSON.stringify({ 
-      model, 
-      max_tokens: 4000, 
-      temperature: 0.1, 
-      messages: [{ role: 'system', content: prompt }, ...messages] 
-    })
-  });
-  const d = await res.json();
-  if (d.error) throw new Error('OR: ' + d.error.message);
-  return d.choices[0].message.content; 
-}
+async function callOpenRouter(messages, prompt) {
 
-async function callGemini(messages, prompt) {
-  const key = GEMINI_KEYS[gIdx % GEMINI_KEYS.length];
-  gIdx++; 
+  const key =
+    OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
 
-  const contents = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-  const res = await fetchWithTimeout(
-    `https://googleapis.com{GEMINI_MODEL}:generateContent?key=${key}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: prompt }] }, contents, generationConfig: { maxOutputTokens: 2000, temperature: 0.1 } }) }
+  const model =
+    OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
+
+  console.log(`🧠 OpenRouter -> ${model}`);
+
+  const response = await fetchWithTimeout(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "HTTP-Referer": "https://grind-ai.onrender.com",
+        "X-Title": "GRIND AI"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4000,
+        temperature: 0.4,
+        messages: [
+          {
+            role: "system",
+            content: prompt
+          },
+          ...messages
+        ]
+      })
+    }
   );
-  const d = await res.json();
-  if (d.error) throw new Error('GEMINI: ' + d.error.message);
-  return d.candidates[0].content.parts[0].text; 
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  return data.choices[0].message.content;
 }
+
+// =========================
+// GEMINI
+// =========================
+
+async function callGemini(
+  messages,
+  prompt,
+  imageBase64 = null
+) {
+
+  const key =
+    GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
+
+  const contents = messages.map(msg => ({
+    role:
+      msg.role === "assistant"
+        ? "model"
+        : "user",
+    parts: [
+      {
+        text: msg.content
+      }
+    ]
+  }));
+
+  if (imageBase64 && contents.length > 0) {
+    const last = contents[contents.length - 1];
+
+    if (last.role === "user") {
+      last.parts.push({
+        inline_data: {
+          mime_type: "image/jpeg",
+          data: imageBase64
+        }
+      });
+    }
+  }
+
+  console.log("⚡ Gemini");
+
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 4000
+        }
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  return data.candidates[0].content.parts[0].text;
+}
+
+// =========================
+// GROQ
+// =========================
 
 async function callGroq(messages, prompt) {
-  const key = GROQ_KEYS[grIdx % GROQ_KEYS.length];
-  grIdx++; 
 
-  const res = await fetchWithTimeout('https://groq.com', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({ model: GROQ_MODEL, max_tokens: 2000, temperature: 0.1, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  const d = await res.json();
-  if (d.error) throw new Error('GROQ: ' + d.error.message);
-  return d.choices[0].message.content; 
+  const key =
+    GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
+
+  console.log("🚀 Groq");
+
+  const response = await fetchWithTimeout(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 4000,
+        temperature: 0.4,
+        messages: [
+          {
+            role: "system",
+            content: prompt
+          },
+          ...messages
+        ]
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  return data.choices[0].message.content;
+}
+
+// =========================
+// MASTER FALLBACK SYSTEM
+// =========================
+
+async function getReply(
+  messages,
+  prompt,
+  imageBase64 = null
+) {
+
+  // -----------------
+  // OPENROUTER FIRST
+  // -----------------
+
+  for (
+    let i = 0;
+    i < OPENROUTER_KEYS.length;
+    i++
+  ) {
+    try {
+      return await callOpenRouter(
+        messages,
+        prompt
+      );
+    } catch (err) {
+      console.log(
+        `❌ OpenRouter ${i + 1}:`,
+        err.message
+      );
+    }
+  }
+
+  // -----------------
+  // GEMINI SECOND
+  // -----------------
+
+  for (
+    let i = 0;
+    i < GEMINI_KEYS.length;
+    i++
+  ) {
+    try {
+      return await callGemini(
+        messages,
+        prompt,
+        imageBase64
+      );
+    } catch (err) {
+      console.log(
+        `❌ Gemini ${i + 1}:`,
+        err.message
+      );
+    }
+  }
+
+  // -----------------
+  // GROQ LAST
+  // -----------------
+
+  for (
+    let i = 0;
+    i < GROQ_KEYS.length;
+    i++
+  ) {
+    try {
+      return await callGroq(
+        messages,
+        prompt
+      );
+    } catch (err) {
+      console.log(
+        `❌ Groq ${i + 1}:`,
+        err.message
+      );
+    }
+  }
+
+  throw new Error(
+    "ALL_PROVIDERS_EXHAUSTED"
+  );
 }
 
 // Text-only pipeline: OpenRouter (Deep Reasoning) -> Gemini -> Groq
