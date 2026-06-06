@@ -1913,11 +1913,18 @@ async function loadMistakes(){
 
 async function deleteMistake(id){
   await fetch(`/api/mistakes/${id}`, { method:'DELETE', credentials:'include' });
-  loadMistakes();// Paste this line wherever your AI text response is processed
-if (aiResponseText.includes('/')) { saveMathMistake(aiResponseText); }
-
+  loadMistakes();
+}
 
 // ═══════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════
+function showToast(msg){
+  const existing = document.querySelector('.toast'); if(existing) existing.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { if(t.parentNode) t.remove(); }, 3000);
+}
 
 // ═══════════════════════════════════════
 //  BOOT
