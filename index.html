@@ -1913,29 +1913,11 @@ async function loadMistakes(){
 
 async function deleteMistake(id){
   await fetch(`/api/mistakes/${id}`, { method:'DELETE', credentials:'include' });
-  loadMistakes();
-}
+  loadMistakes();// Paste this line wherever your AI text response is processed
+if (aiResponseText.includes('/')) { saveMathMistake(aiResponseText); }
+
 
 // ═══════════════════════════════════════
-//  TOAST
-// ═══════════════════════════════════════
-function showToast(msg){
-  const existing = document.querySelector('.toast'); if(existing) existing.remove();
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => { if(t.parentNode) t.remove(); }, 3000);
-}
-  <!-- Place this button wherever you want it to appear on your page -->
-  <div style="text-align: center; margin: 20px;">
-    <button id="grind-install-btn" style="display: none; padding: 14px 28px; font-size: 16px; font-weight: bold; color: #FFFFFF; background-color: #121212; border: 2px solid #FFFFFF; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      📥 Install Grind AI App
-    </button>
-  </div>
-
-  <!-- Link to your external JavaScript file -->
-  <script src="app.js"></script>
-</body>
-</html>
 
 // ═══════════════════════════════════════
 //  BOOT
