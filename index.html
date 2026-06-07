@@ -2694,6 +2694,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 1500);
 });
+  ── 1. Add PWA meta to <head> ──
+h = h.replace('</head>', '''<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#060610">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GRIND AI">
+</head>''', 1)
+
+# ── 2. Add Install button to login screen ──
+h = h.replace(
+    '<div class="login-note">Chats saved privately · No ads · No guest mode · Built for aspirants</div>',
+    '''<button id="install-btn" style="display:none;width:100%;padding:12px 20px;background:linear-gradient(135deg,#7c3aed,#3b82f6);border:none;border-radius:14px;color:white;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;font-family:'Plus Jakarta Sans',sans-serif" onclick="installApp()">📲 Install GRIND on your device</button>
+<div class="login-note">Chats saved privately · No ads · No guest mode
 
 </script>
 </body>
