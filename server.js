@@ -215,11 +215,13 @@ const OPENROUTER_KEYS = [
 ].filter(Boolean);
 
 const OPENROUTER_MODELS = [
-  'deepseek/deepseek-r1:free',
-  'deepseek/deepseek-chat:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
-  'google/gemma-3-27b-it:free'
+  'deepseek/deepseek-v4-flash:free',      // Top-tier free chain-of-thought reasoning for STEM
+  'deepseek/deepseek-r1-distill:free',    // Deep math, analysis, and problem-solving architecture
+  'openai/gpt-oss-20b:free',              // Excellent open frontier multi-step logic
+  'zhipu/glm-5.1:free',                   // Advanced scientific and mathematical benchmark performer
+  'google/gemma-4-31b:free',              // Google's latest high-capacity open-weight logic model
+  'meta-llama/llama-3.3-70b:free',        // Highly reliable for complex conceptual physics/chemistry
+  'openrouter/free' 
 ];
 
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
