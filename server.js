@@ -1984,4 +1984,55 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🧠 GRIND AI v8 on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
+  // 1. Force the CSS to stop splitting the screen 50/50
+const styleOverride = document.createElement('style');
+styleOverride.innerHTML = `
+  /* Change this selector to match your actual main flex/grid box */
+  #main-content-wrapper, .main-container { 
+    display: block !important; 
+    position: relative !important; 
+    width: 100% !important; 
+    height: 100vh !important;
+  }
+  .app-view-panel {
+    position: absolute !important;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: none;
+  }
+  .app-view-panel.visible-now {
+    display: block !important;
+  }
+`;
+document.head.appendChild(styleOverride);
+
+// 2. Identify your UI components (Add these IDs directly to your HTML markup if needed)
+const viewChat = document.getElementById('view-chat') || document.querySelector('.chat-container');
+const viewStory = document.getElementById('view-story') || document.querySelector('.story-mode-container');
+
+// Set initial classes
+if(viewChat) viewChat.classList.add('app-view-panel', 'visible-now');
+if(viewStory) viewStory.classList.add('app-view-panel');
+
+// 3. Find your Sidebar Buttons by searching their text labels dynamically
+document.querySelectorAll('.nav-item').forEach(item => {
+  const text = item.textContent.toLowerCase();
+  
+  if (text.includes('chat')) {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      viewChat?.classList.add('visible-now');
+      viewStory?.classList.remove('visible-now');
+    });
+  } 
+  else if (text.includes('story') || text.includes('mode')) {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      viewStory?.classList.add('visible-now');
+      viewChat?.classList.remove('visible-now');
+    });
+  }
+
+
 });
