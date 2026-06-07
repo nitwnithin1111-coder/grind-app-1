@@ -2033,6 +2033,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
       viewChat?.classList.remove('visible-now');
     });
   }
-
+});
 
 });
