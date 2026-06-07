@@ -316,6 +316,119 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   .topbar-right{gap:5px;}
   .planner-sidebar{width:130px;}
 }
+
+/* ═══════════════════════════════════════
+   STORY MODE
+═══════════════════════════════════════ */
+#story-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+#story-tab.active-tab,#story-tab[style*="flex"]{display:flex!important;}
+.story-panel{flex:1;padding:16px;gap:14px;overflow-y:auto;display:flex;flex-direction:column;}
+.story-hero{background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(124,58,237,.1));border:1px solid rgba(249,115,22,.3);border-radius:18px;padding:22px;text-align:center;}
+.story-hero-title{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:6px;}
+.story-hero-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
+.story-acts-row{display:flex;gap:8px;margin:4px 0;}
+.story-act-block{flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--border);text-align:center;font-size:10px;color:var(--muted2);transition:all .3s;font-family:'Space Mono',monospace;}
+.story-act-block .act-icon{font-size:16px;display:block;margin-bottom:3px;}
+.story-act-block.active{border-color:var(--orange);color:var(--orange);background:rgba(249,115,22,.08);}
+.story-act-block.done{border-color:var(--green);color:var(--green);background:rgba(16,185,129,.06);}
+.story-config{background:rgba(15,15,32,.95);border:1px solid rgba(249,115,22,.2);border-radius:16px;padding:18px;}
+.story-q-card{background:rgba(15,15,32,.95);border:1px solid rgba(249,115,22,.2);border-radius:14px;padding:18px;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.story-q-meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--orange);font-family:'Space Mono',monospace;margin-bottom:10px;}
+.concept-badge{font-size:10px;padding:2px 8px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);border-radius:6px;}
+.story-opt{padding:11px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;transition:all .18s;text-align:left;width:100%;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;}
+.story-opt:hover:not(:disabled){border-color:var(--orange);background:rgba(249,115,22,.06);}
+.story-opt.correct{border-color:var(--green)!important;background:rgba(16,185,129,.1)!important;color:#34d399!important;}
+.story-opt.wrong{border-color:var(--red)!important;background:rgba(239,68,68,.1)!important;color:#fca5a5!important;}
+.story-opt:disabled{pointer-events:none;}
+.story-teach-box{background:rgba(15,15,32,.95);border:1px solid rgba(124,58,237,.25);border-radius:14px;padding:18px;font-size:13px;line-height:1.9;max-height:55vh;overflow-y:auto;}
+.story-score-row{display:flex;gap:10px;justify-content:center;margin:14px 0;flex-wrap:wrap;}
+.score-box{flex:1;min-width:72px;padding:14px 10px;border-radius:12px;border:1px solid var(--border);text-align:center;}
+.score-box.r1{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05);}
+.score-box.r2{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.05);}
+.score-box.imp{border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.05);}
+.score-num{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;}
+.score-label{font-size:10px;color:var(--muted2);margin-top:3px;}
+.impr-bar{height:7px;border-radius:7px;background:var(--border);overflow:hidden;margin:6px 0;}
+.impr-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--orange),var(--green));transition:width 1.2s ease;}
+.story-btn{padding:12px 18px;border-radius:12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Plus Jakarta Sans',sans-serif;}
+.story-btn.primary{background:linear-gradient(135deg,var(--orange),var(--accent));color:white;}
+.story-btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(249,115,22,.3);}
+.story-btn.secondary{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border);}
+.s-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:30px;color:var(--muted2);font-size:13px;text-align:center;}
+.s-ring{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
+/* ═══════════════════════════════════════
+   ARJUN COMPANION
+═══════════════════════════════════════ */
+#arjun-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.arjun-header{padding:16px;border-bottom:1px solid var(--border);background:rgba(124,58,237,.06);}
+.arjun-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--orange));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.arjun-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.arjun-msg{max-width:85%;padding:12px 15px;border-radius:14px;font-size:13px;line-height:1.7;}
+.arjun-msg.arjun{background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);align-self:flex-start;border-radius:14px 14px 14px 4px;}
+.arjun-msg.user{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);align-self:flex-end;border-radius:14px 14px 4px 14px;}
+.arjun-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;}
+/* ═══════════════════════════════════════
+   WAR ROOM
+═══════════════════════════════════════ */
+#warroom-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.warroom-panel{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.warroom-stats{display:flex;gap:10px;flex-wrap:wrap;}
+.wr-stat{flex:1;min-width:80px;padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px;text-align:center;}
+.wr-stat-num{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--orange);}
+.wr-stat-label{font-size:10px;color:var(--muted2);margin-top:3px;}
+.chapter-grid{display:flex;flex-direction:column;gap:8px;}
+.chapter-card{padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;gap:12px;transition:border-color .2s;}
+.chapter-card.conquered{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.03);}
+.chapter-card.in-battle{border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.03);}
+.chapter-status-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0;}
+.chapter-info{flex:1;min-width:0;}
+.chapter-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chapter-sub{font-size:11px;color:var(--muted2);margin-top:2px;}
+.mastery-mini{height:4px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:6px;}
+.mastery-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--orange),var(--green));transition:width .8s ease;}
+/* ═══════════════════════════════════════
+   FORMULA FORTRESS
+═══════════════════════════════════════ */
+#fortress-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.fortress-panel{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.formula-card{background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;}
+.formula-text{font-size:15px;line-height:1.8;margin:14px 0;min-height:60px;}
+.formula-rating{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+.f-rating-btn{padding:10px 16px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:rgba(255,255,255,.04);color:var(--text);transition:all .18s;font-family:'Plus Jakarta Sans',sans-serif;}
+.f-rating-btn:hover{transform:translateY(-1px);}
+.f-rating-btn.forgot{border-color:var(--red);color:#fca5a5;}
+.f-rating-btn.hard{border-color:var(--orange);color:var(--orange);}
+.f-rating-btn.good{border-color:var(--accent);color:#a78bfa;}
+.f-rating-btn.easy{border-color:var(--green);color:#34d399;}
+.fortress-stats{display:flex;gap:10px;}
+.fort-stat{flex:1;padding:12px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:10px;text-align:center;}
+.fort-stat-num{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--orange);}
+.fort-stat-label{font-size:10px;color:var(--muted2);margin-top:2px;}
+/* ═══════════════════════════════════════
+   MOOD CHECK-IN
+═══════════════════════════════════════ */
+.mood-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.mood-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center;}
+.mood-title{font-size:18px;font-weight:700;margin-bottom:6px;}
+.mood-sub{font-size:13px;color:var(--muted2);margin-bottom:20px;}
+.mood-emojis{display:flex;gap:12px;justify-content:center;margin-bottom:20px;}
+.mood-emoji{font-size:30px;cursor:pointer;padding:10px;border-radius:50%;border:2px solid transparent;transition:all .2s;}
+.mood-emoji:hover,.mood-emoji.sel{border-color:var(--orange);background:rgba(249,115,22,.1);transform:scale(1.15);}
+.mood-ai-msg{padding:12px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:13px;color:var(--muted2);margin-bottom:16px;display:none;}
+/* ═══════════════════════════════════════
+   BOSS BATTLE MODAL
+═══════════════════════════════════════ */
+.boss-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;}
+.boss-modal{background:var(--surface);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:24px;max-width:640px;width:100%;margin:auto;}
+/* MISC */
+@keyframes spin{to{transform:rotate(360deg)}}
+.not-okay-btn{position:fixed;bottom:80px;right:16px;z-index:150;background:rgba(124,58,237,.9);border:1px solid rgba(124,58,237,.5);color:white;padding:10px 14px;border-radius:50px;font-size:12px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;box-shadow:0 4px 20px rgba(124,58,237,.3);}
+.breath-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;}
+.breath-circle{width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.6),rgba(124,58,237,.1));animation:breathe 8s ease-in-out infinite;border:2px solid var(--accent);}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.4);opacity:1}}
+.rival-banner{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.1));border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:14px;font-size:13px;display:flex;gap:12px;align-items:center;}
+
 </style>
 </head>
 <body>
@@ -463,6 +576,10 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
     </div>
     <div class="sidebar-nav">
       <div class="nav-item active" id="nav-chat" onclick="switchTab('chat')"><span class="icon">💬</span> Chat</div>
+      <div class="nav-item" id="nav-story" onclick="switchTab('story')" style="border:1px solid rgba(249,115,22,.2);background:rgba(249,115,22,.04)"><span class="icon">🎬</span> Story Mode</div>
+      <div class="nav-item" id="nav-arjun" onclick="switchTab('arjun')" style="border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.04)"><span class="icon">🤝</span> Arjun</div>
+      <div class="nav-item" id="nav-warroom" onclick="switchTab('warroom')"><span class="icon">🗺️</span> War Room</div>
+      <div class="nav-item" id="nav-fortress" onclick="switchTab('fortress')"><span class="icon">🏰</span> Formula Fortress</div>
       <div class="nav-item" id="nav-planner" onclick="switchTab('planner')"><span class="icon">📅</span> Day Planner</div>
       <div class="nav-item" id="nav-quiz" onclick="switchTab('quiz')"><span class="icon">⚡</span> Quiz</div>
       <div class="nav-item" id="nav-mistakes" onclick="switchTab('mistakes')"><span class="icon">📑</span> Mistake Book</div>
@@ -654,6 +771,133 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       </div>
     </div>
 
+
+    <!-- ═══ MOOD MODAL ═══ -->
+    <div class="mood-modal-overlay" id="mood-modal" style="display:none;align-items:center;justify-content:center;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200">
+      <div class="mood-modal">
+        <div class="mood-title">Good morning 🌅</div>
+        <div class="mood-sub">How are you feeling today?</div>
+        <div class="mood-emojis" id="mood-emojis">
+          <span class="mood-emoji" data-val="1" title="Struggling">😴</span>
+          <span class="mood-emoji" data-val="2" title="Not great">😕</span>
+          <span class="mood-emoji" data-val="3" title="Okay">🙂</span>
+          <span class="mood-emoji" data-val="4" title="Good">😄</span>
+          <span class="mood-emoji" data-val="5" title="Let's go!">🔥</span>
+        </div>
+        <div class="mood-ai-msg" id="mood-ai-msg"></div>
+        <button class="story-btn primary" id="mood-submit-btn" style="width:100%;display:none" onclick="mood.submit()">Let's go →</button>
+        <button class="story-btn secondary" style="width:100%;margin-top:8px;font-size:12px" onclick="mood.dismiss()">Skip for now</button>
+      </div>
+    </div>
+
+    <!-- ═══ BREATHING OVERLAY ═══ -->
+    <div class="breath-overlay" id="breath-overlay">
+      <div style="font-size:14px;color:var(--muted2);font-family:'Space Mono',monospace">BREATHE</div>
+      <div class="breath-circle"></div>
+      <div style="font-size:13px;color:var(--muted2)" id="breath-text">Inhale... 4 counts</div>
+      <button class="story-btn secondary" style="margin-top:8px" onclick="breath.stop()">I'm okay now</button>
+    </div>
+
+    <!-- ═══ "I'M NOT OKAY" BUTTON ═══ -->
+    <button class="not-okay-btn" id="not-okay-btn" onclick="breath.start()" style="display:none">💙 Not okay</button>
+
+    <!-- ═══ STORY MODE TAB ═══ -->
+    <div id="story-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div class="story-panel">
+        <div class="story-hero">
+          <div class="story-hero-title">🎬 STORY MODE</div>
+          <div class="story-hero-sub">Attempt cold → Learn targeted → Attempt again → Master<br>
+          <span style="color:var(--orange);font-family:'Space Mono',monospace;font-size:11px">Real JEE PYQs from MongoDB · 4 Acts</span></div>
+        </div>
+        <div class="story-acts-row" id="story-acts" style="display:none">
+          <div class="story-act-block" id="sact-1"><span class="act-icon">⚔️</span>ACT 1<div style="font-size:9px;margin-top:1px">Challenge</div></div>
+          <div class="story-act-block" id="sact-2"><span class="act-icon">📖</span>ACT 2<div style="font-size:9px;margin-top:1px">Revelation</div></div>
+          <div class="story-act-block" id="sact-3"><span class="act-icon">🔄</span>ACT 3<div style="font-size:9px;margin-top:1px">Comeback</div></div>
+          <div class="story-act-block" id="sact-4"><span class="act-icon">🏆</span>ACT 4<div style="font-size:9px;margin-top:1px">Legend</div></div>
+        </div>
+        <div id="story-config" class="story-config">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px">⚙️ Configure Your Mission</div>
+          <div class="quiz-config-row">
+            <label class="config-label">SUBJECT</label>
+            <div class="config-opts" id="st-subjects">
+              <div class="config-opt sel" data-val="Physics">⚛️ Physics</div>
+              <div class="config-opt" data-val="Chemistry">🧪 Chemistry</div>
+              <div class="config-opt" data-val="Mathematics">∫ Maths</div>
+            </div>
+          </div>
+          <div class="quiz-config-row">
+            <label class="config-label">CHAPTER</label>
+            <input class="form-input" id="st-chapter" placeholder="e.g. Thermodynamics, Integration, Organic Chemistry..." style="margin-top:4px"/>
+          </div>
+          <div class="quiz-config-row">
+            <label class="config-label">EXAM</label>
+            <div class="config-opts" id="st-exam">
+              <div class="config-opt sel" data-val="JEE Main">JEE Main</div>
+              <div class="config-opt" data-val="JEE Advanced">JEE Advanced</div>
+              <div class="config-opt" data-val="NEET">NEET</div>
+            </div>
+          </div>
+          <div style="padding:12px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.18);border-radius:10px;font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.8">
+            ⚔️ <b>ACT 1</b> — 8 real PYQs, no hints · 📖 <b>ACT 2</b> — AI teaches what you missed · 🔄 <b>ACT 3</b> — Same questions again · 🏆 <b>ACT 4</b> — Your improvement revealed
+          </div>
+          <button class="story-btn primary" style="width:100%;padding:13px" onclick="storyMode.start()">Begin Story Mode 🎬</button>
+        </div>
+        <div id="story-rival" style="display:none"></div>
+        <div id="story-content"></div>
+      </div>
+    </div>
+
+    <!-- ═══ ARJUN COMPANION TAB ═══ -->
+    <div id="arjun-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div class="arjun-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="arjun-avatar">🎓</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">Arjun</div>
+            <div style="font-size:11px;color:var(--muted2)">IIT Bombay · Your personal JEE mentor</div>
+          </div>
+          <div style="margin-left:auto;font-size:10px;color:var(--green);background:rgba(16,185,129,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.2)">● online</div>
+        </div>
+      </div>
+      <div class="arjun-msgs" id="arjun-msgs"></div>
+      <div class="arjun-input-row">
+        <input class="form-input" id="arjun-input" placeholder="Ask anything — JEE concepts, doubts, or just talk..." style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();arjun.send();}"/>
+        <button class="send-btn" onclick="arjun.send()">↑</button>
+      </div>
+    </div>
+
+    <!-- ═══ WAR ROOM TAB ═══ -->
+    <div id="warroom-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div class="warroom-panel">
+        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🗺️ WAR ROOM</div>
+        <div id="warroom-stats" class="warroom-stats"></div>
+        <div id="rival-banner"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted2);letter-spacing:1px;margin-top:4px">YOUR CHAPTERS</div>
+        <div id="chapter-grid" class="chapter-grid"><div class="s-loading"><div class="s-ring"></div>Loading war room...</div></div>
+        <button class="story-btn primary" style="margin-top:8px" onclick="boss.open()">⚔️ Start Boss Battle</button>
+      </div>
+    </div>
+
+    <!-- ═══ FORMULA FORTRESS TAB ═══ -->
+    <div id="fortress-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div class="fortress-panel">
+        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🏰 FORMULA FORTRESS</div>
+        <div class="fortress-stats" id="fortress-stats"></div>
+        <div id="fortress-content"><div class="s-loading"><div class="s-ring"></div>Loading formulas...</div></div>
+        <div style="margin-top:8px;padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px">+ Add Formula Manually</div>
+          <input class="form-input" id="f-formula" placeholder="Formula or concept e.g. PV = nRT" style="margin-bottom:8px"/>
+          <input class="form-input" id="f-context" placeholder="Chapter / context e.g. Thermodynamics" style="margin-bottom:8px"/>
+          <button class="story-btn primary" style="width:100%" onclick="fortress.add()">Add to Fortress</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BOSS BATTLE MODAL ═══ -->
+    <div class="boss-modal-overlay" id="boss-modal" style="display:none;align-items:flex-start;justify-content:center;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;overflow-y:auto;padding:20px">
+      <div class="boss-modal"><div id="boss-content"></div></div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -836,7 +1080,7 @@ async function saveSettings(){
 //  TABS
 // ═══════════════════════════════════════
 function switchTab(tab){
-  ['chat','planner','quiz','mistakes'].forEach(t => {
+  ['chat','planner','quiz','mistakes','story','arjun','warroom','fortress'].forEach(t => {
     const el = document.getElementById(`${t}-tab`);
     if(el) el.style.display = 'none';
     document.getElementById(`nav-${t}`)?.classList.remove('active');
@@ -844,11 +1088,15 @@ function switchTab(tab){
   const el = document.getElementById(`${tab}-tab`);
   if(el) el.style.display = 'flex';
   document.getElementById(`nav-${tab}`)?.classList.add('active');
-  const titles = { chat:'GRIND AI', planner:'Day Planner', quiz:'Quiz Arena', mistakes:'Mistake Book' };
+  const titles = { chat:'GRIND AI', planner:'Day Planner', quiz:'Quiz Arena', mistakes:'Mistake Book',
+    story:'🎬 Story Mode', arjun:'🤝 Arjun — Your Mentor', warroom:'🗺️ War Room', fortress:'🏰 Formula Fortress' };
   document.getElementById('topbar-title').textContent = titles[tab] || 'GRIND AI';
   if(tab === 'mistakes') loadMistakes();
   if(tab === 'planner')  loadPlannerView(currentPlannerView);
   if(tab === 'quiz')     soloQuiz.initAdaptive();
+  if(tab === 'warroom')  warRoom.load();
+  if(tab === 'fortress') fortress.load();
+  if(tab === 'arjun')    arjun.init();
   closeSidebar();
 }
 function toggleMobileSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
@@ -1930,6 +2178,523 @@ function showToast(msg){
 //  BOOT
 // ═══════════════════════════════════════
 init();
+
+// ═══════════════════════════════════════════════════════
+//  MOOD CHECK-IN
+// ═══════════════════════════════════════════════════════
+const mood = (() => {
+  let selected = 0;
+  function init() {
+    // Show mood modal if not done today
+    const today = new Date().toISOString().split('T')[0];
+    const lastMood = localStorage.getItem('lastMoodDate');
+    if (lastMood !== today) {
+      setTimeout(() => { document.getElementById('mood-modal').style.display = 'flex'; }, 800);
+    }
+    document.querySelectorAll('.mood-emoji').forEach(el => {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.mood-emoji').forEach(e => e.classList.remove('sel'));
+        this.classList.add('sel');
+        selected = parseInt(this.dataset.val);
+        document.getElementById('mood-submit-btn').style.display = 'block';
+        submit();
+      });
+    });
+  }
+  async function submit() {
+    if (!selected) return;
+    const msgs = {1:'Rest mode 💙 One tiny thing today.',2:'Steady 🌱 Small steps still count.',3:'Good energy 🙂 Let\'s do one chapter.',4:'Strong 💪 Push a bit harder today.',5:'FLOW STATE ⚡ Let\'s dominate.'};
+    const aiMsg = document.getElementById('mood-ai-msg');
+    aiMsg.textContent = msgs[selected];
+    aiMsg.style.display = 'block';
+    try {
+      await apiPost('/api/mood', { mood: selected });
+      localStorage.setItem('lastMoodDate', new Date().toISOString().split('T')[0]);
+    } catch(e) {}
+    setTimeout(dismiss, 1800);
+  }
+  function dismiss() { document.getElementById('mood-modal').style.display = 'none'; }
+  return { init, submit, dismiss };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  BREATHING EXERCISE
+// ═══════════════════════════════════════════════════════
+const breath = (() => {
+  let timer = null, phase = 0;
+  const phases = ['Inhale... 4 counts','Hold... 7 counts','Exhale... 8 counts'];
+  const durations = [4000,7000,8000];
+  function start() {
+    document.getElementById('breath-overlay').style.display = 'flex';
+    phase = 0; next();
+  }
+  function next() {
+    document.getElementById('breath-text').textContent = phases[phase % 3];
+    timer = setTimeout(next, durations[phase % 3]);
+    phase++;
+  }
+  function stop() {
+    clearTimeout(timer);
+    document.getElementById('breath-overlay').style.display = 'none';
+    phase = 0;
+    // Check in with Arjun after
+    setTimeout(() => { switchTab('arjun'); arjun.addMsg('arjun', 'Hey — you okay? Want to talk about it, or just take it easy today? Either is fine.'); }, 400);
+  }
+  return { start, stop };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  ARJUN COMPANION
+// ═══════════════════════════════════════════════════════
+const arjun = (() => {
+  let history = [];
+  let initialized = false;
+  function init() {
+    const msgs = document.getElementById('arjun-msgs');
+    if (!initialized || msgs.children.length === 0) {
+      initialized = true;
+      history = [];
+      msgs.innerHTML = '';
+      const greet = currentUser?.name?.split(' ')[0] || 'bhai';
+      addMsg('arjun', `Kya haal hai ${greet}? Main Arjun — IIT Bombay second year. Tu GRIND pe aaya hai to main hoon tere saath. Koi bhi doubt hो — JEE concept, strategy, ya bas baat karni ho — I'm here. Aaj kya tackle karte hain?`);
+    }
+  }
+  function addMsg(role, text) {
+    const msgs = document.getElementById('arjun-msgs');
+    const div = document.createElement('div');
+    div.className = `arjun-msg ${role}`;
+    div.innerHTML = marked ? marked.parse(text) : text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    if (window.renderMathInElement) renderMathInElement(div, { delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError:false });
+  }
+  async function send() {
+    const input = document.getElementById('arjun-input');
+    const text = input.value.trim();
+    if (!text) return;
+    addMsg('user', text);
+    history.push({ role:'user', content: text });
+    input.value = '';
+    addMsg('arjun', '...');
+    try {
+      const d = await apiPost('/api/arjun', { messages: history });
+      document.querySelector('#arjun-msgs .arjun-msg:last-child').remove();
+      addMsg('arjun', d.reply || 'Hmm, ek second... try again?');
+      history.push({ role:'assistant', content: d.reply });
+    } catch(e) {
+      document.querySelector('#arjun-msgs .arjun-msg:last-child').remove();
+      addMsg('arjun', 'Connection issue yaar. Try again?');
+    }
+  }
+  return { init, send, addMsg };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  WAR ROOM
+// ═══════════════════════════════════════════════════════
+const warRoom = (() => {
+  async function load() {
+    try {
+      const [wr, rival] = await Promise.all([
+        apiFetch('/api/warroom'),
+        apiFetch('/api/rival')
+      ]);
+      // Stats
+      document.getElementById('warroom-stats').innerHTML = `
+        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--green)">${wr.totalConquered}</div><div class="wr-stat-label">CONQUERED</div></div>
+        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--orange)">${wr.total - wr.totalConquered}</div><div class="wr-stat-label">IN BATTLE</div></div>
+        <div class="wr-stat"><div class="wr-stat-num">${currentUser?.quizLevel||1}</div><div class="wr-stat-label">LEVEL</div></div>
+        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--gold)">${currentUser?.quizXP||0}</div><div class="wr-stat-label">XP</div></div>`;
+      // Rival banner
+      document.getElementById('rival-banner').innerHTML = wr.total > 0 ? `
+        <div class="rival-banner">
+          <span style="font-size:20px">⚔️</span>
+          <div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:2px">RIVAL: ARYAN</div>
+          <div style="font-size:12px;color:var(--muted2)">${rival.taunt}</div></div>
+        </div>` : '';
+      // Chapters
+      const grid = document.getElementById('chapter-grid');
+      if (!wr.chapters?.length) {
+        grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">No chapters attempted yet.<br>Start Story Mode to conquer your first chapter! ⚔️</div>';
+        return;
+      }
+      grid.innerHTML = wr.chapters.map(c => `
+        <div class="chapter-card ${c.status}">
+          <div class="chapter-status-icon">${c.conquered?'✅':c.status==='in-battle'?'⚔️':'🔒'}</div>
+          <div class="chapter-info">
+            <div class="chapter-name">${c.chapter}</div>
+            <div class="chapter-sub">${c.subject} · ${c.attempts} attempt${c.attempts!==1?'s':''} · Best: ${c.bestRound2}/8</div>
+            <div class="mastery-mini"><div class="mastery-fill" style="width:${c.masteryPct}%"></div></div>
+          </div>
+          <div style="font-size:11px;font-family:'Space Mono',monospace;color:${c.conquered?'var(--green)':c.status==='in-battle'?'var(--orange)':'var(--muted2)'}">${c.masteryPct}%</div>
+        </div>`).join('');
+    } catch(e) { document.getElementById('chapter-grid').innerHTML = '<div style="color:var(--muted2);font-size:13px;text-align:center;padding:20px">Could not load war room.</div>'; }
+  }
+  return { load };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  FORMULA FORTRESS
+// ═══════════════════════════════════════════════════════
+const fortress = (() => {
+  let currentFormulas = [];
+  let idx = 0;
+  async function load() {
+    try {
+      const d = await apiFetch('/api/formulas');
+      document.getElementById('fortress-stats').innerHTML = `
+        <div class="fort-stat"><div class="fort-stat-num">${d.total}</div><div class="fort-stat-label">TOTAL</div></div>
+        <div class="fort-stat"><div class="fort-stat-num" style="color:var(--green)">${d.mastered}</div><div class="fort-stat-label">MASTERED</div></div>
+        <div class="fort-stat"><div class="fort-stat-num" style="color:var(--orange)">${d.dueCount}</div><div class="fort-stat-label">DUE TODAY</div></div>`;
+      currentFormulas = d.formulas || [];
+      idx = 0;
+      render();
+    } catch(e) {}
+  }
+  function render() {
+    const el = document.getElementById('fortress-content');
+    if (!currentFormulas.length) {
+      el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">
+        ${idx > 0 ? '🏆 All reviews done for today! Come back tomorrow.' : 'No formulas yet. Add one below or complete a Story Mode session to auto-add formulas.'}</div>`;
+      return;
+    }
+    if (idx >= currentFormulas.length) {
+      el.innerHTML = `<div style="text-align:center;padding:30px;font-size:13px">
+        <div style="font-size:24px;margin-bottom:10px">🏆</div>
+        <div style="font-weight:700;margin-bottom:6px">All ${idx} reviews done!</div>
+        <div style="color:var(--muted2)">Formula Fortress defended for today. Come back tomorrow.</div>
+      </div>`;
+      return;
+    }
+    const f = currentFormulas[idx];
+    el.innerHTML = `
+      <div class="formula-card">
+        <div style="font-size:11px;color:var(--muted2);font-family:'Space Mono',monospace">${idx+1}/${currentFormulas.length} · ${f.subject||''} ${f.chapter?'· '+f.chapter:''}</div>
+        <div class="formula-text" id="f-text">${f.formula}</div>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:8px">${f.context||''}</div>
+        <div class="formula-rating">
+          <button class="f-rating-btn forgot" onclick="fortress.review('${f._id}',0)">😰 Forgot</button>
+          <button class="f-rating-btn hard" onclick="fortress.review('${f._id}',3)">😅 Hard</button>
+          <button class="f-rating-btn good" onclick="fortress.review('${f._id}',4)">😊 Good</button>
+          <button class="f-rating-btn easy" onclick="fortress.review('${f._id}',5)">⚡ Easy</button>
+        </div>
+      </div>`;
+    if (window.renderMathInElement) renderMathInElement(document.getElementById('f-text'), { delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError:false });
+  }
+  async function review(id, quality) {
+    try {
+      await apiPost(`/api/formulas/${id}/review`, { quality });
+      idx++;
+      render();
+    } catch(e) {}
+  }
+  async function add() {
+    const formula = document.getElementById('f-formula').value.trim();
+    const context = document.getElementById('f-context').value.trim();
+    if (!formula) return;
+    try {
+      await apiPost('/api/formulas', { formula, context });
+      document.getElementById('f-formula').value = '';
+      document.getElementById('f-context').value = '';
+      load();
+    } catch(e) {}
+  }
+  return { load, review, add };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  BOSS BATTLE
+// ═══════════════════════════════════════════════════════
+const boss = (() => {
+  let state = { questions:[], answers:[], score:0, neg:0, currentQ:0, total:0, type:'chapter', subject:'', chapter:'', bossName:'' };
+  function open() {
+    document.getElementById('boss-modal').style.display = 'flex';
+    document.getElementById('boss-content').innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:32px">⚔️</div>
+        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-top:8px">BOSS BATTLE</div>
+        <div style="font-size:12px;color:var(--muted2);margin-top:4px">Negative marking applies. No hints.</div>
+      </div>
+      <div class="quiz-config-row">
+        <label class="config-label">SUBJECT</label>
+        <div class="config-opts" id="boss-subjects">
+          <div class="config-opt sel" data-val="Physics">Physics</div>
+          <div class="config-opt" data-val="Chemistry">Chemistry</div>
+          <div class="config-opt" data-val="Mathematics">Maths</div>
+        </div>
+      </div>
+      <div class="quiz-config-row">
+        <label class="config-label">TYPE</label>
+        <div class="config-opts" id="boss-type">
+          <div class="config-opt sel" data-val="chapter">⚔️ Chapter Boss (15 Qs)</div>
+          <div class="config-opt" data-val="world">🌍 World Boss (25 Qs — All chapters)</div>
+        </div>
+      </div>
+      <div id="boss-chapter-row" class="quiz-config-row">
+        <label class="config-label">CHAPTER</label>
+        <input class="form-input" id="boss-chapter" placeholder="Chapter name..." style="margin-top:4px"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="story-btn secondary" style="flex:1" onclick="boss.close()">Cancel</button>
+        <button class="story-btn primary" style="flex:1" onclick="boss.start()">⚔️ Start Battle</button>
+      </div>`;
+    document.querySelectorAll('#boss-subjects .config-opt, #boss-type .config-opt').forEach(opt => {
+      opt.addEventListener('click', function() {
+        this.closest('.config-opts').querySelectorAll('.config-opt').forEach(o=>o.classList.remove('sel'));
+        this.classList.add('sel');
+        if(this.closest('#boss-type')) {
+          document.getElementById('boss-chapter-row').style.display = this.dataset.val==='world'?'none':'block';
+        }
+      });
+    });
+  }
+  async function start() {
+    state.subject = document.querySelector('#boss-subjects .config-opt.sel')?.dataset.val || 'Physics';
+    state.type = document.querySelector('#boss-type .config-opt.sel')?.dataset.val || 'chapter';
+    state.chapter = document.getElementById('boss-chapter')?.value.trim() || '';
+    document.getElementById('boss-content').innerHTML = `<div class="s-loading"><div class="s-ring"></div>Summoning ${state.type==='world'?'World':'Chapter'} Boss...</div>`;
+    try {
+      const d = await apiPost('/api/boss/start', { subject:state.subject, chapter:state.chapter, type:state.type });
+      state.questions = d.questions;
+      state.total = d.questions.length;
+      state.bossName = d.bossName;
+      state.answers = new Array(state.total).fill(null);
+      state.score = 0; state.neg = 0; state.currentQ = 0;
+      renderQ();
+    } catch(e) { document.getElementById('boss-content').innerHTML = `<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="boss.close()">Close</button></div>`; }
+  }
+  function renderQ() {
+    const q = state.questions[state.currentQ];
+    const letters = ['A','B','C','D'];
+    document.getElementById('boss-content').innerHTML = `
+      <div style="font-size:12px;color:var(--red);font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between">
+        <span>⚔️ ${state.bossName}</span><span>Q${state.currentQ+1}/${state.total}</span>
+      </div>
+      <div class="quiz-progress" style="margin-bottom:14px"><div class="quiz-progress-fill" style="width:${state.currentQ/state.total*100}%"></div></div>
+      <div style="font-size:13px;line-height:1.8;margin-bottom:14px" id="boss-qtext">${q.question}</div>
+      <div id="boss-opts">
+        ${q.options.map((o,i)=>`<button class="story-opt" onclick="boss.answer(${i})" id="bopt-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}
+      </div>
+      <div id="boss-exp" style="display:none" class="quiz-explanation"></div>`;
+    if(window.renderMathInElement) renderMathInElement(document.getElementById('boss-qtext'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  }
+  function answer(optIdx) {
+    const q = state.questions[state.currentQ];
+    const letters = ['A','B','C','D'];
+    const chosen = letters[optIdx];
+    const correct = chosen === q.answer;
+    const correctIdx = letters.indexOf(q.answer);
+    for(let i=0;i<4;i++){const b=document.getElementById(`bopt-${i}`);if(b){b.disabled=true;b.style.pointerEvents='none';}}
+    document.getElementById(`bopt-${optIdx}`)?.classList.add(correct?'correct':'wrong');
+    if(!correct) document.getElementById(`bopt-${correctIdx}`)?.classList.add('correct');
+    if(correct) state.score++;
+    else if(state.answers[state.currentQ]===null) state.neg++;
+    state.answers[state.currentQ] = chosen;
+    const exp = document.getElementById('boss-exp');
+    if(exp){exp.style.display='block';exp.innerHTML=`<b style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✅':'❌'}</b> ${q.explanation||''}<div style="margin-top:10px"><button class="story-btn primary" onclick="boss.next()">${state.currentQ<state.total-1?'Next →':'See Results'}</button></div>`;}
+  }
+  async function next() {
+    if(state.currentQ < state.total-1) { state.currentQ++; renderQ(); }
+    else {
+      const finalScore = state.score - state.neg;
+      document.getElementById('boss-content').innerHTML = `<div style="text-align:center"><div style="font-size:24px;margin-bottom:12px">${finalScore >= state.total*0.6?'🔥':'💀'}</div><div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:6px">${state.bossName}</div><div style="font-size:14px;color:var(--muted2);margin-bottom:16px">Score: ${state.score} correct · -${state.neg} penalties = <b style="color:${finalScore>=0?'var(--green)':'var(--red)'}">${finalScore}</b>/${state.total}</div><div style="font-size:13px;margin-bottom:20px;color:var(--muted2)">${finalScore>=state.total*0.6?'BOSS DEFEATED! ⚔️ Chapter conquered.':'Boss wins this round. Review weak concepts and try again.'}</div><div style="display:flex;gap:10px"><button class="story-btn secondary" style="flex:1" onclick="boss.close()">Close</button><button class="story-btn primary" style="flex:1" onclick="boss.start()">Rematch</button></div></div>`;
+      try { await apiPost('/api/boss/complete',{subject:state.subject,chapter:state.chapter,type:state.type,score:state.score,total:state.total}); } catch(e){}
+    }
+  }
+  function close() { document.getElementById('boss-modal').style.display='none'; }
+  return { open, start, answer, next, close };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  STORY MODE ENGINE
+// ═══════════════════════════════════════════════════════
+const storyMode = (() => {
+  let st = { act:0, subject:'Physics', chapter:'', exam:'JEE Main', questions:[], r1:[], r2:[], r1Score:0, r2Score:0, q:0, phase:'r1' };
+
+  function setAct(n) {
+    st.act = n;
+    document.getElementById('story-acts').style.display = n>0?'flex':'none';
+    ['sact-1','sact-2','sact-3','sact-4'].forEach((id,i)=>{
+      const el=document.getElementById(id);
+      el.classList.remove('active','done');
+      if(i+1<n) el.classList.add('done');
+      if(i+1===n) el.classList.add('active');
+    });
+  }
+  function loading(msg) {
+    document.getElementById('story-content').innerHTML = `<div class="s-loading"><div class="s-ring"></div><div>${msg}</div></div>`;
+  }
+  async function start() {
+    const ch = document.getElementById('st-chapter').value.trim();
+    if(!ch){ document.getElementById('st-chapter').style.borderColor='var(--red)'; return; }
+    st.subject = document.querySelector('#st-subjects .config-opt.sel')?.dataset.val||'Physics';
+    st.exam = document.querySelector('#st-exam .config-opt.sel')?.dataset.val||'JEE Main';
+    st.chapter = ch; st.r1=[]; st.r2=[]; st.r1Score=0; st.r2Score=0; st.q=0; st.phase='r1';
+    document.getElementById('story-config').style.display='none';
+    setAct(1);
+    loading(`Fetching 8 real ${st.exam} PYQs for <b>${st.chapter}</b>...`);
+    try {
+      const d = await apiPost('/api/story/questions',{subject:st.subject,chapter:st.chapter,exam:st.exam});
+      if(!d.questions?.length) throw new Error('No questions found');
+      st.questions = d.questions;
+      renderQ('r1');
+    } catch(e) {
+      document.getElementById('story-content').innerHTML = `<div style="text-align:center;padding:20px;color:var(--red)">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="storyMode.reset()">Try Again</button></div>`;
+    }
+  }
+  function renderQ(phase) {
+    st.phase=phase; st.q=0;
+    setAct(phase==='r1'?1:3);
+    renderCurrent();
+  }
+  function renderCurrent() {
+    const q=st.questions[st.q], total=st.questions.length, letters=['A','B','C','D'];
+    document.getElementById('story-content').innerHTML = `
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted2);margin-bottom:4px"><span>${st.phase==='r1'?'⚔️ Round 1 — Cold Attempt':'🔄 Round 2 — After Learning'}</span><span>${st.q}/${total}</span></div>
+        <div class="quiz-progress"><div class="quiz-progress-fill" style="width:${st.q/total*100}%"></div></div>
+      </div>
+      <div class="story-q-card">
+        <div class="story-q-meta"><span>Q${st.q+1} of ${total}</span><span class="concept-badge">${q.concept||''}</span></div>
+        ${q.year?`<div style="margin-bottom:10px"><span class="quiz-pyq-badge">${q.exam||''} ${q.year}</span></div>`:''}
+        <div class="quiz-question" id="sq-text">${q.question}</div>
+        <div id="sq-opts">${q.options.map((o,i)=>`<button class="story-opt" onclick="storyMode.answer(${i})" id="so-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}</div>
+        <div id="sq-exp" style="display:none" class="quiz-explanation"></div>
+      </div>`;
+    if(window.renderMathInElement) renderMathInElement(document.getElementById('sq-text'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  }
+  function answer(optIdx) {
+    const q=st.questions[st.q], letters=['A','B','C','D'], chosen=letters[optIdx], correct=chosen===q.answer, ci=letters.indexOf(q.answer);
+    for(let i=0;i<4;i++){const b=document.getElementById(`so-${i}`);if(b){b.disabled=true;b.style.pointerEvents='none';}}
+    document.getElementById(`so-${optIdx}`)?.classList.add(correct?'correct':'wrong');
+    if(!correct) document.getElementById(`so-${ci}`)?.classList.add('correct');
+    if(st.phase==='r1'){st.r1[st.q]=chosen;if(correct)st.r1Score++;}
+    else{st.r2[st.q]=chosen;if(correct)st.r2Score++;}
+    const exp=document.getElementById('sq-exp');
+    if(exp){
+      exp.style.display='block';
+      exp.innerHTML=`<b style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✅ Correct!':'❌ Wrong'}</b>${q.explanation?'<br>'+q.explanation:''}${q.cheatSheet?`<br><b style="color:var(--gold)">⚡ Key: </b>${q.cheatSheet}`:''}
+      <div style="margin-top:10px"><button class="story-btn primary" onclick="storyMode.next()">${st.q<st.questions.length-1?'Next →':st.phase==='r1'?'See AI Teaching 📖':'See Results 🏆'}</button></div>`;
+      if(window.renderMathInElement) renderMathInElement(exp,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+    }
+  }
+  async function next() {
+    if(st.q<st.questions.length-1){st.q++;renderCurrent();}
+    else if(st.phase==='r1') await teach();
+    else results();
+  }
+  async function teach() {
+    setAct(2);
+    const wrong=st.questions.filter((_,i)=>st.r1[i]!==st.questions[i].answer);
+    loading(`🧠 GRIND is targeting your ${st.r1Score}/8 performance...<br><small style="color:var(--muted)">Teaching your weak concepts first</small>`);
+    try {
+      const d=await apiPost('/api/story/teach',{subject:st.subject,chapter:st.chapter,questions:st.questions,round1Answers:st.r1,score:st.r1Score});
+      document.getElementById('story-content').innerHTML = `
+        <div class="story-q-card" style="border-color:rgba(249,115,22,.3)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">⚔️ Round 1: ${st.r1Score}/8 before learning</div>
+          <div style="font-size:12px;color:var(--muted2)">${wrong.length} concepts auto-saved to Mistake Book</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--orange);margin:4px 0">📖 ACT 2 — THE REVELATION</div>
+        <div class="story-teach-box" id="teach-box">${marked?marked.parse(d.teaching||''):'Loading...'}</div>
+        <button class="story-btn primary" style="width:100%;padding:13px;margin-top:4px" onclick="storyMode.r2()">🔄 Ready — Start Round 2</button>`;
+      if(window.renderMathInElement) renderMathInElement(document.getElementById('teach-box'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+    } catch(e) {
+      document.getElementById('story-content').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn primary" style="margin-top:12px" onclick="storyMode.r2()">Skip to Round 2</button></div>`;
+    }
+  }
+  function r2(){renderQ('r2');}
+  async function results() {
+    setAct(4);
+    const imp=st.r2Score-st.r1Score, pct=Math.round(st.r2Score/8*100);
+    const xp=Math.max(20,imp*20+st.r2Score*8);
+    try{await apiPost('/api/story/complete',{subject:st.subject,chapter:st.chapter,exam:st.exam,questions:st.questions,round1Score:st.r1Score,round2Score:st.r2Score,round2Answers:st.r2,xpEarned:xp});}catch(e){}
+    const msg=imp>=5?'🔥 Huge improvement. This is exactly the method.'
+             :imp>=3?`📈 +${imp} more correct. Keep going.`
+             :imp>=1?`👍 +${imp}. You're building — repetition is key.`
+             :st.r2Score>=6?'💎 Already strong. Push to Advanced level next.'
+             :'🔄 Attempt this chapter again in 2 days — it will click.';
+    document.getElementById('story-content').innerHTML=`
+      <div class="story-q-card" style="text-align:center;border-color:rgba(249,115,22,.3)">
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px">🏆 ACT 4 — THE LEGEND</div>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:14px">${st.chapter} · ${st.subject}</div>
+        <div class="story-score-row">
+          <div class="score-box r1"><div class="score-num" style="color:#fca5a5">${st.r1Score}/8</div><div class="score-label">BEFORE</div></div>
+          <div style="font-size:18px;display:flex;align-items:center">→</div>
+          <div class="score-box r2"><div class="score-num" style="color:#34d399">${st.r2Score}/8</div><div class="score-label">AFTER</div></div>
+          <div class="score-box imp"><div class="score-num" style="color:var(--orange)">+${imp}</div><div class="score-label">GAINED</div></div>
+        </div>
+        <div class="impr-bar"><div class="impr-fill" style="width:${pct}%"></div></div>
+        <div style="font-family:'Space Mono',monospace;font-size:18px;color:var(--gold);font-weight:700;margin:10px 0">+${xp} XP 🎯</div>
+        <div style="font-size:13px;color:var(--muted2);margin-bottom:16px">${msg}</div>
+        <div style="display:flex;gap:10px"><button class="story-btn primary" style="flex:1" onclick="storyMode.reset()">🎬 New Chapter</button><button class="story-btn secondary" style="flex:1" onclick="switchTab('mistakes')">📑 Mistakes</button></div>
+      </div>`;
+  }
+  function reset() {
+    st={act:0,subject:'Physics',chapter:'',exam:'JEE Main',questions:[],r1:[],r2:[],r1Score:0,r2Score:0,q:0,phase:'r1'};
+    document.getElementById('story-config').style.display='block';
+    document.getElementById('story-content').innerHTML='';
+    document.getElementById('st-chapter').value='';
+    document.getElementById('story-acts').style.display='none';
+  }
+  // init config-opt clicks
+  setTimeout(()=>{
+    document.querySelectorAll('#st-subjects .config-opt,#st-exam .config-opt').forEach(o=>{
+      o.addEventListener('click',function(){this.closest('.config-opts').querySelectorAll('.config-opt').forEach(x=>x.classList.remove('sel'));this.classList.add('sel');});
+    });
+  },500);
+  return {start,answer,next,r2,reset};
+})();
+
+// ═══════════════════════════════════════════════════════
+//  WEEKLY WAR REPORT
+// ═══════════════════════════════════════════════════════
+async function generateWeeklyReport() {
+  try {
+    const d = await apiFetch('/api/report/weekly');
+    const modal = document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:16px">📊 WEEKLY WAR REPORT</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="flex:1;min-width:80px;padding:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--orange)">${d.weeklyXP}</div><div style="font-size:10px;color:var(--muted2)">XP THIS WEEK</div></div>
+        <div style="flex:1;min-width:80px;padding:12px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">${d.streak}</div><div style="font-size:10px;color:var(--muted2)">DAY STREAK</div></div>
+        <div style="flex:1;min-width:80px;padding:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)">${d.avgImprovement}</div><div style="font-size:10px;color:var(--muted2)">AVG IMPROVEMENT</div></div>
+      </div>
+      <div style="font-size:13px;line-height:1.9;color:var(--text);margin-bottom:16px">${marked?marked.parse(d.reportText||''):(d.reportText||'')}</div>
+      <button style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--surface);color:var(--muted2);cursor:pointer;border:1px solid var(--border)" onclick="this.closest('div[style]').remove()">Close</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.onclick = e => { if(e.target===modal) modal.remove(); };
+  } catch(e) { alert('Could not load report. Try again.'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  API HELPERS
+// ═══════════════════════════════════════════════════════
+async function apiFetch(url) {
+  const r = await fetch(url);
+  if(!r.ok) throw new Error((await r.json()).error || 'Request failed');
+  return r.json();
+}
+async function apiPost(url, body) {
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(!r.ok) throw new Error((await r.json()).error || 'Request failed');
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT ON LOAD
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    // Show "I'm not okay" button after login
+    if(currentUser) {
+      document.getElementById('not-okay-btn').style.display = 'block';
+      mood.init();
+    }
+  }, 1500);
+});
+
 </script>
 </body>
 </html>
