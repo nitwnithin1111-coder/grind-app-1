@@ -33,11 +33,11 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .particle{position:absolute;border-radius:50%;animation:drift linear infinite;opacity:.4;}
 @keyframes drift{0%{transform:translateY(100vh) rotate(0deg)}100%{transform:translateY(-100px) rotate(360deg)}}
 
-/* SCREENS */
+/* ── SCREENS ── */
 .screen{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:var(--bg);}
 .screen.active{display:flex;}
 
-/* LOGIN */
+/* ── LOGIN ── */
 .login-card{background:rgba(15,15,32,.97);backdrop-filter:blur(40px);border:1px solid rgba(124,58,237,.3);border-radius:24px;padding:40px 36px;width:90%;max-width:400px;position:relative;overflow:hidden;text-align:center;box-shadow:0 0 60px rgba(124,58,237,.15);}
 .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent));}
 .login-logo{width:64px;height:64px;margin:0 auto 20px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 0 40px rgba(124,58,237,.4);}
@@ -47,7 +47,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .google-btn:hover{background:rgba(255,255,255,.1);transform:translateY(-1px);}
 .login-note{font-size:10px;color:var(--muted);margin-top:14px;font-family:'Space Mono',monospace;}
 
-/* ONBOARDING */
+/* ── ONBOARDING ── */
 #onboarding-screen{overflow-y:auto;padding:20px;align-items:flex-start;padding-top:40px;}
 .onboard-card{background:rgba(15,15,32,.97);backdrop-filter:blur(40px);border:1px solid rgba(124,58,237,.3);border-radius:20px;padding:32px 28px;width:100%;max-width:460px;position:relative;overflow:hidden;margin:auto;}
 .onboard-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
@@ -60,11 +60,11 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .ob-submit{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;}
 .ob-submit:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(124,58,237,.4);}
 
-/* MAIN APP */
+/* ── MAIN APP ── */
 #app{display:none;height:100dvh;flex-direction:row;}
 #app.active{display:flex;}
 
-/* SIDEBAR */
+/* ── SIDEBAR ── */
 #sidebar{width:260px;flex-shrink:0;background:#0d0d0d;border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s;z-index:20;position:relative;}
 #sidebar.collapsed{width:0;overflow:hidden;border:none;}
 .sidebar-pull{position:absolute;right:-14px;top:50%;transform:translateY(-50%);width:14px;height:48px;background:#0d0d0d;border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:10px;transition:background .2s;}
@@ -98,10 +98,10 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .logout-btn{font-size:18px;cursor:pointer;color:var(--muted);transition:color .2s;}
 .logout-btn:hover{color:var(--red);}
 
-/* MAIN */
+/* ── MAIN ── */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;}
 
-/* TOPBAR */
+/* ── TOPBAR ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(10,10,24,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10;}
 .hamburger{display:none;font-size:22px;cursor:pointer;color:var(--muted2);}
 .topbar-title{font-size:14px;font-weight:600;}
@@ -111,7 +111,13 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 .topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 
-/* CHAT */
+/* ── TAB CONTAINER ── */
+/* All tabs are absolutely positioned inside #main-content so only one shows at a time */
+#main-content{flex:1;position:relative;overflow:hidden;}
+.tab-panel{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
+.tab-panel.tab-active{display:flex;}
+
+/* ── CHAT ── */
 #chat-area{flex:1;overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:14px;}
 #chat-area::-webkit-scrollbar{width:3px;}
 #chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
@@ -153,7 +159,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .tw-cursor{display:inline-block;width:2px;height:14px;background:var(--accent);margin-left:2px;animation:curBlink .9s ease-in-out infinite;vertical-align:middle;}
 @keyframes curBlink{0%,100%{opacity:1}50%{opacity:0}}
 
-/* INPUT */
+/* ── INPUT ── */
 .input-wrap{padding:10px 16px 14px;background:rgba(10,10,24,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);flex-shrink:0;}
 .input-row{display:flex;gap:9px;align-items:flex-end;}
 #inp{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:12px 16px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;resize:none;min-height:46px;max-height:120px;line-height:1.5;transition:border-color .2s,box-shadow .2s;}
@@ -165,7 +171,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 #send-btn.stop-mode{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.5);}
 .input-foot{text-align:center;font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:6px;}
 
-/* SETTINGS */
+/* ── SETTINGS ── */
 .settings-panel{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);}
 .settings-panel.open{display:flex;}
 .settings-card{background:rgba(15,15,32,.98);border:1px solid rgba(124,58,237,.3);border-radius:20px;padding:28px;width:90%;max-width:420px;position:relative;}
@@ -184,10 +190,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .settings-input:focus{outline:none;border-color:var(--accent);}
 .settings-save-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:white;font-size:14px;font-weight:600;cursor:pointer;}
 
-/* QUIZ */
-#quiz-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
-#quiz-tab.active-tab{display:flex;}
-#quiz-panel{flex:1;padding:20px;gap:16px;overflow-y:auto;display:flex;flex-direction:column;}
+/* ── QUIZ ── */
+.quiz-scroll{flex:1;padding:20px;gap:16px;overflow-y:auto;display:flex;flex-direction:column;}
 .quiz-mode-select{display:flex;gap:12px;}
 .quiz-mode-btn{flex:1;padding:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:all .2s;text-align:center;color:var(--muted2);}
 .quiz-mode-btn:hover,.quiz-mode-btn.sel{border-color:var(--accent);color:var(--accent);background:rgba(124,58,237,.08);}
@@ -227,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .timer-bar-fill{height:3px;border-radius:3px;background:var(--gold);transition:width 1s linear,background .3s;}
 .adaptive-banner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;margin-bottom:12px;}
 
-/* MULTIPLAYER */
+/* ── MULTIPLAYER ── */
 .room-card{background:rgba(15,15,32,.9);border:1px solid rgba(124,58,237,.2);border-radius:16px;padding:20px;}
 .room-code{font-family:'Space Mono',monospace;font-size:36px;font-weight:700;text-align:center;letter-spacing:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:16px 0;}
 .player-list{display:flex;flex-direction:column;gap:8px;}
@@ -240,9 +244,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-150px) scale(1.5)}}
 .sabotage-blur{filter:blur(8px);transition:filter .3s;}
 
-/* PLANNER */
-#planner-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
-#planner-tab.active-tab{display:flex;}
+/* ── PLANNER ── */
 .planner-wrap{flex:1;display:flex;overflow:hidden;}
 .planner-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--border);padding:12px;background:rgba(10,10,18,.5);}
 .planner-nav-item{padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13px;color:var(--muted2);transition:all .18s;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
@@ -274,6 +276,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .stat-label{font-size:10px;color:var(--muted2);margin-top:2px;}
 .add-task-card{background:rgba(124,58,237,.05);border:1px dashed rgba(124,58,237,.3);border-radius:12px;padding:14px 16px;cursor:pointer;transition:all .2s;text-align:center;color:var(--muted2);font-size:13px;}
 .add-task-card:hover{background:rgba(124,58,237,.1);border-color:var(--accent);color:var(--accent);}
+
+/* ── MODALS ── */
 .modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal-card{background:rgba(15,15,32,.98);border:1px solid rgba(124,58,237,.3);border-radius:18px;padding:24px;width:90%;max-width:420px;position:relative;}
@@ -288,10 +292,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .form-select{width:100%;padding:9px 12px;background:rgba(10,10,24,.9);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;}
 .modal-submit{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:11px;color:white;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;font-family:'Plus Jakarta Sans',sans-serif;}
 
-/* MISTAKES */
-#mistakes-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
-#mistakes-tab.active-tab{display:flex;}
-#mistakes-panel{flex:1;padding:20px;gap:14px;overflow-y:auto;display:flex;flex-direction:column;}
+/* ── MISTAKES ── */
+.mistakes-scroll{flex:1;padding:20px;gap:14px;overflow-y:auto;display:flex;flex-direction:column;}
 .mistake-card{background:rgba(15,15,32,.8);border:1px solid rgba(239,68,68,.2);border-radius:14px;padding:16px;position:relative;}
 .mistake-q{font-size:14px;font-weight:600;margin-bottom:6px;line-height:1.5;}
 .mistake-meta{font-size:11px;color:var(--muted2);font-family:'Space Mono',monospace;}
@@ -299,29 +301,11 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .mistake-del:hover{color:var(--red);}
 .mistake-exp{font-size:12px;color:#b0b0cc;margin-top:8px;line-height:1.6;}
 
-/* TOAST */
+/* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(124,58,237,.9);backdrop-filter:blur(20px);border:1px solid rgba(124,58,237,.4);padding:10px 20px;border-radius:20px;font-size:13px;color:white;z-index:9999;animation:toastIn .3s ease;white-space:nowrap;}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
-/* MOBILE */
-@media(max-width:768px){
-  #sidebar{position:fixed;left:-260px;height:100dvh;}
-  #sidebar.open{left:0;box-shadow:10px 0 40px rgba(0,0,0,.5);}
-  #sidebar.collapsed{left:-260px;}
-  .sidebar-pull{display:none;}
-  .hamburger{display:block;}
-  #app{flex-direction:column;}
-  #main{width:100%;}
-  .quiz-mode-select{flex-direction:column;}
-  .topbar-right{gap:5px;}
-  .planner-sidebar{width:130px;}
-}
-
-/* ═══════════════════════════════════════
-   STORY MODE
-═══════════════════════════════════════ */
-#story-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
-#story-tab.active-tab,#story-tab[style*="flex"]{display:flex!important;}
+/* ── STORY MODE ── */
 .story-panel{flex:1;padding:16px;gap:14px;overflow-y:auto;display:flex;flex-direction:column;}
 .story-hero{background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(124,58,237,.1));border:1px solid rgba(249,115,22,.3);border-radius:18px;padding:22px;text-align:center;}
 .story-hero-title{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:6px;}
@@ -357,21 +341,17 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .story-btn.secondary{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border);}
 .s-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:30px;color:var(--muted2);font-size:13px;text-align:center;}
 .s-ring{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
-/* ═══════════════════════════════════════
-   ARJUN COMPANION
-═══════════════════════════════════════ */
-#arjun-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.arjun-header{padding:16px;border-bottom:1px solid var(--border);background:rgba(124,58,237,.06);}
+
+/* ── ARJUN ── */
+.arjun-header{padding:16px;border-bottom:1px solid var(--border);background:rgba(124,58,237,.06);flex-shrink:0;}
 .arjun-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--orange));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .arjun-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
 .arjun-msg{max-width:85%;padding:12px 15px;border-radius:14px;font-size:13px;line-height:1.7;}
 .arjun-msg.arjun{background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);align-self:flex-start;border-radius:14px 14px 14px 4px;}
 .arjun-msg.user{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);align-self:flex-end;border-radius:14px 14px 4px 14px;}
-.arjun-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;}
-/* ═══════════════════════════════════════
-   WAR ROOM
-═══════════════════════════════════════ */
-#warroom-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.arjun-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;}
+
+/* ── WAR ROOM ── */
 .warroom-panel{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
 .warroom-stats{display:flex;gap:10px;flex-wrap:wrap;}
 .wr-stat{flex:1;min-width:80px;padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px;text-align:center;}
@@ -387,10 +367,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .chapter-sub{font-size:11px;color:var(--muted2);margin-top:2px;}
 .mastery-mini{height:4px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:6px;}
 .mastery-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--orange),var(--green));transition:width .8s ease;}
-/* ═══════════════════════════════════════
-   FORMULA FORTRESS
-═══════════════════════════════════════ */
-#fortress-tab{display:none;flex:1;flex-direction:column;overflow:hidden;}
+
+/* ── FORMULA FORTRESS ── */
 .fortress-panel{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
 .formula-card{background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;}
 .formula-text{font-size:15px;line-height:1.8;margin:14px 0;min-height:60px;}
@@ -405,10 +383,10 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .fort-stat{flex:1;padding:12px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:10px;text-align:center;}
 .fort-stat-num{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--orange);}
 .fort-stat-label{font-size:10px;color:var(--muted2);margin-top:2px;}
-/* ═══════════════════════════════════════
-   MOOD CHECK-IN
-═══════════════════════════════════════ */
+
+/* ── MOOD ── */
 .mood-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.mood-modal-overlay.open{display:flex;}
 .mood-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center;}
 .mood-title{font-size:18px;font-weight:700;margin-bottom:6px;}
 .mood-sub{font-size:13px;color:var(--muted2);margin-bottom:20px;}
@@ -416,25 +394,39 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .mood-emoji{font-size:30px;cursor:pointer;padding:10px;border-radius:50%;border:2px solid transparent;transition:all .2s;}
 .mood-emoji:hover,.mood-emoji.sel{border-color:var(--orange);background:rgba(249,115,22,.1);transform:scale(1.15);}
 .mood-ai-msg{padding:12px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:13px;color:var(--muted2);margin-bottom:16px;display:none;}
-/* ═══════════════════════════════════════
-   BOSS BATTLE MODAL
-═══════════════════════════════════════ */
+
+/* ── BOSS BATTLE ── */
 .boss-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;}
+.boss-modal-overlay.open{display:flex;}
 .boss-modal{background:var(--surface);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:24px;max-width:640px;width:100%;margin:auto;}
-/* MISC */
-@keyframes spin{to{transform:rotate(360deg)}}
-.not-okay-btn{position:fixed;bottom:80px;right:16px;z-index:150;background:rgba(124,58,237,.9);border:1px solid rgba(124,58,237,.5);color:white;padding:10px 14px;border-radius:50px;font-size:12px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;box-shadow:0 4px 20px rgba(124,58,237,.3);}
+
+/* ── BREATHING ── */
 .breath-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;}
+.breath-overlay.open{display:flex;}
 .breath-circle{width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.6),rgba(124,58,237,.1));animation:breathe 8s ease-in-out infinite;border:2px solid var(--accent);}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.4);opacity:1}}
+.not-okay-btn{position:fixed;bottom:80px;right:16px;z-index:150;background:rgba(124,58,237,.9);border:1px solid rgba(124,58,237,.5);color:white;padding:10px 14px;border-radius:50px;font-size:12px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;box-shadow:0 4px 20px rgba(124,58,237,.3);display:none;}
 .rival-banner{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(249,115,22,.1));border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:14px;font-size:13px;display:flex;gap:12px;align-items:center;}
 
+/* ── MOBILE ── */
+@media(max-width:768px){
+  #sidebar{position:fixed;left:-260px;height:100dvh;transition:left .3s;}
+  #sidebar.open{left:0;box-shadow:10px 0 40px rgba(0,0,0,.5);}
+  #sidebar.collapsed{left:-260px;}
+  .sidebar-pull{display:none;}
+  .hamburger{display:block;}
+  #app{flex-direction:column;}
+  #main{width:100%;}
+  .quiz-mode-select{flex-direction:column;}
+  .topbar-right{gap:5px;}
+  .planner-sidebar{width:130px;}
+}
 </style>
 </head>
 <body>
 <div class="cosmic-bg"><div class="grid-overlay"></div></div>
 
-<!-- LOGIN -->
+<!-- ══ LOGIN ══ -->
 <div id="login-screen" class="screen">
   <div class="login-card">
     <div class="login-logo">🧠</div>
@@ -448,7 +440,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   </div>
 </div>
 
-<!-- ONBOARDING -->
+<!-- ══ ONBOARDING ══ -->
 <div id="onboarding-screen" class="screen">
   <div class="onboard-card">
     <div style="font-size:30px;margin-bottom:14px">👋</div>
@@ -508,7 +500,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   </div>
 </div>
 
-<!-- SETTINGS PANEL -->
+<!-- ══ SETTINGS PANEL ══ -->
 <div class="settings-panel" id="settings-panel">
   <div class="settings-card">
     <div class="settings-title">⚙️ Settings</div>
@@ -525,7 +517,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   </div>
 </div>
 
-<!-- ADD TASK MODAL -->
+<!-- ══ ADD TASK MODAL ══ -->
 <div class="modal-overlay" id="add-task-modal">
   <div class="modal-card">
     <div class="modal-title">➕ Add Task</div>
@@ -540,7 +532,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   </div>
 </div>
 
-<!-- AI PLANNER MODAL -->
+<!-- ══ AI PLANNER MODAL ══ -->
 <div class="modal-overlay" id="ai-planner-modal">
   <div class="modal-card">
     <div class="modal-title">🤖 Generate AI Study Plan</div>
@@ -562,8 +554,45 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- ══ MOOD MODAL ══ -->
+<div class="mood-modal-overlay" id="mood-modal">
+  <div class="mood-modal">
+    <div class="mood-title">Good morning 🌅</div>
+    <div class="mood-sub">How are you feeling today?</div>
+    <div class="mood-emojis" id="mood-emojis">
+      <span class="mood-emoji" data-val="1" title="Struggling">😴</span>
+      <span class="mood-emoji" data-val="2" title="Not great">😕</span>
+      <span class="mood-emoji" data-val="3" title="Okay">🙂</span>
+      <span class="mood-emoji" data-val="4" title="Good">😄</span>
+      <span class="mood-emoji" data-val="5" title="Let's go!">🔥</span>
+    </div>
+    <div class="mood-ai-msg" id="mood-ai-msg"></div>
+    <button class="story-btn primary" id="mood-submit-btn" style="width:100%;display:none" onclick="mood.submit()">Let's go →</button>
+    <button class="story-btn secondary" style="width:100%;margin-top:8px;font-size:12px" onclick="mood.dismiss()">Skip for now</button>
+  </div>
+</div>
+
+<!-- ══ BOSS BATTLE MODAL ══ -->
+<div class="boss-modal-overlay" id="boss-modal">
+  <div class="boss-modal"><div id="boss-content"></div></div>
+</div>
+
+<!-- ══ BREATHING OVERLAY ══ -->
+<div class="breath-overlay" id="breath-overlay">
+  <div style="font-size:14px;color:var(--muted2);font-family:'Space Mono',monospace">BREATHE</div>
+  <div class="breath-circle"></div>
+  <div style="font-size:13px;color:var(--muted2)" id="breath-text">Inhale... 4 counts</div>
+  <button class="story-btn secondary" style="margin-top:8px" onclick="breath.stop()">I'm okay now</button>
+</div>
+
+<!-- ══ NOT OKAY BUTTON ══ -->
+<button class="not-okay-btn" id="not-okay-btn" onclick="breath.start()">💙 Not okay</button>
+
+<!-- ══════════════════════════════
+     MAIN APP
+══════════════════════════════ -->
 <div id="app">
+
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div class="sidebar-pull" id="sidebar-pull" onclick="toggleSidebarCollapse()">◀</div>
@@ -575,7 +604,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
     </div>
     <div class="sidebar-nav">
-      <div class="nav-item active" id="nav-chat" onclick="switchTab('chat')"><span class="icon">💬</span> Chat</div>
+      <div class="nav-item" id="nav-chat" onclick="switchTab('chat')"><span class="icon">💬</span> Chat</div>
       <div class="nav-item" id="nav-story" onclick="switchTab('story')" style="border:1px solid rgba(249,115,22,.2);background:rgba(249,115,22,.04)"><span class="icon">🎬</span> Story Mode</div>
       <div class="nav-item" id="nav-arjun" onclick="switchTab('arjun')" style="border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.04)"><span class="icon">🤝</span> Arjun</div>
       <div class="nav-item" id="nav-warroom" onclick="switchTab('warroom')"><span class="icon">🗺️</span> War Room</div>
@@ -599,7 +628,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
     </div>
   </div>
 
-  <!-- MAIN CONTENT -->
+  <!-- MAIN COLUMN -->
   <div id="main">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
@@ -613,291 +642,243 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       </div>
     </div>
 
-    <!-- CHAT TAB -->
-    <div id="chat-tab" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-      <div id="chat-area"></div>
-      <div class="input-wrap">
-        <div class="input-row">
-          <textarea id="inp" placeholder="Ask anything — concepts, doubts, planning, or just talk..." rows="1"></textarea>
-          <button id="send-btn" onclick="handleSendBtn()">➤</button>
-        </div>
-        <div class="input-foot">No ads · No guest mode · Built with ❤️ for aspirants</div>
-      </div>
-    </div>
+    <!-- ════ TAB CONTAINER — only one .tab-active at a time ════ -->
+    <div id="main-content">
 
-    <!-- PLANNER TAB -->
-    <div id="planner-tab">
-      <div class="planner-wrap">
-        <div class="planner-sidebar">
-          <div style="font-size:10px;color:var(--muted2);font-family:'Space Mono',monospace;padding:4px 8px 8px;letter-spacing:.5px">PLANNER</div>
-          <div class="planner-nav-item active" id="pnav-today" onclick="switchPlannerView('today')">📅 Today</div>
-          <div class="planner-nav-item" id="pnav-tomorrow" onclick="switchPlannerView('tomorrow')">🌅 Tomorrow</div>
-          <div class="planner-nav-item" id="pnav-week" onclick="switchPlannerView('week')">📆 This Week</div>
-          <div class="planner-nav-item" id="pnav-completed" onclick="switchPlannerView('completed')">✅ Completed</div>
-          <div style="height:1px;background:var(--border);margin:10px 8px;"></div>
-          <div class="planner-nav-item" onclick="generateWeeklyReport()">📝 Report</div>
-        </div>
-        <div class="planner-main">
-          <div class="planner-header">
-            <div>
-              <div style="font-size:15px;font-weight:700" id="planner-view-title">Today's Plan</div>
-              <div style="font-size:11px;color:var(--muted2);margin-top:2px" id="planner-view-sub"></div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="qa-btn" onclick="openAddTask()">+ Add Task</button>
-              <button class="qa-btn primary" onclick="openAIPlanner()">🤖 AI Plan</button>
-            </div>
+      <!-- CHAT TAB -->
+      <div id="chat-tab" class="tab-panel">
+        <div id="chat-area"></div>
+        <div class="input-wrap">
+          <div class="input-row">
+            <textarea id="inp" placeholder="Ask anything — concepts, doubts, planning, or just talk..." rows="1"></textarea>
+            <button id="send-btn" onclick="handleSendBtn()">➤</button>
           </div>
-          <div class="planner-content" id="planner-content"><div style="text-align:center;color:var(--muted2);padding:40px">Loading...</div></div>
+          <div class="input-foot">No ads · No guest mode · Built with ❤️ for aspirants</div>
         </div>
       </div>
-    </div>
 
-    <!-- QUIZ TAB -->
-    <div id="quiz-tab">
-      <div id="quiz-panel">
-        <div style="font-size:18px;font-weight:700">Quiz Arena ⚡</div>
-
-        <div class="quiz-mode-select">
-          <div class="quiz-mode-btn sel" id="qm-solo" onclick="selectQuizMode('solo')">
-            <div class="qm-icon">🧠</div><div class="qm-title">Solo Practice</div><div class="qm-sub">Practice at your own pace</div>
+      <!-- PLANNER TAB -->
+      <div id="planner-tab" class="tab-panel">
+        <div class="planner-wrap">
+          <div class="planner-sidebar">
+            <div style="font-size:10px;color:var(--muted2);font-family:'Space Mono',monospace;padding:4px 8px 8px;letter-spacing:.5px">PLANNER</div>
+            <div class="planner-nav-item active" id="pnav-today" onclick="switchPlannerView('today')">📅 Today</div>
+            <div class="planner-nav-item" id="pnav-tomorrow" onclick="switchPlannerView('tomorrow')">🌅 Tomorrow</div>
+            <div class="planner-nav-item" id="pnav-week" onclick="switchPlannerView('week')">📆 This Week</div>
+            <div class="planner-nav-item" id="pnav-completed" onclick="switchPlannerView('completed')">✅ Completed</div>
+            <div style="height:1px;background:var(--border);margin:10px 8px;"></div>
+            <div class="planner-nav-item" onclick="generateWeeklyReport()">📝 Report</div>
           </div>
-          <div class="quiz-mode-btn" id="qm-multi" onclick="selectQuizMode('multi')">
-            <div class="qm-icon">👥</div><div class="qm-title">Battle Friends</div><div class="qm-sub">Real-time quiz battle</div>
-          </div>
-        </div>
-
-        <!-- SOLO SECTION -->
-        <div id="solo-quiz-section">
-          <div id="sq-config-area" class="quiz-config-card">
-            <div style="font-size:14px;font-weight:600;margin-bottom:16px">Configure Your Session</div>
-
-            <div id="sq-adaptive-banner" style="display:none" class="adaptive-banner">
-              <span style="font-size:20px">⚡</span>
+          <div class="planner-main">
+            <div class="planner-header">
               <div>
-                <div style="font-size:12px;font-weight:600;color:var(--gold)">Adaptive Mode Active</div>
-                <div style="font-size:11px;color:var(--muted2)" id="sq-adaptive-topics"></div>
+                <div style="font-size:15px;font-weight:700" id="planner-view-title">Today's Plan</div>
+                <div style="font-size:11px;color:var(--muted2);margin-top:2px" id="planner-view-sub"></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="qa-btn" onclick="openAddTask()">+ Add Task</button>
+                <button class="qa-btn primary" onclick="openAIPlanner()">🤖 AI Plan</button>
               </div>
             </div>
+            <div class="planner-content" id="planner-content"><div style="text-align:center;color:var(--muted2);padding:40px">Loading...</div></div>
+          </div>
+        </div>
+      </div>
 
+      <!-- QUIZ TAB -->
+      <div id="quiz-tab" class="tab-panel">
+        <div class="quiz-scroll">
+          <div style="font-size:18px;font-weight:700">Quiz Arena ⚡</div>
+          <div class="quiz-mode-select">
+            <div class="quiz-mode-btn sel" id="qm-solo" onclick="selectQuizMode('solo')">
+              <div class="qm-icon">🧠</div><div class="qm-title">Solo Practice</div><div class="qm-sub">Practice at your own pace</div>
+            </div>
+            <div class="quiz-mode-btn" id="qm-multi" onclick="selectQuizMode('multi')">
+              <div class="qm-icon">👥</div><div class="qm-title">Battle Friends</div><div class="qm-sub">Real-time quiz battle</div>
+            </div>
+          </div>
+          <!-- SOLO -->
+          <div id="solo-quiz-section">
+            <div id="sq-config-area" class="quiz-config-card">
+              <div style="font-size:14px;font-weight:600;margin-bottom:16px">Configure Your Session</div>
+              <div id="sq-adaptive-banner" style="display:none" class="adaptive-banner">
+                <span style="font-size:20px">⚡</span>
+                <div><div style="font-size:12px;font-weight:600;color:var(--gold)">Adaptive Mode Active</div>
+                <div style="font-size:11px;color:var(--muted2)" id="sq-adaptive-topics"></div></div>
+              </div>
+              <div class="quiz-config-row">
+                <label class="config-label">SUBJECTS</label>
+                <div class="config-opts" id="sq-subjects">
+                  <div class="config-opt sel" data-val="Physics">⚛️ Physics</div>
+                  <div class="config-opt" data-val="Chemistry">🧪 Chemistry</div>
+                  <div class="config-opt" data-val="Mathematics">∫ Mathematics</div>
+                  <div class="config-opt" data-val="Biology">🧬 Biology</div>
+                </div>
+              </div>
+              <div class="quiz-config-row">
+                <label class="config-label">CHAPTER / TOPIC <span style="opacity:.4;font-size:10px">(optional)</span></label>
+                <input class="form-input" id="sq-chapter" placeholder="e.g. Thermodynamics, Quadratic Equations..." style="margin-top:4px"/>
+              </div>
+              <div class="quiz-config-row">
+                <label class="config-label">NUMBER OF QUESTIONS</label>
+                <div class="config-opts" id="sq-qcount">
+                  <div class="config-opt sel" data-val="5">5</div>
+                  <div class="config-opt" data-val="10">10</div>
+                  <div class="config-opt" data-val="15">15</div>
+                  <div class="config-opt" data-val="20">20</div>
+                </div>
+              </div>
+              <div class="quiz-config-row">
+                <label class="config-label">DIFFICULTY</label>
+                <div class="config-opts" id="sq-diff">
+                  <div class="config-opt sel" data-val="mixed">Mixed</div>
+                  <div class="config-opt" data-val="easy">Easy</div>
+                  <div class="config-opt" data-val="medium">Medium</div>
+                  <div class="config-opt" data-val="hard">JEE Adv Level</div>
+                </div>
+              </div>
+              <div class="quiz-config-row" style="margin-bottom:6px">
+                <label class="config-label">QUESTION TYPE</label>
+                <div class="config-opts" id="sq-qtype">
+                  <div class="config-opt sel" data-val="practice">Practice Questions</div>
+                  <div class="config-opt" data-val="pyq">PYQ Only (Real Exams)</div>
+                </div>
+              </div>
+              <div id="sq-exam-row" style="display:none;margin-bottom:14px">
+                <label class="config-label">EXAM FOR PYQ</label>
+                <div class="config-opts" id="sq-exam">
+                  <div class="config-opt sel" data-val="JEE Main">JEE Main</div>
+                  <div class="config-opt" data-val="JEE Advanced">JEE Advanced</div>
+                  <div class="config-opt" data-val="NEET">NEET</div>
+                </div>
+              </div>
+              <div id="sq-session-stats" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--border)">
+                <div style="display:flex;gap:20px;font-size:13px;align-items:center;flex-wrap:wrap">
+                  <span>✓ <span id="sq-stat-correct" style="color:#34d399">0</span></span>
+                  <span>✗ <span id="sq-stat-wrong" style="color:#fca5a5">0</span></span>
+                  <span>🔥 <span id="sq-stat-streak">0</span> streak</span>
+                  <span style="margin-left:auto;color:var(--accent)">+<span id="sq-stat-xp">0</span> XP</span>
+                </div>
+              </div>
+              <button class="qa-btn primary" style="width:100%;padding:13px;font-size:14px" onclick="soloQuiz.start()">Start Session ▶</button>
+            </div>
+            <div id="sq-question-area"></div>
+          </div>
+          <!-- MULTIPLAYER -->
+          <div id="multi-quiz-section" style="display:none">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <button class="qa-btn primary" style="flex:1;padding:12px" onclick="createRoom()">Create Room</button>
+              <button class="qa-btn" style="flex:1;padding:12px" onclick="showJoinRoom()">Join Room</button>
+            </div>
+            <div id="room-area"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MISTAKES TAB -->
+      <div id="mistakes-tab" class="tab-panel">
+        <div class="mistakes-scroll">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:18px;font-weight:700">📑 Mistake Book</div>
+            <div style="font-size:12px;color:var(--muted2)" id="mistake-count">0 mistakes</div>
+          </div>
+          <div id="mistakes-list" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- STORY MODE TAB -->
+      <div id="story-tab" class="tab-panel">
+        <div class="story-panel">
+          <div class="story-hero">
+            <div class="story-hero-title">🎬 STORY MODE</div>
+            <div class="story-hero-sub">Attempt cold → Learn targeted → Attempt again → Master<br>
+            <span style="color:var(--orange);font-family:'Space Mono',monospace;font-size:11px">Real JEE PYQs from MongoDB · 4 Acts</span></div>
+          </div>
+          <div class="story-acts-row" id="story-acts" style="display:none">
+            <div class="story-act-block" id="sact-1"><span class="act-icon">⚔️</span>ACT 1<div style="font-size:9px;margin-top:1px">Challenge</div></div>
+            <div class="story-act-block" id="sact-2"><span class="act-icon">📖</span>ACT 2<div style="font-size:9px;margin-top:1px">Revelation</div></div>
+            <div class="story-act-block" id="sact-3"><span class="act-icon">🔄</span>ACT 3<div style="font-size:9px;margin-top:1px">Comeback</div></div>
+            <div class="story-act-block" id="sact-4"><span class="act-icon">🏆</span>ACT 4<div style="font-size:9px;margin-top:1px">Legend</div></div>
+          </div>
+          <div id="story-config" class="story-config">
+            <div style="font-size:13px;font-weight:700;margin-bottom:14px">⚙️ Configure Your Mission</div>
             <div class="quiz-config-row">
-              <label class="config-label">SUBJECTS</label>
-              <div class="config-opts" id="sq-subjects">
+              <label class="config-label">SUBJECT</label>
+              <div class="config-opts" id="st-subjects">
                 <div class="config-opt sel" data-val="Physics">⚛️ Physics</div>
                 <div class="config-opt" data-val="Chemistry">🧪 Chemistry</div>
-                <div class="config-opt" data-val="Mathematics">∫ Mathematics</div>
-                <div class="config-opt" data-val="Biology">🧬 Biology</div>
+                <div class="config-opt" data-val="Mathematics">∫ Maths</div>
               </div>
             </div>
-
             <div class="quiz-config-row">
-              <label class="config-label">CHAPTER / TOPIC <span style="opacity:.4;font-size:10px">(optional)</span></label>
-              <input class="form-input" id="sq-chapter" placeholder="e.g. Thermodynamics, Quadratic Equations..." style="margin-top:4px"/>
+              <label class="config-label">CHAPTER</label>
+              <input class="form-input" id="st-chapter" placeholder="e.g. Thermodynamics, Integration, Organic Chemistry..." style="margin-top:4px"/>
             </div>
-
             <div class="quiz-config-row">
-              <label class="config-label">NUMBER OF QUESTIONS</label>
-              <div class="config-opts" id="sq-qcount">
-                <div class="config-opt sel" data-val="5">5</div>
-                <div class="config-opt" data-val="10">10</div>
-                <div class="config-opt" data-val="15">15</div>
-                <div class="config-opt" data-val="20">20</div>
-              </div>
-            </div>
-
-            <div class="quiz-config-row">
-              <label class="config-label">DIFFICULTY</label>
-              <div class="config-opts" id="sq-diff">
-                <div class="config-opt sel" data-val="mixed">Mixed</div>
-                <div class="config-opt" data-val="easy">Easy</div>
-                <div class="config-opt" data-val="medium">Medium</div>
-                <div class="config-opt" data-val="hard">JEE Adv Level</div>
-              </div>
-            </div>
-
-            <div class="quiz-config-row" style="margin-bottom:6px">
-              <label class="config-label">QUESTION TYPE</label>
-              <div class="config-opts" id="sq-qtype">
-                <div class="config-opt sel" data-val="practice">Practice Questions</div>
-                <div class="config-opt" data-val="pyq">PYQ Only (Real Exams)</div>
-              </div>
-            </div>
-
-            <div id="sq-exam-row" style="display:none;margin-bottom:14px">
-              <label class="config-label">EXAM FOR PYQ</label>
-              <div class="config-opts" id="sq-exam">
+              <label class="config-label">EXAM</label>
+              <div class="config-opts" id="st-exam">
                 <div class="config-opt sel" data-val="JEE Main">JEE Main</div>
                 <div class="config-opt" data-val="JEE Advanced">JEE Advanced</div>
                 <div class="config-opt" data-val="NEET">NEET</div>
               </div>
             </div>
-
-            <div id="sq-session-stats" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--border)">
-              <div style="display:flex;gap:20px;font-size:13px;align-items:center;flex-wrap:wrap">
-                <span>✓ <span id="sq-stat-correct" style="color:#34d399">0</span></span>
-                <span>✗ <span id="sq-stat-wrong" style="color:#fca5a5">0</span></span>
-                <span>🔥 <span id="sq-stat-streak">0</span> streak</span>
-                <span style="margin-left:auto;color:var(--accent)">+<span id="sq-stat-xp">0</span> XP</span>
-              </div>
+            <div style="padding:12px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.18);border-radius:10px;font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.8">
+              ⚔️ <b>ACT 1</b> — 8 real PYQs, no hints · 📖 <b>ACT 2</b> — AI teaches what you missed · 🔄 <b>ACT 3</b> — Same questions again · 🏆 <b>ACT 4</b> — Your improvement revealed
             </div>
-
-            <button class="qa-btn primary" style="width:100%;padding:13px;font-size:14px" onclick="soloQuiz.start()">
-              Start Session ▶
-            </button>
+            <button class="story-btn primary" style="width:100%;padding:13px" onclick="storyMode.start()">Begin Story Mode 🎬</button>
           </div>
-
-          <div id="sq-question-area"></div>
-        </div>
-
-        <!-- MULTIPLAYER SECTION -->
-        <div id="multi-quiz-section" style="display:none">
-          <div style="display:flex;gap:10px;margin-bottom:16px">
-            <button class="qa-btn primary" style="flex:1;padding:12px" onclick="createRoom()">Create Room</button>
-            <button class="qa-btn" style="flex:1;padding:12px" onclick="showJoinRoom()">Join Room</button>
-          </div>
-          <div id="room-area"></div>
+          <div id="story-rival" style="display:none"></div>
+          <div id="story-content"></div>
         </div>
       </div>
-    </div>
 
-    <!-- MISTAKES TAB -->
-    <div id="mistakes-tab">
-      <div id="mistakes-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:18px;font-weight:700">📑 Mistake Book</div>
-          <div style="font-size:12px;color:var(--muted2)" id="mistake-count">0 mistakes</div>
-        </div>
-        <div id="mistakes-list" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
-    </div>
-
-
-    <!-- ═══ MOOD MODAL ═══ -->
-    <div class="mood-modal-overlay" id="mood-modal" style="display:none;align-items:center;justify-content:center;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200">
-      <div class="mood-modal">
-        <div class="mood-title">Good morning 🌅</div>
-        <div class="mood-sub">How are you feeling today?</div>
-        <div class="mood-emojis" id="mood-emojis">
-          <span class="mood-emoji" data-val="1" title="Struggling">😴</span>
-          <span class="mood-emoji" data-val="2" title="Not great">😕</span>
-          <span class="mood-emoji" data-val="3" title="Okay">🙂</span>
-          <span class="mood-emoji" data-val="4" title="Good">😄</span>
-          <span class="mood-emoji" data-val="5" title="Let's go!">🔥</span>
-        </div>
-        <div class="mood-ai-msg" id="mood-ai-msg"></div>
-        <button class="story-btn primary" id="mood-submit-btn" style="width:100%;display:none" onclick="mood.submit()">Let's go →</button>
-        <button class="story-btn secondary" style="width:100%;margin-top:8px;font-size:12px" onclick="mood.dismiss()">Skip for now</button>
-      </div>
-    </div>
-
-    <!-- ═══ BREATHING OVERLAY ═══ -->
-    <div class="breath-overlay" id="breath-overlay">
-      <div style="font-size:14px;color:var(--muted2);font-family:'Space Mono',monospace">BREATHE</div>
-      <div class="breath-circle"></div>
-      <div style="font-size:13px;color:var(--muted2)" id="breath-text">Inhale... 4 counts</div>
-      <button class="story-btn secondary" style="margin-top:8px" onclick="breath.stop()">I'm okay now</button>
-    </div>
-
-    <!-- ═══ "I'M NOT OKAY" BUTTON ═══ -->
-    <button class="not-okay-btn" id="not-okay-btn" onclick="breath.start()" style="display:none">💙 Not okay</button>
-
-    <!-- ═══ STORY MODE TAB ═══ -->
-    <div id="story-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
-      <div class="story-panel">
-        <div class="story-hero">
-          <div class="story-hero-title">🎬 STORY MODE</div>
-          <div class="story-hero-sub">Attempt cold → Learn targeted → Attempt again → Master<br>
-          <span style="color:var(--orange);font-family:'Space Mono',monospace;font-size:11px">Real JEE PYQs from MongoDB · 4 Acts</span></div>
-        </div>
-        <div class="story-acts-row" id="story-acts" style="display:none">
-          <div class="story-act-block" id="sact-1"><span class="act-icon">⚔️</span>ACT 1<div style="font-size:9px;margin-top:1px">Challenge</div></div>
-          <div class="story-act-block" id="sact-2"><span class="act-icon">📖</span>ACT 2<div style="font-size:9px;margin-top:1px">Revelation</div></div>
-          <div class="story-act-block" id="sact-3"><span class="act-icon">🔄</span>ACT 3<div style="font-size:9px;margin-top:1px">Comeback</div></div>
-          <div class="story-act-block" id="sact-4"><span class="act-icon">🏆</span>ACT 4<div style="font-size:9px;margin-top:1px">Legend</div></div>
-        </div>
-        <div id="story-config" class="story-config">
-          <div style="font-size:13px;font-weight:700;margin-bottom:14px">⚙️ Configure Your Mission</div>
-          <div class="quiz-config-row">
-            <label class="config-label">SUBJECT</label>
-            <div class="config-opts" id="st-subjects">
-              <div class="config-opt sel" data-val="Physics">⚛️ Physics</div>
-              <div class="config-opt" data-val="Chemistry">🧪 Chemistry</div>
-              <div class="config-opt" data-val="Mathematics">∫ Maths</div>
+      <!-- ARJUN TAB -->
+      <div id="arjun-tab" class="tab-panel">
+        <div class="arjun-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="arjun-avatar">🎓</div>
+            <div>
+              <div style="font-size:14px;font-weight:700">Arjun</div>
+              <div style="font-size:11px;color:var(--muted2)">IIT Bombay · Your personal JEE mentor</div>
             </div>
+            <div style="margin-left:auto;font-size:10px;color:var(--green);background:rgba(16,185,129,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.2)">● online</div>
           </div>
-          <div class="quiz-config-row">
-            <label class="config-label">CHAPTER</label>
-            <input class="form-input" id="st-chapter" placeholder="e.g. Thermodynamics, Integration, Organic Chemistry..." style="margin-top:4px"/>
-          </div>
-          <div class="quiz-config-row">
-            <label class="config-label">EXAM</label>
-            <div class="config-opts" id="st-exam">
-              <div class="config-opt sel" data-val="JEE Main">JEE Main</div>
-              <div class="config-opt" data-val="JEE Advanced">JEE Advanced</div>
-              <div class="config-opt" data-val="NEET">NEET</div>
-            </div>
-          </div>
-          <div style="padding:12px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.18);border-radius:10px;font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.8">
-            ⚔️ <b>ACT 1</b> — 8 real PYQs, no hints · 📖 <b>ACT 2</b> — AI teaches what you missed · 🔄 <b>ACT 3</b> — Same questions again · 🏆 <b>ACT 4</b> — Your improvement revealed
-          </div>
-          <button class="story-btn primary" style="width:100%;padding:13px" onclick="storyMode.start()">Begin Story Mode 🎬</button>
         </div>
-        <div id="story-rival" style="display:none"></div>
-        <div id="story-content"></div>
-      </div>
-    </div>
-
-    <!-- ═══ ARJUN COMPANION TAB ═══ -->
-    <div id="arjun-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
-      <div class="arjun-header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="arjun-avatar">🎓</div>
-          <div>
-            <div style="font-size:14px;font-weight:700">Arjun</div>
-            <div style="font-size:11px;color:var(--muted2)">IIT Bombay · Your personal JEE mentor</div>
-          </div>
-          <div style="margin-left:auto;font-size:10px;color:var(--green);background:rgba(16,185,129,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.2)">● online</div>
+        <div class="arjun-msgs" id="arjun-msgs"></div>
+        <div class="arjun-input-row">
+          <input class="form-input" id="arjun-input" placeholder="Ask anything — JEE concepts, doubts, or just talk..." style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();arjun.send();}"/>
+          <button class="qa-btn primary" onclick="arjun.send()">↑</button>
         </div>
       </div>
-      <div class="arjun-msgs" id="arjun-msgs"></div>
-      <div class="arjun-input-row">
-        <input class="form-input" id="arjun-input" placeholder="Ask anything — JEE concepts, doubts, or just talk..." style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();arjun.send();}"/>
-        <button class="send-btn" onclick="arjun.send()">↑</button>
-      </div>
-    </div>
 
-    <!-- ═══ WAR ROOM TAB ═══ -->
-    <div id="warroom-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
-      <div class="warroom-panel">
-        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🗺️ WAR ROOM</div>
-        <div id="warroom-stats" class="warroom-stats"></div>
-        <div id="rival-banner"></div>
-        <div style="font-size:12px;font-weight:700;color:var(--muted2);letter-spacing:1px;margin-top:4px">YOUR CHAPTERS</div>
-        <div id="chapter-grid" class="chapter-grid"><div class="s-loading"><div class="s-ring"></div>Loading war room...</div></div>
-        <button class="story-btn primary" style="margin-top:8px" onclick="boss.open()">⚔️ Start Boss Battle</button>
-      </div>
-    </div>
-
-    <!-- ═══ FORMULA FORTRESS TAB ═══ -->
-    <div id="fortress-tab" style="display:none;flex:1;flex-direction:column;overflow:hidden">
-      <div class="fortress-panel">
-        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🏰 FORMULA FORTRESS</div>
-        <div class="fortress-stats" id="fortress-stats"></div>
-        <div id="fortress-content"><div class="s-loading"><div class="s-ring"></div>Loading formulas...</div></div>
-        <div style="margin-top:8px;padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:10px">+ Add Formula Manually</div>
-          <input class="form-input" id="f-formula" placeholder="Formula or concept e.g. PV = nRT" style="margin-bottom:8px"/>
-          <input class="form-input" id="f-context" placeholder="Chapter / context e.g. Thermodynamics" style="margin-bottom:8px"/>
-          <button class="story-btn primary" style="width:100%" onclick="fortress.add()">Add to Fortress</button>
+      <!-- WAR ROOM TAB -->
+      <div id="warroom-tab" class="tab-panel">
+        <div class="warroom-panel">
+          <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🗺️ WAR ROOM</div>
+          <div id="warroom-stats" class="warroom-stats"></div>
+          <div id="rival-banner"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted2);letter-spacing:1px;margin-top:4px">YOUR CHAPTERS</div>
+          <div id="chapter-grid" class="chapter-grid"><div class="s-loading"><div class="s-ring"></div>Loading war room...</div></div>
+          <button class="story-btn primary" style="margin-top:8px" onclick="boss.open()">⚔️ Start Boss Battle</button>
         </div>
       </div>
-    </div>
 
-    <!-- ═══ BOSS BATTLE MODAL ═══ -->
-    <div class="boss-modal-overlay" id="boss-modal" style="display:none;align-items:flex-start;justify-content:center;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;overflow-y:auto;padding:20px">
-      <div class="boss-modal"><div id="boss-content"></div></div>
-    </div>
+      <!-- FORMULA FORTRESS TAB -->
+      <div id="fortress-tab" class="tab-panel">
+        <div class="fortress-panel">
+          <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace">🏰 FORMULA FORTRESS</div>
+          <div class="fortress-stats" id="fortress-stats"></div>
+          <div id="fortress-content"><div class="s-loading"><div class="s-ring"></div>Loading formulas...</div></div>
+          <div style="margin-top:8px;padding:14px;background:rgba(15,15,32,.95);border:1px solid var(--border);border-radius:12px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px">+ Add Formula Manually</div>
+            <input class="form-input" id="f-formula" placeholder="Formula or concept e.g. PV = nRT" style="margin-bottom:8px"/>
+            <input class="form-input" id="f-context" placeholder="Chapter / context e.g. Thermodynamics" style="margin-bottom:8px"/>
+            <button class="story-btn primary" style="width:100%" onclick="fortress.add()">Add to Fortress</button>
+          </div>
+        </div>
+      </div>
 
+    </div><!-- /main-content -->
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -921,16 +902,53 @@ marked.setOptions({ breaks: true, gfm: true });
 // Particles
 (function(){
   const bg = document.querySelector('.cosmic-bg');
-  for(let i = 0; i < 15; i++){
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const sz = Math.random() * 3 + 1;
-    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;`
-      + `background:${['#7c3aed','#3b82f6','#10b981'][Math.floor(Math.random()*3)]};`
-      + `animation-duration:${Math.random()*20+10}s;animation-delay:${Math.random()*10}s;`;
+  for(let i=0;i<15;i++){
+    const p=document.createElement('div'); p.className='particle';
+    const sz=Math.random()*3+1;
+    p.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;`
+      +`background:${['#7c3aed','#3b82f6','#10b981'][Math.floor(Math.random()*3)]};`
+      +`animation-duration:${Math.random()*20+10}s;animation-delay:${Math.random()*10}s;`;
     bg.appendChild(p);
   }
 })();
+
+// ═══════════════════════════════════════
+//  TAB SWITCHING — THE FIX
+//  Uses position:absolute tabs, toggles .tab-active class only
+// ═══════════════════════════════════════
+const ALL_TABS = ['chat','planner','quiz','mistakes','story','arjun','warroom','fortress'];
+
+function switchTab(tab) {
+  // Hide every tab
+  ALL_TABS.forEach(t => {
+    const el = document.getElementById(t + '-tab');
+    if (el) el.classList.remove('tab-active');
+    const nav = document.getElementById('nav-' + t);
+    if (nav) nav.classList.remove('active');
+  });
+
+  // Show selected tab
+  const el = document.getElementById(tab + '-tab');
+  if (el) el.classList.add('tab-active');
+  const nav = document.getElementById('nav-' + tab);
+  if (nav) nav.classList.add('active');
+
+  const titles = {
+    chat:'GRIND AI', planner:'Day Planner', quiz:'Quiz Arena',
+    mistakes:'Mistake Book', story:'🎬 Story Mode',
+    arjun:'🤝 Arjun — Your Mentor', warroom:'🗺️ War Room',
+    fortress:'🏰 Formula Fortress'
+  };
+  document.getElementById('topbar-title').textContent = titles[tab] || 'GRIND AI';
+
+  if (tab === 'mistakes') loadMistakes();
+  if (tab === 'planner')  loadPlannerView(currentPlannerView);
+  if (tab === 'quiz')     soloQuiz.initAdaptive();
+  if (tab === 'warroom')  warRoom.load();
+  if (tab === 'fortress') fortress.load();
+  if (tab === 'arjun')    arjun.init();
+  closeSidebar();
+}
 
 // ═══════════════════════════════════════
 //  INIT
@@ -956,9 +974,7 @@ async function init(){
   document.getElementById('login-screen').classList.add('active');
 }
 
-function handleLogout(){
-  window.location = '/auth/logout';
-}
+function handleLogout(){ window.location = '/auth/logout'; }
 
 function showApp(user){
   document.getElementById('login-screen').classList.remove('active');
@@ -973,7 +989,7 @@ function showApp(user){
   const av = document.getElementById('sidebar-avatar');
   av.innerHTML = user.photo
     ? `<img src="${user.photo}" class="user-avatar" alt="">`
-    : `<div class="user-avatar-ph">${(name[0] || 'S').toUpperCase()}</div>`;
+    : `<div class="user-avatar-ph">${(name[0]||'S').toUpperCase()}</div>`;
 
   if(user.streak > 0){
     document.getElementById('streak-badge').style.display = 'flex';
@@ -985,10 +1001,16 @@ function showApp(user){
 
   soloQuiz.initAdaptive();
   loadHistory();
-  newChat();
+  newChat(); // this calls switchTab('chat') internally
 
   const greeting = `Welcome back to the Grind, ${name}. 🔥\n\nI've pulled your profile. Whether it's concepts, PYQs, a study plan, or you just need to talk — I'm here.\n\nWhat are we working on today?`;
   setTimeout(() => addAiMsg(greeting, true), 400);
+
+  // Show wellness buttons after login
+  setTimeout(() => {
+    document.getElementById('not-okay-btn').style.display = 'block';
+    mood.init();
+  }, 1500);
 }
 
 function updateCountdown(examDate){
@@ -1028,15 +1050,10 @@ async function submitOnboarding(){
   try{
     await fetch('/api/user/onboard', {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({
-        exam, class: cls,
-        coaching:       getVal('ob-coaching'),
-        biggestStruggle:getVal('ob-struggle'),
-        hoursPerDay:    getVal('ob-hours'),
-        gender:         getVal('ob-gender'),
-      })
+      body: JSON.stringify({ exam, class:cls, coaching:getVal('ob-coaching'),
+        biggestStruggle:getVal('ob-struggle'), hoursPerDay:getVal('ob-hours'), gender:getVal('ob-gender') })
     });
-    const d = await (await fetch('/api/me', { credentials:'include' })).json();
+    const d = await (await fetch('/api/me',{credentials:'include'})).json();
     currentUser = d.user; window.grindUser = d.user;
     showApp(currentUser);
   } catch{ showToast('Something went wrong. Please try again.'); }
@@ -1077,28 +1094,8 @@ async function saveSettings(){
 }
 
 // ═══════════════════════════════════════
-//  TABS
+//  SIDEBAR HELPERS
 // ═══════════════════════════════════════
-function switchTab(tab){
-  ['chat','planner','quiz','mistakes','story','arjun','warroom','fortress'].forEach(t => {
-    const el = document.getElementById(`${t}-tab`);
-    if(el) el.style.display = 'none';
-    document.getElementById(`nav-${t}`)?.classList.remove('active');
-  });
-  const el = document.getElementById(`${tab}-tab`);
-  if(el) el.style.display = 'flex';
-  document.getElementById(`nav-${tab}`)?.classList.add('active');
-  const titles = { chat:'GRIND AI', planner:'Day Planner', quiz:'Quiz Arena', mistakes:'Mistake Book',
-    story:'🎬 Story Mode', arjun:'🤝 Arjun — Your Mentor', warroom:'🗺️ War Room', fortress:'🏰 Formula Fortress' };
-  document.getElementById('topbar-title').textContent = titles[tab] || 'GRIND AI';
-  if(tab === 'mistakes') loadMistakes();
-  if(tab === 'planner')  loadPlannerView(currentPlannerView);
-  if(tab === 'quiz')     soloQuiz.initAdaptive();
-  if(tab === 'warroom')  warRoom.load();
-  if(tab === 'fortress') fortress.load();
-  if(tab === 'arjun')    arjun.init();
-  closeSidebar();
-}
 function toggleMobileSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); }
 function toggleSidebarCollapse(){
@@ -1124,7 +1121,7 @@ async function newChat(){
       </div>
     </div>`;
   try{
-    const res = await fetch('/api/sessions/new', { method:'POST', credentials:'include' });
+    const res = await fetch('/api/sessions/new',{method:'POST',credentials:'include'});
     const d   = await res.json();
     currentSessionId = d.sessionId;
     await loadHistory();
@@ -1134,11 +1131,11 @@ async function newChat(){
 
 async function loadHistory(){
   try{
-    const res = await fetch('/api/sessions', { credentials:'include' });
+    const res = await fetch('/api/sessions',{credentials:'include'});
     const d   = await res.json();
     const list = document.getElementById('history-list');
     list.innerHTML = '';
-    (d.sessions || []).forEach(s => {
+    (d.sessions||[]).forEach(s => {
       const div = document.createElement('div');
       div.className = 'history-item' + (s._id === currentSessionId ? ' active' : '');
       div.innerHTML = `<span class="history-item-title">${esc(s.title)}</span>
@@ -1152,25 +1149,23 @@ async function loadHistory(){
 
 async function loadSession(id){
   try{
-    const res = await fetch(`/api/sessions/${id}`, { credentials:'include' });
+    const res = await fetch(`/api/sessions/${id}`,{credentials:'include'});
     const d   = await res.json();
     currentSessionId = id;
-    chatHistory = d.session.messages.map(m => ({ role:m.role, content:m.content }));
-    const area = document.getElementById('chat-area');
-    area.innerHTML = '';
-    d.session.messages.forEach(m => addMsgDirect(m.role === 'assistant' ? 'ai' : 'user', m.content));
+    chatHistory = d.session.messages.map(m => ({role:m.role,content:m.content}));
+    document.getElementById('chat-area').innerHTML = '';
+    d.session.messages.forEach(m => addMsgDirect(m.role==='assistant'?'ai':'user', m.content));
     await loadHistory();
-    closeSidebar(); switchTab('chat');
+    switchTab('chat');
   } catch{ showToast('Could not load conversation.'); }
 }
 
 async function deleteSession(id, e){
   e.stopPropagation();
-  await fetch(`/api/sessions/${id}`, { method:'DELETE', credentials:'include' });
+  await fetch(`/api/sessions/${id}`,{method:'DELETE',credentials:'include'});
   if(id === currentSessionId) newChat(); else await loadHistory();
 }
 
-// ── Send / Stop ──────────────────────────────────
 function handleSendBtn(){
   if(isSending){
     stopRequested = true;
@@ -1183,8 +1178,8 @@ function handleSendBtn(){
 
 function setSendBtn(mode){
   const btn = document.getElementById('send-btn');
-  if(mode === 'stop'){ btn.innerHTML = '⏹'; btn.classList.add('stop-mode'); }
-  else { btn.innerHTML = '➤'; btn.classList.remove('stop-mode'); btn.disabled = false; }
+  if(mode==='stop'){ btn.innerHTML='⏹'; btn.classList.add('stop-mode'); }
+  else{ btn.innerHTML='➤'; btn.classList.remove('stop-mode'); btn.disabled=false; }
 }
 
 async function sendMsg(){
@@ -1195,18 +1190,18 @@ async function sendMsg(){
   isSending = true; stopRequested = false;
   setSendBtn('stop');
   addMsgDirect('user', text);
-  chatHistory.push({ role:'user', content:text });
+  chatHistory.push({role:'user',content:text});
   showTyping();
   try{
-    const res = await fetch('/api/chat', {
+    const res = await fetch('/api/chat',{
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({ messages:chatHistory, sessionId:currentSessionId })
+      body: JSON.stringify({messages:chatHistory, sessionId:currentSessionId})
     });
     const d = await res.json();
     removeTyping();
-    if(stopRequested){ isSending = false; setSendBtn('send'); return; }
+    if(stopRequested){ isSending=false; setSendBtn('send'); return; }
     const reply = d.reply || d.error || 'Something went wrong.';
-    chatHistory.push({ role:'assistant', content:reply });
+    chatHistory.push({role:'assistant',content:reply});
     addAiMsg(reply);
     loadHistory();
   } catch{
@@ -1218,26 +1213,26 @@ async function sendMsg(){
 }
 
 document.getElementById('inp').addEventListener('input', function(){
-  this.style.height = 'auto';
-  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,120)+'px';
 });
 document.getElementById('inp').addEventListener('keydown', e => {
-  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); handleSendBtn(); }
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSendBtn(); }
 });
 
-// ── Message rendering ───────────────────────────
+// ── Message rendering ─────────────────────────────────────
 function esc(t){ if(!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function renderMath(el){
   try{
-    renderMathInElement(el, {
+    renderMathInElement(el,{
       delimiters:[
         {left:'$$',right:'$$',display:true},
         {left:'$',right:'$',display:false},
         {left:'\\(',right:'\\)',display:false},
         {left:'\\[',right:'\\]',display:true},
       ],
-      throwOnError: false
+      throwOnError:false
     });
   } catch{}
 }
@@ -1245,12 +1240,12 @@ function renderMath(el){
 function addMsgDirect(role, text){
   const area = document.getElementById('chat-area');
   const wrap = document.createElement('div');
-  wrap.className = `msg ${(role === 'assistant' || role === 'ai') ? 'ai' : 'user'}`;
-  const sender = document.createElement('div'); sender.className = 'msg-sender';
-  sender.textContent = role === 'user' ? 'YOU' : 'GRIND';
-  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
-  if(role === 'ai' || role === 'assistant'){
-    bubble.innerHTML = marked.parse(text || '');
+  wrap.className = `msg ${(role==='assistant'||role==='ai')?'ai':'user'}`;
+  const sender = document.createElement('div'); sender.className='msg-sender';
+  sender.textContent = role==='user' ? 'YOU' : 'GRIND';
+  const bubble = document.createElement('div'); bubble.className='msg-bubble';
+  if(role==='ai'||role==='assistant'){
+    bubble.innerHTML = marked.parse(text||'');
     renderMath(bubble);
     bubble.appendChild(makeCopyBtn(text));
   } else {
@@ -1261,19 +1256,19 @@ function addMsgDirect(role, text){
 }
 
 function addAiMsg(text, instant=false){
-  if(instant){ addMsgDirect('ai', text); return; }
+  if(instant){ addMsgDirect('ai',text); return; }
   const area = document.getElementById('chat-area');
-  const wrap = document.createElement('div'); wrap.className = 'msg ai';
-  const sender = document.createElement('div'); sender.className = 'msg-sender'; sender.textContent = 'GRIND';
-  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+  const wrap = document.createElement('div'); wrap.className='msg ai';
+  const sender = document.createElement('div'); sender.className='msg-sender'; sender.textContent='GRIND';
+  const bubble = document.createElement('div'); bubble.className='msg-bubble';
   wrap.appendChild(sender); wrap.appendChild(bubble);
   area.appendChild(wrap); area.scrollTop = area.scrollHeight;
   let i = 0;
-  const speeds = { fast:6, balanced:16, deep:22 };
-  const cs = speeds[responseSpeed] || 16;
-  typewriterInterval = setInterval(() => {
-    if(stopRequested || i >= text.length){
-      clearInterval(typewriterInterval); typewriterInterval = null;
+  const speeds = {fast:6,balanced:16,deep:22};
+  const cs = speeds[responseSpeed]||16;
+  typewriterInterval = setInterval(()=>{
+    if(stopRequested || i>=text.length){
+      clearInterval(typewriterInterval); typewriterInterval=null;
       bubble.innerHTML = marked.parse(text);
       renderMath(bubble);
       bubble.appendChild(makeCopyBtn(text));
@@ -1281,8 +1276,8 @@ function addAiMsg(text, instant=false){
       return;
     }
     i++;
-    bubble.innerHTML = marked.parse(text.substring(0, i));
-    const cur = document.createElement('span'); cur.className = 'tw-cursor';
+    bubble.innerHTML = marked.parse(text.substring(0,i));
+    const cur = document.createElement('span'); cur.className='tw-cursor';
     bubble.appendChild(cur);
     area.scrollTop = area.scrollHeight;
   }, cs);
@@ -1290,12 +1285,12 @@ function addAiMsg(text, instant=false){
 
 function makeCopyBtn(text){
   const btn = document.createElement('button');
-  btn.className = 'copy-btn'; btn.textContent = 'copy';
+  btn.className='copy-btn'; btn.textContent='copy';
   btn.onclick = e => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = 'copied!'; btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    navigator.clipboard.writeText(text).then(()=>{
+      btn.textContent='copied!'; btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); },2000);
     });
   };
   return btn;
@@ -1304,41 +1299,29 @@ function makeCopyBtn(text){
 function showTyping(){
   removeTyping();
   const area = document.getElementById('chat-area');
-  const wrap = document.createElement('div'); wrap.className = 'typing-wrap'; wrap.id = 'typing-indicator';
-  const s = document.createElement('div'); s.className = 'msg-sender'; s.textContent = 'GRIND';
-  const b = document.createElement('div'); b.className = 'typing-bubble';
-  b.innerHTML = `<div class="spinner"></div><span>Thinking...</span><div class="td"></div><div class="td"></div><div class="td"></div>`;
+  const wrap = document.createElement('div'); wrap.className='typing-wrap'; wrap.id='typing-indicator';
+  const s = document.createElement('div'); s.className='msg-sender'; s.textContent='GRIND';
+  const b = document.createElement('div'); b.className='typing-bubble';
+  b.innerHTML=`<div class="spinner"></div><span>Thinking...</span><div class="td"></div><div class="td"></div><div class="td"></div>`;
   wrap.appendChild(s); wrap.appendChild(b);
-  area.appendChild(wrap); area.scrollTop = area.scrollHeight;
+  area.appendChild(wrap); area.scrollTop=area.scrollHeight;
 }
-function removeTyping(){ const el = document.getElementById('typing-indicator'); if(el) el.remove(); }
+function removeTyping(){ const el=document.getElementById('typing-indicator'); if(el) el.remove(); }
 
 // ═══════════════════════════════════════
 //  SOLO QUIZ ENGINE
-//  Direct calls to /api/quiz/question
 // ═══════════════════════════════════════
 const soloQuiz = (function(){
-
   const state = {
-    subject:    'Physics',
-    chapter:    '',
-    difficulty: 'mixed',
-    pyqMode:    false,
-    exam:       'JEE Main',
-    total:      5,
-    current:    0,
-    answered:   false,
-    loading:    false,
-    timer:      45,
-    timerH:     null,
-    session:    { correct:0, wrong:0, streak:0, maxStreak:0, xp:0, history:[] },
+    subject:'Physics',chapter:'',difficulty:'mixed',pyqMode:false,exam:'JEE Main',
+    total:5,current:0,answered:false,loading:false,timer:45,timerH:null,
+    session:{correct:0,wrong:0,streak:0,maxStreak:0,xp:0,history:[]},
   };
 
-  // Wire single-select pill groups
   function wireConfigPills(groupId, setter){
-    document.querySelectorAll(`#${groupId} .config-opt`).forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll(`#${groupId} .config-opt`).forEach(b => b.classList.remove('sel'));
+    document.querySelectorAll(`#${groupId} .config-opt`).forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll(`#${groupId} .config-opt`).forEach(b=>b.classList.remove('sel'));
         btn.classList.add('sel');
         if(setter) setter(btn.dataset.val);
       });
@@ -1346,122 +1329,82 @@ const soloQuiz = (function(){
   }
 
   function initControls(){
-    wireConfigPills('sq-subjects', v => { state.subject = v; });
-    wireConfigPills('sq-diff',     v => { state.difficulty = v; });
-    wireConfigPills('sq-qcount',   v => { state.total = parseInt(v); });
-    wireConfigPills('sq-qtype',    v => {
-      state.pyqMode = (v === 'pyq');
-      document.getElementById('sq-exam-row').style.display = state.pyqMode ? 'block' : 'none';
+    wireConfigPills('sq-subjects', v=>{state.subject=v;});
+    wireConfigPills('sq-diff',     v=>{state.difficulty=v;});
+    wireConfigPills('sq-qcount',   v=>{state.total=parseInt(v);});
+    wireConfigPills('sq-qtype',    v=>{
+      state.pyqMode=(v==='pyq');
+      document.getElementById('sq-exam-row').style.display=state.pyqMode?'block':'none';
     });
-    wireConfigPills('sq-exam', v => { state.exam = v; });
-    document.getElementById('sq-chapter').addEventListener('input', e => { state.chapter = e.target.value.trim(); });
+    wireConfigPills('sq-exam', v=>{state.exam=v;});
+    document.getElementById('sq-chapter').addEventListener('input',e=>{state.chapter=e.target.value.trim();});
   }
 
   function initAdaptive(){
-    const wt     = window.grindUser?.weakTopics || {};
-    const week   = getWeekKey();
-    const topics = Object.entries(wt).filter(([,v]) => v?.weeks?.includes(week)).map(([t]) => t);
-    const banner  = document.getElementById('sq-adaptive-banner');
-    const topicEl = document.getElementById('sq-adaptive-topics');
-    if(topics.length && banner){
-      banner.style.display = 'flex';
-      if(topicEl) topicEl.textContent = 'Weak this week: ' + topics.slice(0,4).join(' · ');
+    const wt=window.grindUser?.weakTopics||{};
+    const week=getWeekKey();
+    const topics=Object.entries(wt).filter(([,v])=>v?.weeks?.includes(week)).map(([t])=>t);
+    const banner=document.getElementById('sq-adaptive-banner');
+    const topicEl=document.getElementById('sq-adaptive-topics');
+    if(topics.length&&banner){
+      banner.style.display='flex';
+      if(topicEl) topicEl.textContent='Weak this week: '+topics.slice(0,4).join(' · ');
     }
   }
 
   function getWeekKey(){
-    const d = new Date(), jan1 = new Date(d.getFullYear(), 0, 1);
-    return `${d.getFullYear()}-W${Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7)}`;
+    const d=new Date(),jan1=new Date(d.getFullYear(),0,1);
+    return `${d.getFullYear()}-W${Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7)}`;
   }
 
-  // ── Fetch question from API ──────────────────
   async function fetchQuestion(){
-    const body = {
-      subject:    state.subject,
-      chapter:    state.chapter || undefined,
-      topic:      state.chapter || undefined,
-      difficulty: state.difficulty,
-      pyqMode:    state.pyqMode,
-      exam:       state.exam,
-    };
-
-    for(let attempt = 1; attempt <= 2; attempt++){
+    const body={subject:state.subject,chapter:state.chapter||undefined,topic:state.chapter||undefined,
+      difficulty:state.difficulty,pyqMode:state.pyqMode,exam:state.exam};
+    for(let attempt=1;attempt<=2;attempt++){
       try{
-        const res = await fetch('/api/quiz/question', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-        });
-        if(res.status === 401){
-          showError('Session expired. Please refresh and log in again.');
-          return null;
-        }
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-
-        const q = data.question;
-        if(!q || !q.question || !Array.isArray(q.options) || q.options.length < 4 || !q.answer)
-          throw new Error('Malformed question from server');
-
+        const res=await fetch('/api/quiz/question',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
+        if(res.status===401){showError('Session expired. Please refresh and log in again.');return null;}
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||`Server error ${res.status}`);
+        const q=data.question;
+        if(!q||!q.question||!Array.isArray(q.options)||q.options.length<4||!q.answer) throw new Error('Malformed question from server');
         return q;
       } catch(err){
-        console.error(`Quiz attempt ${attempt}:`, err.message);
-        if(attempt === 1){
-          setLoadingMsg(`Retrying… (${err.message.slice(0,50)})`);
-          await new Promise(r => setTimeout(r, 1500));
-        } else {
-          showError(`Could not generate question: ${err.message}. Please try again.`);
-          return null;
-        }
+        console.error(`Quiz attempt ${attempt}:`,err.message);
+        if(attempt===1){setLoadingMsg(`Retrying… (${err.message.slice(0,50)})`);await new Promise(r=>setTimeout(r,1500));}
+        else{showError(`Could not generate question: ${err.message}. Please try again.`);return null;}
       }
     }
     return null;
   }
 
-  // ── Start session ────────────────────────────
   async function start(){
-    // Read config from DOM
-    state.subject    = document.querySelector('#sq-subjects .config-opt.sel')?.dataset.val || 'Physics';
-    state.difficulty = document.querySelector('#sq-diff .config-opt.sel')?.dataset.val      || 'mixed';
-    state.total      = parseInt(document.querySelector('#sq-qcount .config-opt.sel')?.dataset.val || '5');
-    state.pyqMode    = document.querySelector('#sq-qtype .config-opt.sel')?.dataset.val === 'pyq';
-    state.exam       = document.querySelector('#sq-exam .config-opt.sel')?.dataset.val      || 'JEE Main';
-    state.chapter    = document.getElementById('sq-chapter')?.value.trim() || '';
-
-    // Reset session counters
-    state.current  = 0;
-    state.answered = false;
-    state.session  = { correct:0, wrong:0, streak:0, maxStreak:0, xp:0, history:[] };
-
+    state.subject=document.querySelector('#sq-subjects .config-opt.sel')?.dataset.val||'Physics';
+    state.difficulty=document.querySelector('#sq-diff .config-opt.sel')?.dataset.val||'mixed';
+    state.total=parseInt(document.querySelector('#sq-qcount .config-opt.sel')?.dataset.val||'5');
+    state.pyqMode=document.querySelector('#sq-qtype .config-opt.sel')?.dataset.val==='pyq';
+    state.exam=document.querySelector('#sq-exam .config-opt.sel')?.dataset.val||'JEE Main';
+    state.chapter=document.getElementById('sq-chapter')?.value.trim()||'';
+    state.current=0; state.answered=false;
+    state.session={correct:0,wrong:0,streak:0,maxStreak:0,xp:0,history:[]};
     showLoading(`Loading Q1/${state.total}…`);
-    const q = await fetchQuestion();
+    const q=await fetchQuestion();
     if(q) renderQuestion(q);
   }
 
-  // ── Render a question ────────────────────────
   function renderQuestion(q){
-    state.loading  = false;
-    state.answered = false;
-    state.current++;
-
-    const letters   = ['A','B','C','D'];
-    const pyqBadge  = (q.verified && q.year)
-      ? `<span class="quiz-pyq-badge">📅 ${esc(q.exam||state.exam)} ${esc(q.year)}${q.shift?' · '+esc(q.shift):''}</span>`
-      : state.pyqMode ? `<span class="quiz-pyq-badge">PYQ-style</span>` : '';
-    const wrongBadge = q.wrongPercent
-      ? `<div class="quiz-stat">🔥 ${q.wrongPercent}% of students got this wrong</div>` : '';
-
-    const optsHTML = q.options.map((opt, i) => {
-      const clean = opt.replace(/^[A-D]\)\s*/i, '');
+    state.loading=false; state.answered=false; state.current++;
+    const letters=['A','B','C','D'];
+    const pyqBadge=(q.verified&&q.year)?`<span class="quiz-pyq-badge">📅 ${esc(q.exam||state.exam)} ${esc(q.year)}${q.shift?' · '+esc(q.shift):''}</span>`
+      :state.pyqMode?`<span class="quiz-pyq-badge">PYQ-style</span>`:'';
+    const wrongBadge=q.wrongPercent?`<div class="quiz-stat">🔥 ${q.wrongPercent}% of students got this wrong</div>`:'';
+    const optsHTML=q.options.map((opt,i)=>{
+      const clean=opt.replace(/^[A-D]\)\s*/i,'');
       return `<button class="quiz-opt" data-letter="${letters[i]}" onclick="soloQuiz._answer('${letters[i]}')">`
-        + `<span class="quiz-opt-letter">${letters[i]}</span>`
-        + `<span class="gq-opt-text">${esc(clean)}</span></button>`;
+        +`<span class="quiz-opt-letter">${letters[i]}</span><span class="gq-opt-text">${esc(clean)}</span></button>`;
     }).join('');
-
-    const pct = Math.round(((state.current - 1) / state.total) * 100);
-
-    document.getElementById('sq-question-area').innerHTML = `
+    const pct=Math.round(((state.current-1)/state.total)*100);
+    document.getElementById('sq-question-area').innerHTML=`
       <div class="quiz-q-card" style="margin-top:16px">
         <div class="quiz-progress"><div class="quiz-progress-fill" style="width:${pct}%"></div></div>
         <div class="quiz-meta">
@@ -1486,646 +1429,372 @@ const soloQuiz = (function(){
           <button class="qa-btn" onclick="soloQuiz.end()">End Session</button>
         </div>
       </div>`;
-
-    // Render math
-    const qtxt = document.getElementById('sq-qtext');
+    const qtxt=document.getElementById('sq-qtext');
     if(qtxt) renderMath(qtxt);
-    document.querySelectorAll('.gq-opt-text').forEach(el => renderMath(el));
-
-    window._currentQ = q;
+    document.querySelectorAll('.gq-opt-text').forEach(el=>renderMath(el));
+    window._currentQ=q;
     updateSessionBar();
     startTimer();
   }
 
-  // ── Answer handler ───────────────────────────
   function handleAnswer(letter){
-    if(state.answered || state.loading || !window._currentQ) return;
-    state.answered = true;
-    stopTimer();
-
-    const q       = window._currentQ;
-    const correct = (letter === q.answer);
-    const xp      = correct ? 10 + Math.floor(state.timer / 3) : 2;
-
-    if(correct){
-      state.session.correct++;
-      state.session.streak++;
-      state.session.maxStreak = Math.max(state.session.maxStreak, state.session.streak);
-    } else {
-      state.session.wrong++;
-      state.session.streak = 0;
-      logWrong(q, letter);
-    }
-    state.session.xp += xp;
-    state.session.history.push({ q, selected:letter, correct, xp });
-
-    // Colour options
-    document.querySelectorAll('#sq-opts .quiz-opt').forEach(btn => {
-      btn.disabled = true;
-      const bl = btn.dataset.letter;
-      if(bl === q.answer)              btn.classList.add('correct');
-      else if(bl === letter && !correct) btn.classList.add('wrong');
+    if(state.answered||state.loading||!window._currentQ) return;
+    state.answered=true; stopTimer();
+    const q=window._currentQ;
+    const correct=(letter===q.answer);
+    const xp=correct?10+Math.floor(state.timer/3):2;
+    if(correct){ state.session.correct++; state.session.streak++; state.session.maxStreak=Math.max(state.session.maxStreak,state.session.streak); }
+    else{ state.session.wrong++; state.session.streak=0; logWrong(q,letter); }
+    state.session.xp+=xp;
+    state.session.history.push({q,selected:letter,correct,xp});
+    document.querySelectorAll('#sq-opts .quiz-opt').forEach(btn=>{
+      btn.disabled=true;
+      const bl=btn.dataset.letter;
+      if(bl===q.answer) btn.classList.add('correct');
+      else if(bl===letter&&!correct) btn.classList.add('wrong');
     });
-
-    // Reveal
-    const revealEl = document.getElementById('sq-reveal');
+    const revealEl=document.getElementById('sq-reveal');
     if(revealEl){
-      const resultLine = correct
-        ? `<div style="font-size:14px;font-weight:600;color:#34d399;margin-bottom:8px">✓ Correct! +${xp} XP</div>`
-        : `<div style="font-size:14px;font-weight:600;color:#fca5a5;margin-bottom:8px">✗ Wrong — correct answer: <strong style="color:#34d399">${q.answer}</strong></div>`;
-      let html = resultLine;
-      html += `<div class="quiz-explanation"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);margin-bottom:6px">Explanation</div>`
-        + `<div id="sq-exp-body">${esc(q.explanation || 'Review this concept.')}</div></div>`;
-      if(q.cheatSheet) html += `<div class="hint-box" style="margin-top:8px">⚡ <strong>Shortcut:</strong> ${esc(q.cheatSheet)}</div>`;
-      if(q.trapAlert)  html += `<div class="hint-box" style="margin-top:8px;background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.25);color:#fca5a5">⚠ <strong>NTA Trap:</strong> ${esc(q.trapAlert)}</div>`;
-      if(q.year && q.exam) html += `<div style="font-size:11px;color:var(--muted2);margin-top:8px;font-family:'Space Mono',monospace">Source: ${esc(q.exam)}${q.shift?' · '+esc(q.shift):''}, ${esc(q.year)}${q.wrongPercent?' — '+q.wrongPercent+'% got it wrong':''}</div>`;
-      revealEl.innerHTML = html;
-      revealEl.style.display = 'block';
-      const expBody = document.getElementById('sq-exp-body');
+      const resultLine=correct
+        ?`<div style="font-size:14px;font-weight:600;color:#34d399;margin-bottom:8px">✓ Correct! +${xp} XP</div>`
+        :`<div style="font-size:14px;font-weight:600;color:#fca5a5;margin-bottom:8px">✗ Wrong — correct answer: <strong style="color:#34d399">${q.answer}</strong></div>`;
+      let html=resultLine+`<div class="quiz-explanation"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);margin-bottom:6px">Explanation</div><div id="sq-exp-body">${esc(q.explanation||'Review this concept.')}</div></div>`;
+      if(q.cheatSheet) html+=`<div class="hint-box" style="margin-top:8px">⚡ <strong>Shortcut:</strong> ${esc(q.cheatSheet)}</div>`;
+      if(q.trapAlert)  html+=`<div class="hint-box" style="margin-top:8px;background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.25);color:#fca5a5">⚠ <strong>NTA Trap:</strong> ${esc(q.trapAlert)}</div>`;
+      if(q.year&&q.exam) html+=`<div style="font-size:11px;color:var(--muted2);margin-top:8px;font-family:'Space Mono',monospace">Source: ${esc(q.exam)}${q.shift?' · '+esc(q.shift):''}, ${esc(q.year)}${q.wrongPercent?' — '+q.wrongPercent+'% got it wrong':''}</div>`;
+      revealEl.innerHTML=html; revealEl.style.display='block';
+      const expBody=document.getElementById('sq-exp-body');
       if(expBody) renderMath(expBody);
     }
-
-    const actions = document.getElementById('sq-actions');
-    if(actions) actions.style.display = 'flex';
-    const mb = document.getElementById('sq-mistake-btn');
-    if(mb) mb.style.display = correct ? 'none' : 'inline-flex';
-
-    const sb = document.getElementById('sq-streak-badge');
-    if(sb){ sb.style.display = state.session.streak >= 2 ? 'inline' : 'none'; sb.textContent = `🔥 ${state.session.streak}`; }
-
-    updateSessionBar();
-    awardXP(correct, xp);
+    const actions=document.getElementById('sq-actions'); if(actions) actions.style.display='flex';
+    const mb=document.getElementById('sq-mistake-btn'); if(mb) mb.style.display=correct?'none':'inline-flex';
+    const sb=document.getElementById('sq-streak-badge');
+    if(sb){sb.style.display=state.session.streak>=2?'inline':'none';sb.textContent=`🔥 ${state.session.streak}`;}
+    updateSessionBar(); awardXP(correct,xp);
   }
 
-  // ── Next question ────────────────────────────
   async function next(){
-    if(state.current >= state.total){ end(); return; }
-    showLoading(`Loading Q${state.current + 1}/${state.total}…`);
-    const q = await fetchQuestion();
+    if(state.current>=state.total){end();return;}
+    showLoading(`Loading Q${state.current+1}/${state.total}…`);
+    const q=await fetchQuestion();
     if(q) renderQuestion(q); else end();
   }
 
-  // ── End / Results ────────────────────────────
   function end(){
     stopTimer();
-    const s   = state.session;
-    const tot = s.correct + s.wrong;
-    const acc = tot ? Math.round((s.correct / tot) * 100) : 0;
-
-    const statCard = (val, lbl, col) =>
-      `<div class="quiz-config-card" style="padding:14px;text-align:center;">`
-      + `<div style="font-size:24px;font-weight:700;color:${col};margin-bottom:4px">${val}</div>`
-      + `<div style="font-size:11px;color:var(--muted2)">${lbl}</div></div>`;
-
-    const histRows = s.history.map(h =>
-      `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">`
-      + `<span style="font-size:13px;min-width:16px;margin-top:1px">${h.correct ? '✓' : '✗'}</span>`
-      + `<div style="flex:1"><div style="font-size:11px;color:var(--muted2);margin-bottom:2px">${esc(h.q.topic||h.q.chapter||'')}</div>`
-      + `<div style="font-size:12px;line-height:1.45">${esc(h.q.question.slice(0,90))}${h.q.question.length > 90 ? '…' : ''}</div></div>`
-      + `<span style="font-size:11px;color:var(--accent);white-space:nowrap">+${h.xp} XP</span></div>`
-    ).join('');
-
-    document.getElementById('sq-question-area').innerHTML = `
+    const s=state.session;
+    const tot=s.correct+s.wrong;
+    const acc=tot?Math.round((s.correct/tot)*100):0;
+    const statCard=(val,lbl,col)=>`<div class="quiz-config-card" style="padding:14px;text-align:center;">`
+      +`<div style="font-size:24px;font-weight:700;color:${col};margin-bottom:4px">${val}</div>`
+      +`<div style="font-size:11px;color:var(--muted2)">${lbl}</div></div>`;
+    const histRows=s.history.map(h=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">`
+      +`<span style="font-size:13px;min-width:16px;margin-top:1px">${h.correct?'✓':'✗'}</span>`
+      +`<div style="flex:1"><div style="font-size:11px;color:var(--muted2);margin-bottom:2px">${esc(h.q.topic||h.q.chapter||'')}</div>`
+      +`<div style="font-size:12px;line-height:1.45">${esc(h.q.question.slice(0,90))}${h.q.question.length>90?'…':''}</div></div>`
+      +`<span style="font-size:11px;color:var(--accent);white-space:nowrap">+${h.xp} XP</span></div>`).join('');
+    document.getElementById('sq-question-area').innerHTML=`
       <div class="quiz-config-card" style="margin-top:16px">
         <div style="font-size:18px;font-weight:700;margin-bottom:4px">Session Complete 🎉</div>
         <div style="font-size:12px;color:var(--muted2)">${state.current} questions · ${state.subject}${state.pyqMode?' · PYQ Mode':''}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-top:12px">
-        ${statCard(s.correct, 'Correct', '#34d399')}
-        ${statCard(s.wrong,   'Wrong',   '#fca5a5')}
-        ${statCard(acc + '%', 'Accuracy', acc >= 70 ? '#34d399' : acc >= 50 ? 'var(--gold)' : '#fca5a5')}
-        ${statCard('+' + s.xp, 'XP Earned', 'var(--accent)')}
+        ${statCard(s.correct,'Correct','#34d399')}${statCard(s.wrong,'Wrong','#fca5a5')}
+        ${statCard(acc+'%','Accuracy',acc>=70?'#34d399':acc>=50?'var(--gold)':'#fca5a5')}
+        ${statCard('+'+s.xp,'XP Earned','var(--accent)')}
       </div>
-      ${s.history.length ? `<div class="quiz-config-card" style="margin-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--muted2)">SESSION BREAKDOWN</div>${histRows}</div>` : ''}
+      ${s.history.length?`<div class="quiz-config-card" style="margin-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--muted2)">SESSION BREAKDOWN</div>${histRows}</div>`:''}
       <div class="quiz-actions" style="margin-top:14px">
         <button class="qa-btn primary" onclick="soloQuiz.reset()">New Session ↗</button>
         <button class="qa-btn" onclick="switchTab('mistakes')">View Mistake Book 📑</button>
       </div>`;
-
-    document.getElementById('sq-session-stats').style.display = 'none';
+    document.getElementById('sq-session-stats').style.display='none';
   }
 
-  // ── Reset ────────────────────────────────────
   function reset(){
-    document.getElementById('sq-question-area').innerHTML = '';
-    document.getElementById('sq-config-area').style.display = 'block';
-    document.getElementById('sq-session-stats').style.display = 'none';
+    document.getElementById('sq-question-area').innerHTML='';
+    document.getElementById('sq-config-area').style.display='block';
+    document.getElementById('sq-session-stats').style.display='none';
     initAdaptive();
   }
 
-  // ── Timer ────────────────────────────────────
   function startTimer(){
-    state.timer = 45; updateTimerDisplay();
-    clearInterval(state.timerH);
-    state.timerH = setInterval(() => {
-      state.timer--;
-      updateTimerDisplay();
-      if(state.timer <= 0){
+    state.timer=45; updateTimerDisplay(); clearInterval(state.timerH);
+    state.timerH=setInterval(()=>{
+      state.timer--; updateTimerDisplay();
+      if(state.timer<=0){
         stopTimer();
         if(!state.answered){
-          state.answered = true;
-          document.querySelectorAll('#sq-opts .quiz-opt').forEach(btn => {
-            btn.disabled = true;
-            if(btn.dataset.letter === window._currentQ?.answer) btn.classList.add('correct');
-          });
-          const rev = document.getElementById('sq-reveal');
-          if(rev){
-            rev.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--gold);margin-bottom:8px">⏱ Time's up! Correct: <strong style="color:#34d399">${window._currentQ?.answer}</strong></div>`
-              + `<div class="quiz-explanation">${esc(window._currentQ?.explanation||'')}</div>`;
-            rev.style.display = 'block';
-          }
-          const ac = document.getElementById('sq-actions'); if(ac) ac.style.display = 'flex';
-          const mb = document.getElementById('sq-mistake-btn'); if(mb) mb.style.display = 'inline-flex';
-          state.session.wrong++;
-          state.session.streak = 0;
-          logWrong(window._currentQ, 'timeout');
-          updateSessionBar();
+          state.answered=true;
+          document.querySelectorAll('#sq-opts .quiz-opt').forEach(btn=>{btn.disabled=true;if(btn.dataset.letter===window._currentQ?.answer)btn.classList.add('correct');});
+          const rev=document.getElementById('sq-reveal');
+          if(rev){rev.innerHTML=`<div style="font-size:14px;font-weight:600;color:var(--gold);margin-bottom:8px">⏱ Time's up! Correct: <strong style="color:#34d399">${window._currentQ?.answer}</strong></div>`+`<div class="quiz-explanation">${esc(window._currentQ?.explanation||'')}</div>`;rev.style.display='block';}
+          const ac=document.getElementById('sq-actions');if(ac)ac.style.display='flex';
+          const mb=document.getElementById('sq-mistake-btn');if(mb)mb.style.display='inline-flex';
+          state.session.wrong++; state.session.streak=0;
+          logWrong(window._currentQ,'timeout'); updateSessionBar();
         }
       }
-    }, 1000);
+    },1000);
   }
 
   function stopTimer(){ clearInterval(state.timerH); }
 
   function updateTimerDisplay(){
-    const el  = document.getElementById('sq-timer');
-    const bar = document.getElementById('sq-tbar');
-    if(!el || !bar) return;
-    el.textContent = state.timer;
-    const pct = (state.timer / 45) * 100;
-    bar.style.width = pct + '%';
-    const col = state.timer > 20 ? 'var(--gold)' : state.timer > 10 ? '#f97316' : '#ef4444';
-    bar.style.background = col;
-    el.style.color = col;
+    const el=document.getElementById('sq-timer');const bar=document.getElementById('sq-tbar');
+    if(!el||!bar) return;
+    el.textContent=state.timer;
+    const pct=(state.timer/45)*100; bar.style.width=pct+'%';
+    const col=state.timer>20?'var(--gold)':state.timer>10?'#f97316':'#ef4444';
+    bar.style.background=col; el.style.color=col;
   }
 
-  // ── Loading / Error ──────────────────────────
   function showLoading(msg){
-    state.loading = true;
-    document.getElementById('sq-config-area').style.display = 'none';
-    document.getElementById('sq-question-area').innerHTML = `
-      <div class="quiz-q-card" style="margin-top:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 1rem;gap:16px">
-        <div class="spinner" style="width:28px;height:28px;border-width:3px"></div>
-        <div id="sq-load-msg" style="font-size:13px;color:var(--muted2);text-align:center;max-width:260px">${esc(msg)}</div>
-      </div>`;
+    state.loading=true;
+    document.getElementById('sq-config-area').style.display='none';
+    document.getElementById('sq-question-area').innerHTML=`<div class="quiz-q-card" style="margin-top:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 1rem;gap:16px"><div class="spinner" style="width:28px;height:28px;border-width:3px"></div><div id="sq-load-msg" style="font-size:13px;color:var(--muted2);text-align:center;max-width:260px">${esc(msg)}</div></div>`;
   }
-  function setLoadingMsg(msg){ const el = document.getElementById('sq-load-msg'); if(el) el.textContent = msg; }
+  function setLoadingMsg(msg){const el=document.getElementById('sq-load-msg');if(el)el.textContent=msg;}
   function showError(msg){
-    state.loading = false;
-    document.getElementById('sq-question-area').innerHTML = `
-      <div class="quiz-q-card" style="margin-top:16px;text-align:center;padding:2.5rem 1rem">
-        <div style="font-size:28px;margin-bottom:10px">⚠️</div>
-        <div style="font-size:13px;color:#fca5a5;margin-bottom:16px">${esc(msg)}</div>
-        <button class="qa-btn primary" onclick="soloQuiz.reset()" style="padding:10px 20px;width:auto">← Back to Config</button>
-      </div>`;
-    document.getElementById('sq-config-area').style.display = 'block';
+    state.loading=false;
+    document.getElementById('sq-question-area').innerHTML=`<div class="quiz-q-card" style="margin-top:16px;text-align:center;padding:2.5rem 1rem"><div style="font-size:28px;margin-bottom:10px">⚠️</div><div style="font-size:13px;color:#fca5a5;margin-bottom:16px">${esc(msg)}</div><button class="qa-btn primary" onclick="soloQuiz.reset()" style="padding:10px 20px;width:auto">← Back to Config</button></div>`;
+    document.getElementById('sq-config-area').style.display='block';
   }
 
   function updateSessionBar(){
-    const bar = document.getElementById('sq-session-stats');
-    if(!bar) return;
-    if(state.session.history.length > 0 || state.current > 0) bar.style.display = 'block';
-    const s = state.session;
-    const sc = document.getElementById('sq-stat-correct'); if(sc) sc.textContent = s.correct;
-    const sw = document.getElementById('sq-stat-wrong');   if(sw) sw.textContent = s.wrong;
-    const ss = document.getElementById('sq-stat-streak');  if(ss) ss.textContent = s.streak;
-    const sx = document.getElementById('sq-stat-xp');      if(sx) sx.textContent = s.xp;
+    const bar=document.getElementById('sq-session-stats');if(!bar)return;
+    if(state.session.history.length>0||state.current>0)bar.style.display='block';
+    const s=state.session;
+    const sc=document.getElementById('sq-stat-correct');if(sc)sc.textContent=s.correct;
+    const sw=document.getElementById('sq-stat-wrong');if(sw)sw.textContent=s.wrong;
+    const ss=document.getElementById('sq-stat-streak');if(ss)ss.textContent=s.streak;
+    const sx=document.getElementById('sq-stat-xp');if(sx)sx.textContent=s.xp;
   }
 
-  // ── API calls ────────────────────────────────
-  async function logWrong(q, userAnswer){
-    if(!q) return;
+  async function logWrong(q,userAnswer){
+    if(!q)return;
     try{
-      await fetch('/api/quiz/log-wrong', {
-        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-        body: JSON.stringify({
-          topic:         q.topic || q.chapter || state.subject,
-          subject:       state.subject,
-          chapter:       q.chapter || state.chapter || '',
-          question:      q.question,
-          userAnswer:    userAnswer || 'timeout',
-          correctAnswer: q.answer,
-          explanation:   q.explanation || '',
-          cheatSheet:    q.cheatSheet  || '',
-          trapAlert:     q.trapAlert   || '',
-          isPYQ:         !!q.verified,
-          pyqYear:       q.year  || '',
-          pyqExam:       q.exam  || '',
-          pyqShift:      q.shift || '',
-        })
-      });
-    } catch(e){ console.warn('log-wrong:', e.message); }
+      await fetch('/api/quiz/log-wrong',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+        body:JSON.stringify({topic:q.topic||q.chapter||state.subject,subject:state.subject,chapter:q.chapter||state.chapter||'',
+          question:q.question,userAnswer:userAnswer||'timeout',correctAnswer:q.answer,explanation:q.explanation||'',
+          cheatSheet:q.cheatSheet||'',trapAlert:q.trapAlert||'',isPYQ:!!q.verified,
+          pyqYear:q.year||'',pyqExam:q.exam||'',pyqShift:q.shift||''})});
+    } catch(e){console.warn('log-wrong:',e.message);}
   }
 
-  async function awardXP(correct, xpEarned){
+  async function awardXP(correct,xpEarned){
     try{
-      await fetch('/api/quiz/award-xp', {
-        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-        body: JSON.stringify({
-          correct, xpEarned,
-          streak:       state.session.streak,
-          totalSolved:  state.session.correct + state.session.wrong,
-          totalCorrect: state.session.correct,
-        })
-      });
-    } catch(e){ console.warn('award-xp:', e.message); }
+      await fetch('/api/quiz/award-xp',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+        body:JSON.stringify({correct,xpEarned,streak:state.session.streak,
+          totalSolved:state.session.correct+state.session.wrong,totalCorrect:state.session.correct})});
+    } catch(e){console.warn('award-xp:',e.message);}
   }
 
   async function saveMistake(){
-    const q = window._currentQ; if(!q) return;
+    const q=window._currentQ;if(!q)return;
     try{
-      const res = await fetch('/api/mistakes', {
-        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-        body: JSON.stringify({
-          question:      q.question,
-          subject:       state.subject,
-          chapter:       q.chapter || state.chapter || state.subject,
-          topic:         q.topic   || q.chapter     || state.subject,
-          explanation:   q.explanation || '',
-          cheatSheet:    q.cheatSheet  || '',
-          trapAlert:     q.trapAlert   || '',
-          userAnswer:    state.session.history.slice(-1)[0]?.selected || '',
-          correctAnswer: q.answer,
-          isPYQ:         !!q.verified,
-          pyqYear:       q.year  || '',
-          pyqExam:       q.exam  || '',
-          pyqShift:      q.shift || '',
-        })
-      });
-      if(res.ok){
-        showToast('✓ Added to Mistake Book');
-        const mb = document.getElementById('sq-mistake-btn');
-        if(mb){ mb.textContent = '✓ Added'; mb.disabled = true; }
-      } else {
-        showToast('Could not save — try again');
-      }
-    } catch{ showToast('Network error'); }
+      const res=await fetch('/api/mistakes',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+        body:JSON.stringify({question:q.question,subject:state.subject,chapter:q.chapter||state.chapter||state.subject,
+          topic:q.topic||q.chapter||state.subject,explanation:q.explanation||'',cheatSheet:q.cheatSheet||'',
+          trapAlert:q.trapAlert||'',userAnswer:state.session.history.slice(-1)[0]?.selected||'',
+          correctAnswer:q.answer,isPYQ:!!q.verified,pyqYear:q.year||'',pyqExam:q.exam||'',pyqShift:q.shift||''})});
+      if(res.ok){showToast('✓ Added to Mistake Book');const mb=document.getElementById('sq-mistake-btn');if(mb){mb.textContent='✓ Added';mb.disabled=true;}}
+      else showToast('Could not save — try again');
+    } catch{showToast('Network error');}
   }
 
-  // Init on DOMContentLoaded
-  document.addEventListener('DOMContentLoaded', () => {
-    initControls();
-    initAdaptive();
-  });
-
-  return { start, next, end, reset, initAdaptive, _answer:handleAnswer, saveMistake };
-
+  document.addEventListener('DOMContentLoaded',()=>{ initControls(); initAdaptive(); });
+  return {start,next,end,reset,initAdaptive,_answer:handleAnswer,saveMistake};
 })();
 
-// ═══════════════════════════════════════
-//  QUIZ MODE SELECT
-// ═══════════════════════════════════════
+// ── Quiz mode select ──────────────────────────────────────
 function selectQuizMode(mode){
-  document.getElementById('qm-solo').classList.toggle('sel', mode === 'solo');
-  document.getElementById('qm-multi').classList.toggle('sel', mode === 'multi');
-  document.getElementById('solo-quiz-section').style.display  = mode === 'solo'  ? 'block' : 'none';
-  document.getElementById('multi-quiz-section').style.display = mode === 'multi' ? 'block' : 'none';
+  document.getElementById('qm-solo').classList.toggle('sel',mode==='solo');
+  document.getElementById('qm-multi').classList.toggle('sel',mode==='multi');
+  document.getElementById('solo-quiz-section').style.display=mode==='solo'?'block':'none';
+  document.getElementById('multi-quiz-section').style.display=mode==='multi'?'block':'none';
 }
 
 // ═══════════════════════════════════════
 //  MULTIPLAYER
 // ═══════════════════════════════════════
-let currentRoomCode    = '';
-let multiQuizAnswered  = false;
-let multiTimerH        = null;
-let multiTimeLeft      = 45;
+let currentRoomCode='',multiQuizAnswered=false,multiTimerH=null,multiTimeLeft=45;
 
 function createRoom(){
-  const name = prompt('Your display name:'); if(!name) return;
-  const subj = prompt('Subject(s) comma-separated (e.g. Physics,Chemistry):') || 'Physics';
-  const qc   = parseInt(prompt('Number of questions (5-20):') || '10');
-  const pyqMode = confirm('Use PYQ Mode? (Real previous year questions)');
-  socket.emit('create-room', {
-    name,
-    config: {
-      questionCount: Math.min(20, Math.max(5, qc || 10)),
-      difficulty:    'mixed',
-      pyqMode,
-      subjects:      subj.split(',').map(s => s.trim()),
-      chapters:      [],
-    }
-  });
+  const name=prompt('Your display name:');if(!name)return;
+  const subj=prompt('Subject(s) comma-separated (e.g. Physics,Chemistry):')||'Physics';
+  const qc=parseInt(prompt('Number of questions (5-20):')||'10');
+  const pyqMode=confirm('Use PYQ Mode? (Real previous year questions)');
+  socket.emit('create-room',{name,config:{questionCount:Math.min(20,Math.max(5,qc||10)),difficulty:'mixed',pyqMode,subjects:subj.split(',').map(s=>s.trim()),chapters:[]}});
 }
 
 function showJoinRoom(){
-  const code = prompt('Enter room code:'); if(!code) return;
-  const name = prompt('Your display name:'); if(!name) return;
-  socket.emit('join-room', { code:code.trim(), name });
+  const code=prompt('Enter room code:');if(!code)return;
+  const name=prompt('Your display name:');if(!name)return;
+  socket.emit('join-room',{code:code.trim(),name});
 }
 
-socket.on('room-created', ({ code, config }) => {
-  currentRoomCode = code;
-  document.getElementById('room-area').innerHTML = `
-    <div class="room-card">
-      <div style="text-align:center;font-size:12px;color:var(--muted2)">Share this code with friends</div>
-      <div class="room-code">${code}</div>
-      <div style="font-size:11px;color:var(--muted2);margin-bottom:12px;text-align:center;font-family:'Space Mono',monospace">${config?.questionCount||10} questions · ${config?.pyqMode?'PYQ Mode':'Practice Mode'}</div>
-      <div class="player-list" id="player-list"></div>
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="qa-btn primary" style="flex:1" onclick="socket.emit('start-game',{code:'${code}'})">Start Game ▶</button>
-        <button class="qa-btn" onclick="navigator.clipboard.writeText('${code}');showToast('Code copied!')">Copy Code</button>
-      </div>
-    </div>`;
+socket.on('room-created',({code,config})=>{
+  currentRoomCode=code;
+  document.getElementById('room-area').innerHTML=`<div class="room-card"><div style="text-align:center;font-size:12px;color:var(--muted2)">Share this code with friends</div><div class="room-code">${code}</div><div style="font-size:11px;color:var(--muted2);margin-bottom:12px;text-align:center;font-family:'Space Mono',monospace">${config?.questionCount||10} questions · ${config?.pyqMode?'PYQ Mode':'Practice Mode'}</div><div class="player-list" id="player-list"></div><div style="margin-top:16px;display:flex;gap:8px"><button class="qa-btn primary" style="flex:1" onclick="socket.emit('start-game',{code:'${code}'})">Start Game ▶</button><button class="qa-btn" onclick="navigator.clipboard.writeText('${code}');showToast('Code copied!')">Copy Code</button></div></div>`;
 });
-
-socket.on('room-joined', ({ code, config }) => {
-  currentRoomCode = code;
-  document.getElementById('room-area').innerHTML = `
-    <div class="room-card">
-      <div style="text-align:center;color:var(--muted2)">Joined room <strong style="color:var(--accent)">${code}</strong><br>
-      <span style="font-size:12px">${config?.questionCount||10} questions · Waiting for host...</span></div>
-      <div class="player-list" id="player-list" style="margin-top:12px"></div>
-    </div>`;
+socket.on('room-joined',({code,config})=>{
+  currentRoomCode=code;
+  document.getElementById('room-area').innerHTML=`<div class="room-card"><div style="text-align:center;color:var(--muted2)">Joined room <strong style="color:var(--accent)">${code}</strong><br><span style="font-size:12px">${config?.questionCount||10} questions · Waiting for host...</span></div><div class="player-list" id="player-list" style="margin-top:12px"></div></div>`;
 });
-
-socket.on('room-error', msg => showToast(msg));
-
-socket.on('players-update', players => {
-  const list = document.getElementById('player-list'); if(!list) return;
-  const sorted = [...players].sort((a, b) => b.score - a.score);
-  list.innerHTML = sorted.map((p, i) =>
-    `<div class="player-item">
-      <span>${['🥇','🥈','🥉'][i] || '👤'} ${esc(p.name)}${p.streak >= 3 ? ' 🔥' : ''}</span>
-      <span class="player-score">${p.score} pts</span>
-    </div>`
-  ).join('');
+socket.on('room-error',msg=>showToast(msg));
+socket.on('players-update',players=>{
+  const list=document.getElementById('player-list');if(!list)return;
+  const sorted=[...players].sort((a,b)=>b.score-a.score);
+  list.innerHTML=sorted.map((p,i)=>`<div class="player-item"><span>${['🥇','🥈','🥉'][i]||'👤'} ${esc(p.name)}${p.streak>=3?' 🔥':''}</span><span class="player-score">${p.score} pts</span></div>`).join('');
 });
-
-socket.on('game-started', () => {
-  document.getElementById('room-area').innerHTML = `
-    <div class="room-card" id="live-quiz">
-      <div style="text-align:center;padding:20px"><div class="spinner" style="margin:auto"></div>
-      <div style="font-size:12px;color:var(--muted2);margin-top:10px">Loading question...</div></div>
-      <div class="emoji-bar" style="justify-content:center;margin-top:12px">
-        ${['🔥','⚡','😭','💀'].map(e =>
-          `<span class="emoji-btn" onclick="socket.emit('send-emoji',{code:'${currentRoomCode}',emoji:'${e}'})">${e}</span>`
-        ).join('')}
-      </div>
-      <div class="player-list" id="player-list" style="margin-top:12px"></div>
-    </div>`;
+socket.on('game-started',()=>{
+  document.getElementById('room-area').innerHTML=`<div class="room-card" id="live-quiz"><div style="text-align:center;padding:20px"><div class="spinner" style="margin:auto"></div><div style="font-size:12px;color:var(--muted2);margin-top:10px">Loading question...</div></div><div class="emoji-bar" style="justify-content:center;margin-top:12px">${['🔥','⚡','😭','💀'].map(e=>`<span class="emoji-btn" onclick="socket.emit('send-emoji',{code:'${currentRoomCode}',emoji:'${e}'})">${e}</span>`).join('')}</div><div class="player-list" id="player-list" style="margin-top:12px"></div></div>`;
 });
-
-socket.on('new-question', q => {
-  const container = document.getElementById('live-quiz'); if(!container) return;
-  multiQuizAnswered = false; multiTimeLeft = q.timeLimit || 45;
-  clearInterval(multiTimerH);
-  const isPYQ = q.year && q.exam;
-  container.innerHTML = `
-    <div class="quiz-progress"><div class="quiz-progress-fill" style="width:${Math.round(((q.questionNumber-1)/q.totalQuestions)*100)}%"></div></div>
-    <div style="font-size:10px;color:var(--muted2);font-family:'Space Mono',monospace;margin-bottom:10px">Q${q.questionNumber} of ${q.totalQuestions}</div>
-    <div class="quiz-meta">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${isPYQ ? `<span class="quiz-pyq-badge">📅 ${esc(q.exam)} ${esc(q.year)}${q.shift?' · '+esc(q.shift):''}</span>` : ''}
-        ${q.trapAlert ? `<span class="quiz-trap">🚨 ${esc(q.trapAlert)}</span>` : ''}
-      </div>
-      <span class="quiz-timer" id="mp-timer">${multiTimeLeft}s</span>
-    </div>
-    <div class="timer-bar-wrap"><div id="mp-tbar" class="timer-bar-fill" style="width:100%"></div></div>
-    <div class="quiz-question">${esc(q.question)}</div>
-    <div class="quiz-stat">🔥 ${q.wrongPercent || 65}% got this wrong</div>
-    <div class="quiz-options" id="mp-opts">
-      ${q.options.map((o, i) =>
-        `<button class="quiz-opt" onclick="submitMultiAnswer('${String.fromCharCode(65+i)}',this)">
-          <span class="quiz-opt-letter">${String.fromCharCode(65+i)}</span>
-          <span>${esc(o.replace(/^[A-D]\)\s*/i,''))}</span>
-        </button>`
-      ).join('')}
-    </div>
-    <div id="mp-result"></div>
-    <div class="emoji-bar" style="justify-content:center;margin-top:12px">
-      ${['🔥','⚡','😭','💀'].map(e =>
-        `<span class="emoji-btn" onclick="socket.emit('send-emoji',{code:'${currentRoomCode}',emoji:'${e}'})">${e}</span>`
-      ).join('')}
-    </div>
-    <div class="player-list" id="player-list" style="margin-top:12px"></div>`;
-
-  multiTimerH = setInterval(() => {
+socket.on('new-question',q=>{
+  const container=document.getElementById('live-quiz');if(!container)return;
+  multiQuizAnswered=false;multiTimeLeft=q.timeLimit||45;clearInterval(multiTimerH);
+  const isPYQ=q.year&&q.exam;
+  container.innerHTML=`<div class="quiz-progress"><div class="quiz-progress-fill" style="width:${Math.round(((q.questionNumber-1)/q.totalQuestions)*100)}%"></div></div><div style="font-size:10px;color:var(--muted2);font-family:'Space Mono',monospace;margin-bottom:10px">Q${q.questionNumber} of ${q.totalQuestions}</div><div class="quiz-meta"><div style="display:flex;gap:6px;flex-wrap:wrap">${isPYQ?`<span class="quiz-pyq-badge">📅 ${esc(q.exam)} ${esc(q.year)}${q.shift?' · '+esc(q.shift):''}</span>`:''}${q.trapAlert?`<span class="quiz-trap">🚨 ${esc(q.trapAlert)}</span>`:''}</div><span class="quiz-timer" id="mp-timer">${multiTimeLeft}s</span></div><div class="timer-bar-wrap"><div id="mp-tbar" class="timer-bar-fill" style="width:100%"></div></div><div class="quiz-question">${esc(q.question)}</div><div class="quiz-stat">🔥 ${q.wrongPercent||65}% got this wrong</div><div class="quiz-options" id="mp-opts">${q.options.map((o,i)=>`<button class="quiz-opt" onclick="submitMultiAnswer('${String.fromCharCode(65+i)}',this)"><span class="quiz-opt-letter">${String.fromCharCode(65+i)}</span><span>${esc(o.replace(/^[A-D]\)\s*/i,''))}</span></button>`).join('')}</div><div id="mp-result"></div><div class="emoji-bar" style="justify-content:center;margin-top:12px">${['🔥','⚡','😭','💀'].map(e=>`<span class="emoji-btn" onclick="socket.emit('send-emoji',{code:'${currentRoomCode}',emoji:'${e}'})">${e}</span>`).join('')}</div><div class="player-list" id="player-list" style="margin-top:12px"></div>`;
+  multiTimerH=setInterval(()=>{
     multiTimeLeft--;
-    const el  = document.getElementById('mp-timer');
-    const bar = document.getElementById('mp-tbar');
-    if(el){ el.textContent = multiTimeLeft + 's'; if(multiTimeLeft <= 10) el.style.color = 'var(--red)'; }
-    if(bar){ bar.style.width = (multiTimeLeft / 45 * 100) + '%'; if(multiTimeLeft <= 10) bar.style.background = 'var(--red)'; }
-    if(multiTimeLeft <= 0){ clearInterval(multiTimerH); multiQuizAnswered = true; }
-  }, 1000);
+    const el=document.getElementById('mp-timer'),bar=document.getElementById('mp-tbar');
+    if(el){el.textContent=multiTimeLeft+'s';if(multiTimeLeft<=10)el.style.color='var(--red)';}
+    if(bar){bar.style.width=(multiTimeLeft/45*100)+'%';if(multiTimeLeft<=10)bar.style.background='var(--red)';}
+    if(multiTimeLeft<=0){clearInterval(multiTimerH);multiQuizAnswered=true;}
+  },1000);
 });
-
-function submitMultiAnswer(ans, el){
-  if(multiQuizAnswered) return;
-  multiQuizAnswered = true;
-  clearInterval(multiTimerH);
-  socket.emit('submit-answer', { code:currentRoomCode, answer:ans, timeLeft:multiTimeLeft });
-  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b => { b.disabled = true; if(b === el) b.classList.add('wrong'); });
+function submitMultiAnswer(ans,el){
+  if(multiQuizAnswered)return;multiQuizAnswered=true;clearInterval(multiTimerH);
+  socket.emit('submit-answer',{code:currentRoomCode,answer:ans,timeLeft:multiTimeLeft});
+  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b=>{b.disabled=true;if(b===el)b.classList.add('wrong');});
 }
-
-socket.on('answer-result', ({ correct, correctAnswer }) => {
-  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b => {
-    if(b.querySelector('.quiz-opt-letter')?.textContent === correctAnswer) b.classList.add('correct');
-  });
-  const res = document.getElementById('mp-result');
-  if(res) res.innerHTML = `<div class="quiz-explanation" style="margin-top:10px">${correct
-    ? '✅ Correct! Points added.'
-    : `❌ Wrong. Correct: <strong style="color:#34d399">${correctAnswer}</strong>`
-  }</div>`;
+socket.on('answer-result',({correct,correctAnswer})=>{
+  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b=>{if(b.querySelector('.quiz-opt-letter')?.textContent===correctAnswer)b.classList.add('correct');});
+  const res=document.getElementById('mp-result');
+  if(res)res.innerHTML=`<div class="quiz-explanation" style="margin-top:10px">${correct?'✅ Correct! Points added.':``❌ Wrong. Correct: <strong style="color:#34d399">${correctAnswer}</strong>``}</div>`;
 });
-
-socket.on('question-ended', ({ correctAnswer, explanation, cheatSheet }) => {
-  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b => {
-    b.disabled = true;
-    if(b.querySelector('.quiz-opt-letter')?.textContent === correctAnswer) b.classList.add('correct');
-  });
-  const res = document.getElementById('mp-result');
-  if(res) res.innerHTML += `<div class="quiz-explanation" style="margin-top:8px"><strong>📖 Explanation:</strong> ${esc(explanation)}<br>`
-    + `<div style="color:var(--gold);margin-top:6px">⚡ ${esc(cheatSheet || '')}</div></div>`;
+socket.on('question-ended',({correctAnswer,explanation,cheatSheet})=>{
+  document.querySelectorAll('#mp-opts .quiz-opt').forEach(b=>{b.disabled=true;if(b.querySelector('.quiz-opt-letter')?.textContent===correctAnswer)b.classList.add('correct');});
+  const res=document.getElementById('mp-result');
+  if(res)res.innerHTML+=`<div class="quiz-explanation" style="margin-top:8px"><strong>📖 Explanation:</strong> ${esc(explanation)}<br><div style="color:var(--gold);margin-top:6px">⚡ ${esc(cheatSheet||'')}</div></div>`;
 });
-
-socket.on('game-over', ({ players }) => {
-  const c = document.getElementById('live-quiz') || document.getElementById('room-area');
-  if(!c) return;
-  const sorted = [...players].sort((a, b) => b.score - a.score);
-  c.innerHTML = `<div style="text-align:center;padding:20px">
-    <div style="font-size:28px;margin-bottom:12px">🏆 Game Over!</div>
-    <div class="player-list">${sorted.map((p, i) =>
-      `<div class="player-item"><span>${['🥇','🥈','🥉'][i]||'#'+(i+1)} ${esc(p.name)}</span><span class="player-score">${p.score} pts</span></div>`
-    ).join('')}</div>
-    <button class="qa-btn primary" style="margin-top:16px;padding:12px 24px" onclick="selectQuizMode('multi')">Play Again 🔄</button>
-  </div>`;
+socket.on('game-over',({players})=>{
+  const c=document.getElementById('live-quiz')||document.getElementById('room-area');if(!c)return;
+  const sorted=[...players].sort((a,b)=>b.score-a.score);
+  c.innerHTML=`<div style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:12px">🏆 Game Over!</div><div class="player-list">${sorted.map((p,i)=>`<div class="player-item"><span>${['🥇','🥈','🥉'][i]||'#'+(i+1)} ${esc(p.name)}</span><span class="player-score">${p.score} pts</span></div>`).join('')}</div><button class="qa-btn primary" style="margin-top:16px;padding:12px 24px" onclick="selectQuizMode('multi')">Play Again 🔄</button></div>`;
 });
-
-socket.on('sabotage-activated', ({ type, by }) => {
-  if(type === 'blur'){
-    document.getElementById('main').classList.add('sabotage-blur');
-    showToast(`${by} used Blur Screen! 😈`);
-    setTimeout(() => document.getElementById('main').classList.remove('sabotage-blur'), 5000);
-  }
+socket.on('sabotage-activated',({type,by})=>{
+  if(type==='blur'){document.getElementById('main').classList.add('sabotage-blur');showToast(`${by} used Blur Screen! 😈`);setTimeout(()=>document.getElementById('main').classList.remove('sabotage-blur'),5000);}
 });
-
-socket.on('emoji-broadcast', ({ emoji }) => {
-  const el = document.createElement('div');
-  el.className = 'floating-emoji'; el.textContent = emoji;
-  el.style.left = (Math.random() * 80 + 10) + '%';
-  el.style.bottom = '100px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2000);
+socket.on('emoji-broadcast',({emoji})=>{
+  const el=document.createElement('div');el.className='floating-emoji';el.textContent=emoji;
+  el.style.left=(Math.random()*80+10)+'%';el.style.bottom='100px';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),2000);
 });
 
 // ═══════════════════════════════════════
 //  PLANNER
 // ═══════════════════════════════════════
 function switchPlannerView(view){
-  currentPlannerView = view;
-  document.querySelectorAll('.planner-nav-item').forEach(el => el.classList.remove('active'));
+  currentPlannerView=view;
+  document.querySelectorAll('.planner-nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById(`pnav-${view}`)?.classList.add('active');
-  const titles = { today:"Today's Plan", tomorrow:"Tomorrow", week:"This Week", completed:"Completed Tasks" };
-  document.getElementById('planner-view-title').textContent = titles[view] || 'Planner';
-  const today = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'short' });
-  document.getElementById('planner-view-sub').textContent = view === 'today' ? today : '';
+  const titles={today:"Today's Plan",tomorrow:"Tomorrow",week:"This Week",completed:"Completed Tasks"};
+  document.getElementById('planner-view-title').textContent=titles[view]||'Planner';
+  const today=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+  document.getElementById('planner-view-sub').textContent=view==='today'?today:'';
   loadPlannerView(view);
 }
 
 async function loadPlannerView(view){
-  document.getElementById('planner-content').innerHTML =
-    '<div style="text-align:center;color:var(--muted2);padding:20px"><div class="spinner" style="margin:auto"></div></div>';
+  document.getElementById('planner-content').innerHTML='<div style="text-align:center;color:var(--muted2);padding:20px"><div class="spinner" style="margin:auto"></div></div>';
   try{
-    const res = await fetch(`/api/planner/tasks?view=${view}`, { credentials:'include' });
-    const d   = await res.json();
-    renderPlannerTasks(d.tasks || [], view);
-  } catch{
-    document.getElementById('planner-content').innerHTML =
-      '<div style="color:var(--muted2);padding:20px">Could not load tasks.</div>';
-  }
+    const res=await fetch(`/api/planner/tasks?view=${view}`,{credentials:'include'});
+    const d=await res.json();
+    renderPlannerTasks(d.tasks||[],view);
+  } catch{ document.getElementById('planner-content').innerHTML='<div style="color:var(--muted2);padding:20px">Could not load tasks.</div>'; }
 }
 
-function renderPlannerTasks(tasks, view){
-  const content = document.getElementById('planner-content');
-  const done    = tasks.filter(t => t.status === 'completed').length;
-  const pending = tasks.filter(t => t.status === 'pending').length;
-  const missed  = tasks.filter(t => t.status === 'missed').length;
-
-  let statsHtml = '';
-  if(view === 'today' || view === 'tomorrow'){
-    statsHtml = `<div class="stats-row">
-      <div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total</div></div>
-      <div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--green),#34d399);-webkit-background-clip:text">${done}</div><div class="stat-label">Done</div></div>
-      <div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--gold),#fbbf24);-webkit-background-clip:text">${pending}</div><div class="stat-label">Pending</div></div>
-      <div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--red),#f87171);-webkit-background-clip:text">${missed}</div><div class="stat-label">Missed</div></div>
-    </div>`;
+function renderPlannerTasks(tasks,view){
+  const content=document.getElementById('planner-content');
+  const done=tasks.filter(t=>t.status==='completed').length;
+  const pending=tasks.filter(t=>t.status==='pending').length;
+  const missed=tasks.filter(t=>t.status==='missed').length;
+  let statsHtml='';
+  if(view==='today'||view==='tomorrow'){
+    statsHtml=`<div class="stats-row"><div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total</div></div><div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--green),#34d399);-webkit-background-clip:text">${done}</div><div class="stat-label">Done</div></div><div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--gold),#fbbf24);-webkit-background-clip:text">${pending}</div><div class="stat-label">Pending</div></div><div class="stat-card"><div class="stat-num" style="background:linear-gradient(135deg,var(--red),#f87171);-webkit-background-clip:text">${missed}</div><div class="stat-label">Missed</div></div></div>`;
   }
-
-  const tasksHtml = tasks.length
-    ? tasks.map(renderTaskCard).join('')
-    : `<div style="text-align:center;color:var(--muted2);padding:30px">
-        <div style="font-size:28px;margin-bottom:10px">📝</div>
-        <div style="font-weight:600;margin-bottom:6px">No tasks here</div>
-        <div style="font-size:13px">Click "+ Add Task" or "🤖 AI Plan"</div>
-      </div>`;
-
-  const addCard = view === 'completed' ? '' : `<div class="add-task-card" onclick="openAddTask()">+ Add Task</div>`;
-  content.innerHTML = statsHtml + tasksHtml + addCard;
+  const tasksHtml=tasks.length?tasks.map(renderTaskCard).join(''):`<div style="text-align:center;color:var(--muted2);padding:30px"><div style="font-size:28px;margin-bottom:10px">📝</div><div style="font-weight:600;margin-bottom:6px">No tasks here</div><div style="font-size:13px">Click "+ Add Task" or "🤖 AI Plan"</div></div>`;
+  const addCard=view==='completed'?'':`<div class="add-task-card" onclick="openAddTask()">+ Add Task</div>`;
+  content.innerHTML=statsHtml+tasksHtml+addCard;
 }
 
 function renderTaskCard(task){
-  const isDone   = task.status === 'completed';
-  const isMissed = task.status === 'missed';
-  const priClass = { high:'pri-high', medium:'pri-medium', low:'pri-low' }[task.priority] || 'pri-medium';
-  return `<div class="task-card ${isDone ? 'done' : ''}">
-    <div class="task-check ${isDone ? 'checked' : ''}" onclick="toggleTask('${task._id}','${task.status}')">${isDone ? '✓' : ''}</div>
-    <div class="task-info">
-      <div class="task-title ${isDone ? 'done-text' : ''}">${esc(task.title)}</div>
-      <div class="task-meta">
-        ${task.subject ? `<span>${esc(task.subject)}</span>` : ''}
-        <span>${task.estimatedMins || 45} min</span>
-        <span class="task-pri ${priClass}">${task.priority}</span>
-        ${isMissed ? `<span style="color:var(--red);font-size:10px">missed</span>` : ''}
-        ${task.notes ? `<span style="font-size:10px;color:var(--muted)">📝 ${esc(task.notes)}</span>` : ''}
-      </div>
-    </div>
-    <span class="task-del" onclick="deleteTask('${task._id}')">×</span>
-  </div>`;
+  const isDone=task.status==='completed';
+  const isMissed=task.status==='missed';
+  const priClass={high:'pri-high',medium:'pri-medium',low:'pri-low'}[task.priority]||'pri-medium';
+  return `<div class="task-card ${isDone?'done':''}"><div class="task-check ${isDone?'checked':''}" onclick="toggleTask('${task._id}','${task.status}')">${isDone?'✓':''}</div><div class="task-info"><div class="task-title ${isDone?'done-text':''}">${esc(task.title)}</div><div class="task-meta">${task.subject?`<span>${esc(task.subject)}</span>`:''}<span>${task.estimatedMins||45} min</span><span class="task-pri ${priClass}">${task.priority}</span>${isMissed?`<span style="color:var(--red);font-size:10px">missed</span>`:''}</div></div><span class="task-del" onclick="deleteTask('${task._id}')">×</span></div>`;
 }
 
-async function toggleTask(id, status){
-  const newStatus = status === 'completed' ? 'pending' : 'completed';
-  await fetch(`/api/planner/tasks/${id}`, {
-    method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({ status:newStatus })
-  });
+async function toggleTask(id,status){
+  const newStatus=status==='completed'?'pending':'completed';
+  await fetch(`/api/planner/tasks/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({status:newStatus})});
   loadPlannerView(currentPlannerView);
 }
-
 async function deleteTask(id){
-  await fetch(`/api/planner/tasks/${id}`, { method:'DELETE', credentials:'include' });
+  await fetch(`/api/planner/tasks/${id}`,{method:'DELETE',credentials:'include'});
   loadPlannerView(currentPlannerView);
 }
-
 function openAddTask(){
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('task-date').value = today;
-  ['task-title','task-subject','task-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('task-date').value=new Date().toISOString().split('T')[0];
+  ['task-title','task-subject','task-notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-task-modal').classList.add('open');
 }
-function closeAddTask(){ document.getElementById('add-task-modal').classList.remove('open'); }
-
+function closeAddTask(){document.getElementById('add-task-modal').classList.remove('open');}
 async function submitAddTask(){
-  const title = document.getElementById('task-title').value.trim();
-  if(!title){ showToast('Enter a task title'); return; }
-  const scheduledDate = document.getElementById('task-date').value;
-  if(!scheduledDate){ showToast('Select a date'); return; }
-  await fetch('/api/planner/tasks', {
-    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({
-      title,
-      subject:       document.getElementById('task-subject').value.trim(),
-      priority:      document.getElementById('task-priority').value,
-      estimatedMins: parseInt(document.getElementById('task-mins').value) || 45,
-      scheduledDate: scheduledDate + 'T06:00:00.000Z',
-      notes:         document.getElementById('task-notes').value.trim(),
-    })
-  });
-  closeAddTask();
-  loadPlannerView(currentPlannerView);
-  showToast('Task added ✅');
+  const title=document.getElementById('task-title').value.trim();
+  if(!title){showToast('Enter a task title');return;}
+  const scheduledDate=document.getElementById('task-date').value;
+  if(!scheduledDate){showToast('Select a date');return;}
+  await fetch('/api/planner/tasks',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+    body:JSON.stringify({title,subject:document.getElementById('task-subject').value.trim(),
+      priority:document.getElementById('task-priority').value,estimatedMins:parseInt(document.getElementById('task-mins').value)||45,
+      scheduledDate:scheduledDate+'T06:00:00.000Z',notes:document.getElementById('task-notes').value.trim()})});
+  closeAddTask();loadPlannerView(currentPlannerView);showToast('Task added ✅');
 }
-
-function openAIPlanner(){ document.getElementById('ai-planner-modal').classList.add('open'); }
-
+function openAIPlanner(){document.getElementById('ai-planner-modal').classList.add('open');}
 async function generateAIPlan(){
-  const period    = document.getElementById('ai-plan-period').value;
-  const energy    = document.querySelector('#ai-energy .config-opt.sel')?.dataset.val || 'medium';
-  const note      = document.getElementById('ai-plan-note').value.trim();
-  const tomorrow  = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  const targetDate = period === 'today' ? new Date().toISOString().split('T')[0] : tomorrow;
+  const period=document.getElementById('ai-plan-period').value;
+  const energy=document.querySelector('#ai-energy .config-opt.sel')?.dataset.val||'medium';
+  const note=document.getElementById('ai-plan-note').value.trim();
+  const tomorrow=new Date(Date.now()+86400000).toISOString().split('T')[0];
+  const targetDate=period==='today'?new Date().toISOString().split('T')[0]:tomorrow;
   document.getElementById('ai-planner-modal').classList.remove('open');
-  document.getElementById('planner-content').innerHTML =
-    `<div style="text-align:center;padding:40px"><div class="spinner" style="margin:auto;width:24px;height:24px;border-width:3px"></div><div style="font-size:13px;color:var(--muted2);margin-top:12px">Generating plan...</div></div>`;
+  document.getElementById('planner-content').innerHTML=`<div style="text-align:center;padding:40px"><div class="spinner" style="margin:auto;width:24px;height:24px;border-width:3px"></div><div style="font-size:13px;color:var(--muted2);margin-top:12px">Generating plan...</div></div>`;
   try{
-    const res = await fetch('/api/planner/generate', {
-      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({ period, energyLevel:energy, targetDate, customNote:note })
-    });
-    const d = await res.json();
-    showToast(`${d.tasks?.length || 0} tasks added ✅`);
-    switchPlannerView(period === 'today' ? 'today' : 'tomorrow');
-  } catch{ showToast('Could not generate plan. Try again.'); }
+    const res=await fetch('/api/planner/generate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+      body:JSON.stringify({period,energyLevel:energy,targetDate,customNote:note})});
+    const d=await res.json();
+    showToast(`${d.tasks?.length||0} tasks added ✅`);
+    switchPlannerView(period==='today'?'today':'tomorrow');
+  } catch{showToast('Could not generate plan. Try again.');}
 }
-
-document.querySelectorAll('#ai-energy .config-opt').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#ai-energy .config-opt').forEach(b => b.classList.remove('sel'));
+document.querySelectorAll('#ai-energy .config-opt').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#ai-energy .config-opt').forEach(b=>b.classList.remove('sel'));
     btn.classList.add('sel');
   });
 });
-
 async function generateWeeklyReport(){
-  switchPlannerView('today');
   try{
-    const res = await fetch('/api/planner/generate', {
-      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({ period:'this week', energyLevel:'medium' })
-    });
-    const d = await res.json();
-    showToast(`Weekly plan generated: ${d.tasks?.length || 0} tasks ✅`);
-    switchPlannerView('week');
-  } catch{ showToast('Could not generate.'); }
+    const d=await apiFetch('/api/report/weekly');
+    const modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto"><div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:16px">📊 WEEKLY WAR REPORT</div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"><div style="flex:1;min-width:80px;padding:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--orange)">${d.weeklyXP}</div><div style="font-size:10px;color:var(--muted2)">XP THIS WEEK</div></div><div style="flex:1;min-width:80px;padding:12px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">${d.streak}</div><div style="font-size:10px;color:var(--muted2)">DAY STREAK</div></div></div><div style="font-size:13px;line-height:1.9;color:var(--text);margin-bottom:16px">${marked?marked.parse(d.reportText||''):(d.reportText||'')}</div><button style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted2);cursor:pointer" onclick="this.closest('div[style]').remove()">Close</button></div>`;
+    document.body.appendChild(modal);
+    modal.onclick=e=>{if(e.target===modal)modal.remove();};
+  } catch{showToast('Could not load report.');}
 }
 
 // ═══════════════════════════════════════
@@ -2133,34 +1802,20 @@ async function generateWeeklyReport(){
 // ═══════════════════════════════════════
 async function loadMistakes(){
   try{
-    const res = await fetch('/api/mistakes', { credentials:'include' });
-    const d   = await res.json();
-    const list = document.getElementById('mistakes-list');
-    const mistakes = d.mistakes || [];
-    document.getElementById('mistake-count').textContent = `${mistakes.length} mistake${mistakes.length === 1 ? '' : 's'}`;
+    const res=await fetch('/api/mistakes',{credentials:'include'});
+    const d=await res.json();
+    const list=document.getElementById('mistakes-list');
+    const mistakes=d.mistakes||[];
+    document.getElementById('mistake-count').textContent=`${mistakes.length} mistake${mistakes.length===1?'':'s'}`;
     if(!mistakes.length){
-      list.innerHTML = `<div style="color:var(--muted2);text-align:center;padding:30px">
-        <div style="font-size:28px;margin-bottom:10px">🎯</div>
-        <div style="font-weight:600;margin-bottom:6px">No mistakes saved yet</div>
-        <div style="font-size:13px">Wrong answers from quiz are auto-saved here.</div>
-      </div>`;
+      list.innerHTML=`<div style="color:var(--muted2);text-align:center;padding:30px"><div style="font-size:28px;margin-bottom:10px">🎯</div><div style="font-weight:600;margin-bottom:6px">No mistakes saved yet</div><div style="font-size:13px">Wrong answers from quiz are auto-saved here.</div></div>`;
       return;
     }
-    list.innerHTML = mistakes.map(m => `
-      <div class="mistake-card">
-        <div class="mistake-q">${esc(m.question)}</div>
-        ${m.userAnswer ? `<div class="mistake-meta">Your answer: ${esc(m.userAnswer)} · Correct: ${esc(m.correctAnswer || m.answer || '')}</div>` : ''}
-        <div class="mistake-meta">${esc(m.subject || 'General')} · ${new Date(m.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
-        ${m.explanation ? `<div class="mistake-exp">📖 ${esc(m.explanation)}</div>` : ''}
-        ${m.cheatSheet  ? `<div class="mistake-exp" style="color:var(--gold)">⚡ ${esc(m.cheatSheet)}</div>` : ''}
-        <span class="mistake-del" onclick="deleteMistake('${m._id}')">×</span>
-      </div>`
-    ).join('');
+    list.innerHTML=mistakes.map(m=>`<div class="mistake-card"><div class="mistake-q">${esc(m.question)}</div>${m.userAnswer?`<div class="mistake-meta">Your answer: ${esc(m.userAnswer)} · Correct: ${esc(m.correctAnswer||m.answer||'')}</div>`:''}<div class="mistake-meta">${esc(m.subject||'General')} · ${new Date(m.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>${m.explanation?`<div class="mistake-exp">📖 ${esc(m.explanation)}</div>`:''}<span class="mistake-del" onclick="deleteMistake('${m._id}')">×</span></div>`).join('');
   } catch{}
 }
-
 async function deleteMistake(id){
-  await fetch(`/api/mistakes/${id}`, { method:'DELETE', credentials:'include' });
+  await fetch(`/api/mistakes/${id}`,{method:'DELETE',credentials:'include'});
   loadMistakes();
 }
 
@@ -2168,533 +1823,286 @@ async function deleteMistake(id){
 //  TOAST
 // ═══════════════════════════════════════
 function showToast(msg){
-  const existing = document.querySelector('.toast'); if(existing) existing.remove();
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  const existing=document.querySelector('.toast');if(existing)existing.remove();
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(() => { if(t.parentNode) t.remove(); }, 3000);
+  setTimeout(()=>{if(t.parentNode)t.remove();},3000);
 }
 
 // ═══════════════════════════════════════
-//  BOOT
-// ═══════════════════════════════════════
-init();
-
-// ═══════════════════════════════════════════════════════
 //  MOOD CHECK-IN
-// ═══════════════════════════════════════════════════════
-const mood = (() => {
-  let selected = 0;
-  function init() {
-    // Show mood modal if not done today
-    const today = new Date().toISOString().split('T')[0];
-    const lastMood = localStorage.getItem('lastMoodDate');
-    if (lastMood !== today) {
-      setTimeout(() => { document.getElementById('mood-modal').style.display = 'flex'; }, 800);
-    }
-    document.querySelectorAll('.mood-emoji').forEach(el => {
-      el.addEventListener('click', function() {
-        document.querySelectorAll('.mood-emoji').forEach(e => e.classList.remove('sel'));
+// ═══════════════════════════════════════
+const mood=(() => {
+  let selected=0;
+  function init(){
+    const today=new Date().toISOString().split('T')[0];
+    const lastMood=localStorage.getItem('lastMoodDate');
+    if(lastMood!==today) setTimeout(()=>document.getElementById('mood-modal').classList.add('open'),800);
+    document.querySelectorAll('.mood-emoji').forEach(el=>{
+      el.addEventListener('click',function(){
+        document.querySelectorAll('.mood-emoji').forEach(e=>e.classList.remove('sel'));
         this.classList.add('sel');
-        selected = parseInt(this.dataset.val);
-        document.getElementById('mood-submit-btn').style.display = 'block';
+        selected=parseInt(this.dataset.val);
+        document.getElementById('mood-submit-btn').style.display='block';
         submit();
       });
     });
   }
-  async function submit() {
-    if (!selected) return;
-    const msgs = {1:'Rest mode 💙 One tiny thing today.',2:'Steady 🌱 Small steps still count.',3:'Good energy 🙂 Let\'s do one chapter.',4:'Strong 💪 Push a bit harder today.',5:'FLOW STATE ⚡ Let\'s dominate.'};
-    const aiMsg = document.getElementById('mood-ai-msg');
-    aiMsg.textContent = msgs[selected];
-    aiMsg.style.display = 'block';
-    try {
-      await apiPost('/api/mood', { mood: selected });
-      localStorage.setItem('lastMoodDate', new Date().toISOString().split('T')[0]);
-    } catch(e) {}
-    setTimeout(dismiss, 1800);
+  async function submit(){
+    if(!selected)return;
+    const msgs={1:'Rest mode 💙 One tiny thing today.',2:'Steady 🌱 Small steps still count.',3:'Good energy 🙂 Let\'s do one chapter.',4:'Strong 💪 Push a bit harder today.',5:'FLOW STATE ⚡ Let\'s dominate.'};
+    const aiMsg=document.getElementById('mood-ai-msg');
+    aiMsg.textContent=msgs[selected];aiMsg.style.display='block';
+    try{await apiPost('/api/mood',{mood:selected});localStorage.setItem('lastMoodDate',new Date().toISOString().split('T')[0]);}catch(e){}
+    setTimeout(dismiss,1800);
   }
-  function dismiss() { document.getElementById('mood-modal').style.display = 'none'; }
-  return { init, submit, dismiss };
+  function dismiss(){document.getElementById('mood-modal').classList.remove('open');}
+  return{init,submit,dismiss};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  BREATHING EXERCISE
-// ═══════════════════════════════════════════════════════
-const breath = (() => {
-  let timer = null, phase = 0;
-  const phases = ['Inhale... 4 counts','Hold... 7 counts','Exhale... 8 counts'];
-  const durations = [4000,7000,8000];
-  function start() {
-    document.getElementById('breath-overlay').style.display = 'flex';
-    phase = 0; next();
-  }
-  function next() {
-    document.getElementById('breath-text').textContent = phases[phase % 3];
-    timer = setTimeout(next, durations[phase % 3]);
-    phase++;
-  }
-  function stop() {
-    clearTimeout(timer);
-    document.getElementById('breath-overlay').style.display = 'none';
-    phase = 0;
-    // Check in with Arjun after
-    setTimeout(() => { switchTab('arjun'); arjun.addMsg('arjun', 'Hey — you okay? Want to talk about it, or just take it easy today? Either is fine.'); }, 400);
-  }
-  return { start, stop };
+// ═══════════════════════════════════════
+const breath=(() => {
+  let timer=null,phase=0;
+  const phases=['Inhale... 4 counts','Hold... 7 counts','Exhale... 8 counts'];
+  const durations=[4000,7000,8000];
+  function start(){document.getElementById('breath-overlay').classList.add('open');phase=0;next();}
+  function next(){document.getElementById('breath-text').textContent=phases[phase%3];timer=setTimeout(next,durations[phase%3]);phase++;}
+  function stop(){clearTimeout(timer);document.getElementById('breath-overlay').classList.remove('open');phase=0;setTimeout(()=>{switchTab('arjun');arjun.addMsg('arjun','Hey — you okay? Want to talk about it, or just take it easy today? Either is fine.');},400);}
+  return{start,stop};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  ARJUN COMPANION
-// ═══════════════════════════════════════════════════════
-const arjun = (() => {
-  let history = [];
-  let initialized = false;
-  function init() {
-    const msgs = document.getElementById('arjun-msgs');
-    if (!initialized || msgs.children.length === 0) {
-      initialized = true;
-      history = [];
-      msgs.innerHTML = '';
-      const greet = currentUser?.name?.split(' ')[0] || 'bhai';
-      addMsg('arjun', `Kya haal hai ${greet}? Main Arjun — IIT Bombay second year. Tu GRIND pe aaya hai to main hoon tere saath. Koi bhi doubt hो — JEE concept, strategy, ya bas baat karni ho — I'm here. Aaj kya tackle karte hain?`);
+// ═══════════════════════════════════════
+const arjun=(() => {
+  let history=[],initialized=false;
+  function init(){
+    const msgs=document.getElementById('arjun-msgs');
+    if(!initialized||msgs.children.length===0){
+      initialized=true;history=[];msgs.innerHTML='';
+      const greet=currentUser?.name?.split(' ')[0]||'bhai';
+      addMsg('arjun',`Kya haal hai ${greet}? Main Arjun — IIT Bombay second year. Tu GRIND pe aaya hai to main hoon tere saath. Koi bhi doubt ho — JEE concept, strategy, ya bas baat karni ho — I'm here. Aaj kya tackle karte hain?`);
     }
   }
-  function addMsg(role, text) {
-    const msgs = document.getElementById('arjun-msgs');
-    const div = document.createElement('div');
-    div.className = `arjun-msg ${role}`;
-    div.innerHTML = marked ? marked.parse(text) : text;
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
-    if (window.renderMathInElement) renderMathInElement(div, { delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError:false });
+  function addMsg(role,text){
+    const msgs=document.getElementById('arjun-msgs');
+    const div=document.createElement('div');div.className=`arjun-msg ${role}`;
+    div.innerHTML=marked?marked.parse(text):text;
+    msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+    if(window.renderMathInElement)renderMathInElement(div,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
   }
-  async function send() {
-    const input = document.getElementById('arjun-input');
-    const text = input.value.trim();
-    if (!text) return;
-    addMsg('user', text);
-    history.push({ role:'user', content: text });
-    input.value = '';
-    addMsg('arjun', '...');
-    try {
-      const d = await apiPost('/api/arjun', { messages: history });
+  async function send(){
+    const input=document.getElementById('arjun-input');
+    const text=input.value.trim();if(!text)return;
+    addMsg('user',text);history.push({role:'user',content:text});input.value='';
+    addMsg('arjun','...');
+    try{
+      const d=await apiPost('/api/arjun',{messages:history});
       document.querySelector('#arjun-msgs .arjun-msg:last-child').remove();
-      addMsg('arjun', d.reply || 'Hmm, ek second... try again?');
-      history.push({ role:'assistant', content: d.reply });
-    } catch(e) {
-      document.querySelector('#arjun-msgs .arjun-msg:last-child').remove();
-      addMsg('arjun', 'Connection issue yaar. Try again?');
-    }
+      addMsg('arjun',d.reply||'Hmm, ek second... try again?');
+      history.push({role:'assistant',content:d.reply});
+    }catch(e){document.querySelector('#arjun-msgs .arjun-msg:last-child').remove();addMsg('arjun','Connection issue yaar. Try again?');}
   }
-  return { init, send, addMsg };
+  return{init,send,addMsg};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  WAR ROOM
-// ═══════════════════════════════════════════════════════
-const warRoom = (() => {
-  async function load() {
-    try {
-      const [wr, rival] = await Promise.all([
-        apiFetch('/api/warroom'),
-        apiFetch('/api/rival')
-      ]);
-      // Stats
-      document.getElementById('warroom-stats').innerHTML = `
-        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--green)">${wr.totalConquered}</div><div class="wr-stat-label">CONQUERED</div></div>
-        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--orange)">${wr.total - wr.totalConquered}</div><div class="wr-stat-label">IN BATTLE</div></div>
-        <div class="wr-stat"><div class="wr-stat-num">${currentUser?.quizLevel||1}</div><div class="wr-stat-label">LEVEL</div></div>
-        <div class="wr-stat"><div class="wr-stat-num" style="color:var(--gold)">${currentUser?.quizXP||0}</div><div class="wr-stat-label">XP</div></div>`;
-      // Rival banner
-      document.getElementById('rival-banner').innerHTML = wr.total > 0 ? `
-        <div class="rival-banner">
-          <span style="font-size:20px">⚔️</span>
-          <div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:2px">RIVAL: ARYAN</div>
-          <div style="font-size:12px;color:var(--muted2)">${rival.taunt}</div></div>
-        </div>` : '';
-      // Chapters
-      const grid = document.getElementById('chapter-grid');
-      if (!wr.chapters?.length) {
-        grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">No chapters attempted yet.<br>Start Story Mode to conquer your first chapter! ⚔️</div>';
-        return;
-      }
-      grid.innerHTML = wr.chapters.map(c => `
-        <div class="chapter-card ${c.status}">
-          <div class="chapter-status-icon">${c.conquered?'✅':c.status==='in-battle'?'⚔️':'🔒'}</div>
-          <div class="chapter-info">
-            <div class="chapter-name">${c.chapter}</div>
-            <div class="chapter-sub">${c.subject} · ${c.attempts} attempt${c.attempts!==1?'s':''} · Best: ${c.bestRound2}/8</div>
-            <div class="mastery-mini"><div class="mastery-fill" style="width:${c.masteryPct}%"></div></div>
-          </div>
-          <div style="font-size:11px;font-family:'Space Mono',monospace;color:${c.conquered?'var(--green)':c.status==='in-battle'?'var(--orange)':'var(--muted2)'}">${c.masteryPct}%</div>
-        </div>`).join('');
-    } catch(e) { document.getElementById('chapter-grid').innerHTML = '<div style="color:var(--muted2);font-size:13px;text-align:center;padding:20px">Could not load war room.</div>'; }
+// ═══════════════════════════════════════
+const warRoom=(() => {
+  async function load(){
+    try{
+      const [wr,rival]=await Promise.all([apiFetch('/api/warroom'),apiFetch('/api/rival')]);
+      document.getElementById('warroom-stats').innerHTML=`<div class="wr-stat"><div class="wr-stat-num" style="color:var(--green)">${wr.totalConquered}</div><div class="wr-stat-label">CONQUERED</div></div><div class="wr-stat"><div class="wr-stat-num" style="color:var(--orange)">${wr.total-wr.totalConquered}</div><div class="wr-stat-label">IN BATTLE</div></div><div class="wr-stat"><div class="wr-stat-num">${currentUser?.quizLevel||1}</div><div class="wr-stat-label">LEVEL</div></div><div class="wr-stat"><div class="wr-stat-num" style="color:var(--gold)">${currentUser?.quizXP||0}</div><div class="wr-stat-label">XP</div></div>`;
+      document.getElementById('rival-banner').innerHTML=wr.total>0?`<div class="rival-banner"><span style="font-size:20px">⚔️</span><div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:2px">RIVAL: ARYAN</div><div style="font-size:12px;color:var(--muted2)">${rival.taunt}</div></div></div>`:'';
+      const grid=document.getElementById('chapter-grid');
+      if(!wr.chapters?.length){grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">No chapters attempted yet.<br>Start Story Mode to conquer your first chapter! ⚔️</div>';return;}
+      grid.innerHTML=wr.chapters.map(c=>`<div class="chapter-card ${c.status}"><div class="chapter-status-icon">${c.conquered?'✅':c.status==='in-battle'?'⚔️':'🔒'}</div><div class="chapter-info"><div class="chapter-name">${c.chapter}</div><div class="chapter-sub">${c.subject} · ${c.attempts} attempt${c.attempts!==1?'s':''} · Best: ${c.bestRound2}/8</div><div class="mastery-mini"><div class="mastery-fill" style="width:${c.masteryPct}%"></div></div></div><div style="font-size:11px;font-family:'Space Mono',monospace;color:${c.conquered?'var(--green)':c.status==='in-battle'?'var(--orange)':'var(--muted2)'}">${c.masteryPct}%</div></div>`).join('');
+    }catch(e){document.getElementById('chapter-grid').innerHTML='<div style="color:var(--muted2);font-size:13px;text-align:center;padding:20px">Could not load war room.</div>';}
   }
-  return { load };
+  return{load};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  FORMULA FORTRESS
-// ═══════════════════════════════════════════════════════
-const fortress = (() => {
-  let currentFormulas = [];
-  let idx = 0;
-  async function load() {
-    try {
-      const d = await apiFetch('/api/formulas');
-      document.getElementById('fortress-stats').innerHTML = `
-        <div class="fort-stat"><div class="fort-stat-num">${d.total}</div><div class="fort-stat-label">TOTAL</div></div>
-        <div class="fort-stat"><div class="fort-stat-num" style="color:var(--green)">${d.mastered}</div><div class="fort-stat-label">MASTERED</div></div>
-        <div class="fort-stat"><div class="fort-stat-num" style="color:var(--orange)">${d.dueCount}</div><div class="fort-stat-label">DUE TODAY</div></div>`;
-      currentFormulas = d.formulas || [];
-      idx = 0;
-      render();
-    } catch(e) {}
+// ═══════════════════════════════════════
+const fortress=(() => {
+  let currentFormulas=[],idx=0;
+  async function load(){
+    try{
+      const d=await apiFetch('/api/formulas');
+      document.getElementById('fortress-stats').innerHTML=`<div class="fort-stat"><div class="fort-stat-num">${d.total}</div><div class="fort-stat-label">TOTAL</div></div><div class="fort-stat"><div class="fort-stat-num" style="color:var(--green)">${d.mastered}</div><div class="fort-stat-label">MASTERED</div></div><div class="fort-stat"><div class="fort-stat-num" style="color:var(--orange)">${d.dueCount}</div><div class="fort-stat-label">DUE TODAY</div></div>`;
+      currentFormulas=d.formulas||[];idx=0;render();
+    }catch(e){}
   }
-  function render() {
-    const el = document.getElementById('fortress-content');
-    if (!currentFormulas.length) {
-      el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">
-        ${idx > 0 ? '🏆 All reviews done for today! Come back tomorrow.' : 'No formulas yet. Add one below or complete a Story Mode session to auto-add formulas.'}</div>`;
-      return;
-    }
-    if (idx >= currentFormulas.length) {
-      el.innerHTML = `<div style="text-align:center;padding:30px;font-size:13px">
-        <div style="font-size:24px;margin-bottom:10px">🏆</div>
-        <div style="font-weight:700;margin-bottom:6px">All ${idx} reviews done!</div>
-        <div style="color:var(--muted2)">Formula Fortress defended for today. Come back tomorrow.</div>
-      </div>`;
-      return;
-    }
-    const f = currentFormulas[idx];
-    el.innerHTML = `
-      <div class="formula-card">
-        <div style="font-size:11px;color:var(--muted2);font-family:'Space Mono',monospace">${idx+1}/${currentFormulas.length} · ${f.subject||''} ${f.chapter?'· '+f.chapter:''}</div>
-        <div class="formula-text" id="f-text">${f.formula}</div>
-        <div style="font-size:12px;color:var(--muted2);margin-bottom:8px">${f.context||''}</div>
-        <div class="formula-rating">
-          <button class="f-rating-btn forgot" onclick="fortress.review('${f._id}',0)">😰 Forgot</button>
-          <button class="f-rating-btn hard" onclick="fortress.review('${f._id}',3)">😅 Hard</button>
-          <button class="f-rating-btn good" onclick="fortress.review('${f._id}',4)">😊 Good</button>
-          <button class="f-rating-btn easy" onclick="fortress.review('${f._id}',5)">⚡ Easy</button>
-        </div>
-      </div>`;
-    if (window.renderMathInElement) renderMathInElement(document.getElementById('f-text'), { delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError:false });
+  function render(){
+    const el=document.getElementById('fortress-content');
+    if(!currentFormulas.length){el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--muted2);font-size:13px">${idx>0?'🏆 All reviews done for today! Come back tomorrow.':'No formulas yet. Add one below or complete a Story Mode session to auto-add formulas.'}</div>`;return;}
+    if(idx>=currentFormulas.length){el.innerHTML=`<div style="text-align:center;padding:30px;font-size:13px"><div style="font-size:24px;margin-bottom:10px">🏆</div><div style="font-weight:700;margin-bottom:6px">All ${idx} reviews done!</div><div style="color:var(--muted2)">Formula Fortress defended for today. Come back tomorrow.</div></div>`;return;}
+    const f=currentFormulas[idx];
+    el.innerHTML=`<div class="formula-card"><div style="font-size:11px;color:var(--muted2);font-family:'Space Mono',monospace">${idx+1}/${currentFormulas.length} · ${f.subject||''} ${f.chapter?'· '+f.chapter:''}</div><div class="formula-text" id="f-text">${f.formula}</div><div style="font-size:12px;color:var(--muted2);margin-bottom:8px">${f.context||''}</div><div class="formula-rating"><button class="f-rating-btn forgot" onclick="fortress.review('${f._id}',0)">😰 Forgot</button><button class="f-rating-btn hard" onclick="fortress.review('${f._id}',3)">😅 Hard</button><button class="f-rating-btn good" onclick="fortress.review('${f._id}',4)">😊 Good</button><button class="f-rating-btn easy" onclick="fortress.review('${f._id}',5)">⚡ Easy</button></div></div>`;
+    if(window.renderMathInElement)renderMathInElement(document.getElementById('f-text'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
   }
-  async function review(id, quality) {
-    try {
-      await apiPost(`/api/formulas/${id}/review`, { quality });
-      idx++;
-      render();
-    } catch(e) {}
+  async function review(id,quality){
+    try{await apiPost(`/api/formulas/${id}/review`,{quality});idx++;render();}catch(e){}
   }
-  async function add() {
-    const formula = document.getElementById('f-formula').value.trim();
-    const context = document.getElementById('f-context').value.trim();
-    if (!formula) return;
-    try {
-      await apiPost('/api/formulas', { formula, context });
-      document.getElementById('f-formula').value = '';
-      document.getElementById('f-context').value = '';
-      load();
-    } catch(e) {}
+  async function add(){
+    const formula=document.getElementById('f-formula').value.trim();
+    const context=document.getElementById('f-context').value.trim();
+    if(!formula)return;
+    try{await apiPost('/api/formulas',{formula,context});document.getElementById('f-formula').value='';document.getElementById('f-context').value='';load();}catch(e){}
   }
-  return { load, review, add };
+  return{load,review,add};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  BOSS BATTLE
-// ═══════════════════════════════════════════════════════
-const boss = (() => {
-  let state = { questions:[], answers:[], score:0, neg:0, currentQ:0, total:0, type:'chapter', subject:'', chapter:'', bossName:'' };
-  function open() {
-    document.getElementById('boss-modal').style.display = 'flex';
-    document.getElementById('boss-content').innerHTML = `
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:32px">⚔️</div>
-        <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-top:8px">BOSS BATTLE</div>
-        <div style="font-size:12px;color:var(--muted2);margin-top:4px">Negative marking applies. No hints.</div>
-      </div>
-      <div class="quiz-config-row">
-        <label class="config-label">SUBJECT</label>
-        <div class="config-opts" id="boss-subjects">
-          <div class="config-opt sel" data-val="Physics">Physics</div>
-          <div class="config-opt" data-val="Chemistry">Chemistry</div>
-          <div class="config-opt" data-val="Mathematics">Maths</div>
-        </div>
-      </div>
-      <div class="quiz-config-row">
-        <label class="config-label">TYPE</label>
-        <div class="config-opts" id="boss-type">
-          <div class="config-opt sel" data-val="chapter">⚔️ Chapter Boss (15 Qs)</div>
-          <div class="config-opt" data-val="world">🌍 World Boss (25 Qs — All chapters)</div>
-        </div>
-      </div>
-      <div id="boss-chapter-row" class="quiz-config-row">
-        <label class="config-label">CHAPTER</label>
-        <input class="form-input" id="boss-chapter" placeholder="Chapter name..." style="margin-top:4px"/>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="story-btn secondary" style="flex:1" onclick="boss.close()">Cancel</button>
-        <button class="story-btn primary" style="flex:1" onclick="boss.start()">⚔️ Start Battle</button>
-      </div>`;
-    document.querySelectorAll('#boss-subjects .config-opt, #boss-type .config-opt').forEach(opt => {
-      opt.addEventListener('click', function() {
-        this.closest('.config-opts').querySelectorAll('.config-opt').forEach(o=>o.classList.remove('sel'));
-        this.classList.add('sel');
-        if(this.closest('#boss-type')) {
-          document.getElementById('boss-chapter-row').style.display = this.dataset.val==='world'?'none':'block';
-        }
-      });
+// ═══════════════════════════════════════
+const boss=(() => {
+  let state={questions:[],answers:[],score:0,neg:0,currentQ:0,total:0,type:'chapter',subject:'',chapter:'',bossName:''};
+  function open(){
+    document.getElementById('boss-modal').classList.add('open');
+    document.getElementById('boss-content').innerHTML=`<div style="text-align:center;margin-bottom:20px"><div style="font-size:32px">⚔️</div><div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-top:8px">BOSS BATTLE</div><div style="font-size:12px;color:var(--muted2);margin-top:4px">Negative marking applies. No hints.</div></div><div class="quiz-config-row"><label class="config-label">SUBJECT</label><div class="config-opts" id="boss-subjects"><div class="config-opt sel" data-val="Physics">Physics</div><div class="config-opt" data-val="Chemistry">Chemistry</div><div class="config-opt" data-val="Mathematics">Maths</div></div></div><div class="quiz-config-row"><label class="config-label">TYPE</label><div class="config-opts" id="boss-type"><div class="config-opt sel" data-val="chapter">⚔️ Chapter Boss (15 Qs)</div><div class="config-opt" data-val="world">🌍 World Boss (25 Qs — All chapters)</div></div></div><div id="boss-chapter-row" class="quiz-config-row"><label class="config-label">CHAPTER</label><input class="form-input" id="boss-chapter" placeholder="Chapter name..." style="margin-top:4px"/></div><div style="display:flex;gap:10px;margin-top:16px"><button class="story-btn secondary" style="flex:1" onclick="boss.close()">Cancel</button><button class="story-btn primary" style="flex:1" onclick="boss.start()">⚔️ Start Battle</button></div>`;
+    document.querySelectorAll('#boss-subjects .config-opt,#boss-type .config-opt').forEach(opt=>{
+      opt.addEventListener('click',function(){this.closest('.config-opts').querySelectorAll('.config-opt').forEach(o=>o.classList.remove('sel'));this.classList.add('sel');if(this.closest('#boss-type'))document.getElementById('boss-chapter-row').style.display=this.dataset.val==='world'?'none':'block';});
     });
   }
-  async function start() {
-    state.subject = document.querySelector('#boss-subjects .config-opt.sel')?.dataset.val || 'Physics';
-    state.type = document.querySelector('#boss-type .config-opt.sel')?.dataset.val || 'chapter';
-    state.chapter = document.getElementById('boss-chapter')?.value.trim() || '';
-    document.getElementById('boss-content').innerHTML = `<div class="s-loading"><div class="s-ring"></div>Summoning ${state.type==='world'?'World':'Chapter'} Boss...</div>`;
-    try {
-      const d = await apiPost('/api/boss/start', { subject:state.subject, chapter:state.chapter, type:state.type });
-      state.questions = d.questions;
-      state.total = d.questions.length;
-      state.bossName = d.bossName;
-      state.answers = new Array(state.total).fill(null);
-      state.score = 0; state.neg = 0; state.currentQ = 0;
+  async function start(){
+    state.subject=document.querySelector('#boss-subjects .config-opt.sel')?.dataset.val||'Physics';
+    state.type=document.querySelector('#boss-type .config-opt.sel')?.dataset.val||'chapter';
+    state.chapter=document.getElementById('boss-chapter')?.value.trim()||'';
+    document.getElementById('boss-content').innerHTML=`<div class="s-loading"><div class="s-ring"></div>Summoning ${state.type==='world'?'World':'Chapter'} Boss...</div>`;
+    try{
+      const d=await apiPost('/api/boss/start',{subject:state.subject,chapter:state.chapter,type:state.type});
+      state.questions=d.questions;state.total=d.questions.length;state.bossName=d.bossName;
+      state.answers=new Array(state.total).fill(null);state.score=0;state.neg=0;state.currentQ=0;
       renderQ();
-    } catch(e) { document.getElementById('boss-content').innerHTML = `<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="boss.close()">Close</button></div>`; }
+    }catch(e){document.getElementById('boss-content').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="boss.close()">Close</button></div>`;}
   }
-  function renderQ() {
-    const q = state.questions[state.currentQ];
-    const letters = ['A','B','C','D'];
-    document.getElementById('boss-content').innerHTML = `
-      <div style="font-size:12px;color:var(--red);font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between">
-        <span>⚔️ ${state.bossName}</span><span>Q${state.currentQ+1}/${state.total}</span>
-      </div>
-      <div class="quiz-progress" style="margin-bottom:14px"><div class="quiz-progress-fill" style="width:${state.currentQ/state.total*100}%"></div></div>
-      <div style="font-size:13px;line-height:1.8;margin-bottom:14px" id="boss-qtext">${q.question}</div>
-      <div id="boss-opts">
-        ${q.options.map((o,i)=>`<button class="story-opt" onclick="boss.answer(${i})" id="bopt-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}
-      </div>
-      <div id="boss-exp" style="display:none" class="quiz-explanation"></div>`;
-    if(window.renderMathInElement) renderMathInElement(document.getElementById('boss-qtext'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  function renderQ(){
+    const q=state.questions[state.currentQ],letters=['A','B','C','D'];
+    document.getElementById('boss-content').innerHTML=`<div style="font-size:12px;color:var(--red);font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between"><span>⚔️ ${state.bossName}</span><span>Q${state.currentQ+1}/${state.total}</span></div><div class="quiz-progress" style="margin-bottom:14px"><div class="quiz-progress-fill" style="width:${state.currentQ/state.total*100}%"></div></div><div style="font-size:13px;line-height:1.8;margin-bottom:14px" id="boss-qtext">${q.question}</div><div id="boss-opts">${q.options.map((o,i)=>`<button class="story-opt" onclick="boss.answer(${i})" id="bopt-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}</div><div id="boss-exp" style="display:none" class="quiz-explanation"></div>`;
+    if(window.renderMathInElement)renderMathInElement(document.getElementById('boss-qtext'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
   }
-  function answer(optIdx) {
-    const q = state.questions[state.currentQ];
-    const letters = ['A','B','C','D'];
-    const chosen = letters[optIdx];
-    const correct = chosen === q.answer;
-    const correctIdx = letters.indexOf(q.answer);
+  function answer(optIdx){
+    const q=state.questions[state.currentQ],letters=['A','B','C','D'],chosen=letters[optIdx],correct=chosen===q.answer,correctIdx=letters.indexOf(q.answer);
     for(let i=0;i<4;i++){const b=document.getElementById(`bopt-${i}`);if(b){b.disabled=true;b.style.pointerEvents='none';}}
     document.getElementById(`bopt-${optIdx}`)?.classList.add(correct?'correct':'wrong');
-    if(!correct) document.getElementById(`bopt-${correctIdx}`)?.classList.add('correct');
-    if(correct) state.score++;
-    else if(state.answers[state.currentQ]===null) state.neg++;
-    state.answers[state.currentQ] = chosen;
-    const exp = document.getElementById('boss-exp');
+    if(!correct)document.getElementById(`bopt-${correctIdx}`)?.classList.add('correct');
+    if(correct)state.score++;else if(state.answers[state.currentQ]===null)state.neg++;
+    state.answers[state.currentQ]=chosen;
+    const exp=document.getElementById('boss-exp');
     if(exp){exp.style.display='block';exp.innerHTML=`<b style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✅':'❌'}</b> ${q.explanation||''}<div style="margin-top:10px"><button class="story-btn primary" onclick="boss.next()">${state.currentQ<state.total-1?'Next →':'See Results'}</button></div>`;}
   }
-  async function next() {
-    if(state.currentQ < state.total-1) { state.currentQ++; renderQ(); }
-    else {
-      const finalScore = state.score - state.neg;
-      document.getElementById('boss-content').innerHTML = `<div style="text-align:center"><div style="font-size:24px;margin-bottom:12px">${finalScore >= state.total*0.6?'🔥':'💀'}</div><div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:6px">${state.bossName}</div><div style="font-size:14px;color:var(--muted2);margin-bottom:16px">Score: ${state.score} correct · -${state.neg} penalties = <b style="color:${finalScore>=0?'var(--green)':'var(--red)'}">${finalScore}</b>/${state.total}</div><div style="font-size:13px;margin-bottom:20px;color:var(--muted2)">${finalScore>=state.total*0.6?'BOSS DEFEATED! ⚔️ Chapter conquered.':'Boss wins this round. Review weak concepts and try again.'}</div><div style="display:flex;gap:10px"><button class="story-btn secondary" style="flex:1" onclick="boss.close()">Close</button><button class="story-btn primary" style="flex:1" onclick="boss.start()">Rematch</button></div></div>`;
-      try { await apiPost('/api/boss/complete',{subject:state.subject,chapter:state.chapter,type:state.type,score:state.score,total:state.total}); } catch(e){}
+  async function next(){
+    if(state.currentQ<state.total-1){state.currentQ++;renderQ();}
+    else{
+      const finalScore=state.score-state.neg;
+      document.getElementById('boss-content').innerHTML=`<div style="text-align:center"><div style="font-size:24px;margin-bottom:12px">${finalScore>=state.total*0.6?'🔥':'💀'}</div><div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:6px">${state.bossName}</div><div style="font-size:14px;color:var(--muted2);margin-bottom:16px">Score: ${state.score} correct · -${state.neg} penalties = <b style="color:${finalScore>=0?'var(--green)':'var(--red)'}">${finalScore}</b>/${state.total}</div><div style="font-size:13px;margin-bottom:20px;color:var(--muted2)">${finalScore>=state.total*0.6?'BOSS DEFEATED! ⚔️ Chapter conquered.':'Boss wins this round. Review weak concepts and try again.'}</div><div style="display:flex;gap:10px"><button class="story-btn secondary" style="flex:1" onclick="boss.close()">Close</button><button class="story-btn primary" style="flex:1" onclick="boss.start()">Rematch</button></div></div>`;
+      try{await apiPost('/api/boss/complete',{subject:state.subject,chapter:state.chapter,type:state.type,score:state.score,total:state.total});}catch(e){}
     }
   }
-  function close() { document.getElementById('boss-modal').style.display='none'; }
-  return { open, start, answer, next, close };
+  function close(){document.getElementById('boss-modal').classList.remove('open');}
+  return{open,start,answer,next,close};
 })();
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  STORY MODE ENGINE
-// ═══════════════════════════════════════════════════════
-const storyMode = (() => {
-  let st = { act:0, subject:'Physics', chapter:'', exam:'JEE Main', questions:[], r1:[], r2:[], r1Score:0, r2Score:0, q:0, phase:'r1' };
-
-  function setAct(n) {
-    st.act = n;
-    document.getElementById('story-acts').style.display = n>0?'flex':'none';
-    ['sact-1','sact-2','sact-3','sact-4'].forEach((id,i)=>{
-      const el=document.getElementById(id);
-      el.classList.remove('active','done');
-      if(i+1<n) el.classList.add('done');
-      if(i+1===n) el.classList.add('active');
-    });
+// ═══════════════════════════════════════
+const storyMode=(() => {
+  let st={act:0,subject:'Physics',chapter:'',exam:'JEE Main',questions:[],r1:[],r2:[],r1Score:0,r2Score:0,q:0,phase:'r1'};
+  function setAct(n){
+    st.act=n;document.getElementById('story-acts').style.display=n>0?'flex':'none';
+    ['sact-1','sact-2','sact-3','sact-4'].forEach((id,i)=>{const el=document.getElementById(id);el.classList.remove('active','done');if(i+1<n)el.classList.add('done');if(i+1===n)el.classList.add('active');});
   }
-  function loading(msg) {
-    document.getElementById('story-content').innerHTML = `<div class="s-loading"><div class="s-ring"></div><div>${msg}</div></div>`;
-  }
-  async function start() {
-    const ch = document.getElementById('st-chapter').value.trim();
-    if(!ch){ document.getElementById('st-chapter').style.borderColor='var(--red)'; return; }
-    st.subject = document.querySelector('#st-subjects .config-opt.sel')?.dataset.val||'Physics';
-    st.exam = document.querySelector('#st-exam .config-opt.sel')?.dataset.val||'JEE Main';
-    st.chapter = ch; st.r1=[]; st.r2=[]; st.r1Score=0; st.r2Score=0; st.q=0; st.phase='r1';
+  function loading(msg){document.getElementById('story-content').innerHTML=`<div class="s-loading"><div class="s-ring"></div><div>${msg}</div></div>`;}
+  async function start(){
+    const ch=document.getElementById('st-chapter').value.trim();
+    if(!ch){document.getElementById('st-chapter').style.borderColor='var(--red)';return;}
+    st.subject=document.querySelector('#st-subjects .config-opt.sel')?.dataset.val||'Physics';
+    st.exam=document.querySelector('#st-exam .config-opt.sel')?.dataset.val||'JEE Main';
+    st.chapter=ch;st.r1=[];st.r2=[];st.r1Score=0;st.r2Score=0;st.q=0;st.phase='r1';
     document.getElementById('story-config').style.display='none';
-    setAct(1);
-    loading(`Fetching 8 real ${st.exam} PYQs for <b>${st.chapter}</b>...`);
-    try {
-      const d = await apiPost('/api/story/questions',{subject:st.subject,chapter:st.chapter,exam:st.exam});
-      if(!d.questions?.length) throw new Error('No questions found');
-      st.questions = d.questions;
-      renderQ('r1');
-    } catch(e) {
-      document.getElementById('story-content').innerHTML = `<div style="text-align:center;padding:20px;color:var(--red)">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="storyMode.reset()">Try Again</button></div>`;
-    }
+    setAct(1);loading(`Fetching 8 real ${st.exam} PYQs for <b>${st.chapter}</b>...`);
+    try{
+      const d=await apiPost('/api/story/questions',{subject:st.subject,chapter:st.chapter,exam:st.exam});
+      if(!d.questions?.length)throw new Error('No questions found');
+      st.questions=d.questions;renderQ('r1');
+    }catch(e){document.getElementById('story-content').innerHTML=`<div style="text-align:center;padding:20px;color:var(--red)">${e.message}<br><button class="story-btn secondary" style="margin-top:12px" onclick="storyMode.reset()">Try Again</button></div>`;}
   }
-  function renderQ(phase) {
-    st.phase=phase; st.q=0;
-    setAct(phase==='r1'?1:3);
-    renderCurrent();
+  function renderQ(phase){st.phase=phase;st.q=0;setAct(phase==='r1'?1:3);renderCurrent();}
+  function renderCurrent(){
+    const q=st.questions[st.q],total=st.questions.length,letters=['A','B','C','D'];
+    document.getElementById('story-content').innerHTML=`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted2);margin-bottom:4px"><span>${st.phase==='r1'?'⚔️ Round 1 — Cold Attempt':'🔄 Round 2 — After Learning'}</span><span>${st.q}/${total}</span></div><div class="quiz-progress"><div class="quiz-progress-fill" style="width:${st.q/total*100}%"></div></div></div><div class="story-q-card"><div class="story-q-meta"><span>Q${st.q+1} of ${total}</span><span class="concept-badge">${q.concept||''}</span></div>${q.year?`<div style="margin-bottom:10px"><span class="quiz-pyq-badge">${q.exam||''} ${q.year}</span></div>`:''}<div class="quiz-question" id="sq-text">${q.question}</div><div id="sq-opts">${q.options.map((o,i)=>`<button class="story-opt" onclick="storyMode.answer(${i})" id="so-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}</div><div id="sq-exp" style="display:none" class="quiz-explanation"></div></div>`;
+    if(window.renderMathInElement)renderMathInElement(document.getElementById('sq-text'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
   }
-  function renderCurrent() {
-    const q=st.questions[st.q], total=st.questions.length, letters=['A','B','C','D'];
-    document.getElementById('story-content').innerHTML = `
-      <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted2);margin-bottom:4px"><span>${st.phase==='r1'?'⚔️ Round 1 — Cold Attempt':'🔄 Round 2 — After Learning'}</span><span>${st.q}/${total}</span></div>
-        <div class="quiz-progress"><div class="quiz-progress-fill" style="width:${st.q/total*100}%"></div></div>
-      </div>
-      <div class="story-q-card">
-        <div class="story-q-meta"><span>Q${st.q+1} of ${total}</span><span class="concept-badge">${q.concept||''}</span></div>
-        ${q.year?`<div style="margin-bottom:10px"><span class="quiz-pyq-badge">${q.exam||''} ${q.year}</span></div>`:''}
-        <div class="quiz-question" id="sq-text">${q.question}</div>
-        <div id="sq-opts">${q.options.map((o,i)=>`<button class="story-opt" onclick="storyMode.answer(${i})" id="so-${i}"><span style="font-weight:700;color:var(--muted2);min-width:18px">${letters[i]}</span><span>${o.replace(/^[A-D]\)\s*/,'')}</span></button>`).join('')}</div>
-        <div id="sq-exp" style="display:none" class="quiz-explanation"></div>
-      </div>`;
-    if(window.renderMathInElement) renderMathInElement(document.getElementById('sq-text'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
-  }
-  function answer(optIdx) {
-    const q=st.questions[st.q], letters=['A','B','C','D'], chosen=letters[optIdx], correct=chosen===q.answer, ci=letters.indexOf(q.answer);
+  function answer(optIdx){
+    const q=st.questions[st.q],letters=['A','B','C','D'],chosen=letters[optIdx],correct=chosen===q.answer,ci=letters.indexOf(q.answer);
     for(let i=0;i<4;i++){const b=document.getElementById(`so-${i}`);if(b){b.disabled=true;b.style.pointerEvents='none';}}
     document.getElementById(`so-${optIdx}`)?.classList.add(correct?'correct':'wrong');
-    if(!correct) document.getElementById(`so-${ci}`)?.classList.add('correct');
+    if(!correct)document.getElementById(`so-${ci}`)?.classList.add('correct');
     if(st.phase==='r1'){st.r1[st.q]=chosen;if(correct)st.r1Score++;}
     else{st.r2[st.q]=chosen;if(correct)st.r2Score++;}
     const exp=document.getElementById('sq-exp');
-    if(exp){
-      exp.style.display='block';
-      exp.innerHTML=`<b style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✅ Correct!':'❌ Wrong'}</b>${q.explanation?'<br>'+q.explanation:''}${q.cheatSheet?`<br><b style="color:var(--gold)">⚡ Key: </b>${q.cheatSheet}`:''}
-      <div style="margin-top:10px"><button class="story-btn primary" onclick="storyMode.next()">${st.q<st.questions.length-1?'Next →':st.phase==='r1'?'See AI Teaching 📖':'See Results 🏆'}</button></div>`;
-      if(window.renderMathInElement) renderMathInElement(exp,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
-    }
+    if(exp){exp.style.display='block';exp.innerHTML=`<b style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✅ Correct!':'❌ Wrong'}</b>${q.explanation?'<br>'+q.explanation:''}${q.cheatSheet?`<br><b style="color:var(--gold)">⚡ Key: </b>${q.cheatSheet}`:''}<div style="margin-top:10px"><button class="story-btn primary" onclick="storyMode.next()">${st.q<st.questions.length-1?'Next →':st.phase==='r1'?'See AI Teaching 📖':'See Results 🏆'}</button></div>`;if(window.renderMathInElement)renderMathInElement(exp,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}
   }
-  async function next() {
+  async function next(){
     if(st.q<st.questions.length-1){st.q++;renderCurrent();}
-    else if(st.phase==='r1') await teach();
+    else if(st.phase==='r1')await teach();
     else results();
   }
-  async function teach() {
+  async function teach(){
     setAct(2);
-    const wrong=st.questions.filter((_,i)=>st.r1[i]!==st.questions[i].answer);
     loading(`🧠 GRIND is targeting your ${st.r1Score}/8 performance...<br><small style="color:var(--muted)">Teaching your weak concepts first</small>`);
-    try {
+    try{
       const d=await apiPost('/api/story/teach',{subject:st.subject,chapter:st.chapter,questions:st.questions,round1Answers:st.r1,score:st.r1Score});
-      document.getElementById('story-content').innerHTML = `
-        <div class="story-q-card" style="border-color:rgba(249,115,22,.3)">
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">⚔️ Round 1: ${st.r1Score}/8 before learning</div>
-          <div style="font-size:12px;color:var(--muted2)">${wrong.length} concepts auto-saved to Mistake Book</div>
-        </div>
-        <div style="font-size:13px;font-weight:700;color:var(--orange);margin:4px 0">📖 ACT 2 — THE REVELATION</div>
-        <div class="story-teach-box" id="teach-box">${marked?marked.parse(d.teaching||''):'Loading...'}</div>
-        <button class="story-btn primary" style="width:100%;padding:13px;margin-top:4px" onclick="storyMode.r2()">🔄 Ready — Start Round 2</button>`;
-      if(window.renderMathInElement) renderMathInElement(document.getElementById('teach-box'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
-    } catch(e) {
-      document.getElementById('story-content').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn primary" style="margin-top:12px" onclick="storyMode.r2()">Skip to Round 2</button></div>`;
-    }
+      document.getElementById('story-content').innerHTML=`<div class="story-q-card" style="border-color:rgba(249,115,22,.3)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">⚔️ Round 1: ${st.r1Score}/8 before learning</div><div style="font-size:12px;color:var(--muted2)">${st.questions.filter((_,i)=>st.r1[i]!==st.questions[i].answer).length} concepts auto-saved to Mistake Book</div></div><div style="font-size:13px;font-weight:700;color:var(--orange);margin:4px 0">📖 ACT 2 — THE REVELATION</div><div class="story-teach-box" id="teach-box">${marked?marked.parse(d.teaching||''):'Loading...'}</div><button class="story-btn primary" style="width:100%;padding:13px;margin-top:4px" onclick="storyMode.r2()">🔄 Ready — Start Round 2</button>`;
+      if(window.renderMathInElement)renderMathInElement(document.getElementById('teach-box'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+    }catch(e){document.getElementById('story-content').innerHTML=`<div style="color:var(--red);padding:20px;text-align:center">${e.message}<br><button class="story-btn primary" style="margin-top:12px" onclick="storyMode.r2()">Skip to Round 2</button></div>`;}
   }
   function r2(){renderQ('r2');}
-  async function results() {
+  async function results(){
     setAct(4);
-    const imp=st.r2Score-st.r1Score, pct=Math.round(st.r2Score/8*100);
-    const xp=Math.max(20,imp*20+st.r2Score*8);
+    const imp=st.r2Score-st.r1Score,pct=Math.round(st.r2Score/8*100),xp=Math.max(20,imp*20+st.r2Score*8);
     try{await apiPost('/api/story/complete',{subject:st.subject,chapter:st.chapter,exam:st.exam,questions:st.questions,round1Score:st.r1Score,round2Score:st.r2Score,round2Answers:st.r2,xpEarned:xp});}catch(e){}
-    const msg=imp>=5?'🔥 Huge improvement. This is exactly the method.'
-             :imp>=3?`📈 +${imp} more correct. Keep going.`
-             :imp>=1?`👍 +${imp}. You're building — repetition is key.`
-             :st.r2Score>=6?'💎 Already strong. Push to Advanced level next.'
-             :'🔄 Attempt this chapter again in 2 days — it will click.';
-    document.getElementById('story-content').innerHTML=`
-      <div class="story-q-card" style="text-align:center;border-color:rgba(249,115,22,.3)">
-        <div style="font-size:18px;font-weight:700;margin-bottom:4px">🏆 ACT 4 — THE LEGEND</div>
-        <div style="font-size:12px;color:var(--muted2);margin-bottom:14px">${st.chapter} · ${st.subject}</div>
-        <div class="story-score-row">
-          <div class="score-box r1"><div class="score-num" style="color:#fca5a5">${st.r1Score}/8</div><div class="score-label">BEFORE</div></div>
-          <div style="font-size:18px;display:flex;align-items:center">→</div>
-          <div class="score-box r2"><div class="score-num" style="color:#34d399">${st.r2Score}/8</div><div class="score-label">AFTER</div></div>
-          <div class="score-box imp"><div class="score-num" style="color:var(--orange)">+${imp}</div><div class="score-label">GAINED</div></div>
-        </div>
-        <div class="impr-bar"><div class="impr-fill" style="width:${pct}%"></div></div>
-        <div style="font-family:'Space Mono',monospace;font-size:18px;color:var(--gold);font-weight:700;margin:10px 0">+${xp} XP 🎯</div>
-        <div style="font-size:13px;color:var(--muted2);margin-bottom:16px">${msg}</div>
-        <div style="display:flex;gap:10px"><button class="story-btn primary" style="flex:1" onclick="storyMode.reset()">🎬 New Chapter</button><button class="story-btn secondary" style="flex:1" onclick="switchTab('mistakes')">📑 Mistakes</button></div>
-      </div>`;
+    const msg=imp>=5?'🔥 Huge improvement. This is exactly the method.':imp>=3?`📈 +${imp} more correct. Keep going.`:imp>=1?`👍 +${imp}. You're building — repetition is key.`:st.r2Score>=6?'💎 Already strong. Push to Advanced level next.':'🔄 Attempt this chapter again in 2 days — it will click.';
+    document.getElementById('story-content').innerHTML=`<div class="story-q-card" style="text-align:center;border-color:rgba(249,115,22,.3)"><div style="font-size:18px;font-weight:700;margin-bottom:4px">🏆 ACT 4 — THE LEGEND</div><div style="font-size:12px;color:var(--muted2);margin-bottom:14px">${st.chapter} · ${st.subject}</div><div class="story-score-row"><div class="score-box r1"><div class="score-num" style="color:#fca5a5">${st.r1Score}/8</div><div class="score-label">BEFORE</div></div><div style="font-size:18px;display:flex;align-items:center">→</div><div class="score-box r2"><div class="score-num" style="color:#34d399">${st.r2Score}/8</div><div class="score-label">AFTER</div></div><div class="score-box imp"><div class="score-num" style="color:var(--orange)">+${imp}</div><div class="score-label">GAINED</div></div></div><div class="impr-bar"><div class="impr-fill" style="width:${pct}%"></div></div><div style="font-family:'Space Mono',monospace;font-size:18px;color:var(--gold);font-weight:700;margin:10px 0">+${xp} XP 🎯</div><div style="font-size:13px;color:var(--muted2);margin-bottom:16px">${msg}</div><div style="display:flex;gap:10px"><button class="story-btn primary" style="flex:1" onclick="storyMode.reset()">🎬 New Chapter</button><button class="story-btn secondary" style="flex:1" onclick="switchTab('mistakes')">📑 Mistakes</button></div></div>`;
   }
-  function reset() {
+  function reset(){
     st={act:0,subject:'Physics',chapter:'',exam:'JEE Main',questions:[],r1:[],r2:[],r1Score:0,r2Score:0,q:0,phase:'r1'};
     document.getElementById('story-config').style.display='block';
     document.getElementById('story-content').innerHTML='';
     document.getElementById('st-chapter').value='';
     document.getElementById('story-acts').style.display='none';
   }
-  // init config-opt clicks
   setTimeout(()=>{
     document.querySelectorAll('#st-subjects .config-opt,#st-exam .config-opt').forEach(o=>{
       o.addEventListener('click',function(){this.closest('.config-opts').querySelectorAll('.config-opt').forEach(x=>x.classList.remove('sel'));this.classList.add('sel');});
     });
   },500);
-  return {start,answer,next,r2,reset};
+  return{start,answer,next,r2,reset};
 })();
 
-// ═══════════════════════════════════════════════════════
-//  WEEKLY WAR REPORT
-// ═══════════════════════════════════════════════════════
-async function generateWeeklyReport() {
-  try {
-    const d = await apiFetch('/api/report/weekly');
-    const modal = document.createElement('div');
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
-    modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto">
-      <div style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:16px">📊 WEEKLY WAR REPORT</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-        <div style="flex:1;min-width:80px;padding:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--orange)">${d.weeklyXP}</div><div style="font-size:10px;color:var(--muted2)">XP THIS WEEK</div></div>
-        <div style="flex:1;min-width:80px;padding:12px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">${d.streak}</div><div style="font-size:10px;color:var(--muted2)">DAY STREAK</div></div>
-        <div style="flex:1;min-width:80px;padding:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;text-align:center"><div style="font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)">${d.avgImprovement}</div><div style="font-size:10px;color:var(--muted2)">AVG IMPROVEMENT</div></div>
-      </div>
-      <div style="font-size:13px;line-height:1.9;color:var(--text);margin-bottom:16px">${marked?marked.parse(d.reportText||''):(d.reportText||'')}</div>
-      <button style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--surface);color:var(--muted2);cursor:pointer;border:1px solid var(--border)" onclick="this.closest('div[style]').remove()">Close</button>
-    </div>`;
-    document.body.appendChild(modal);
-    modal.onclick = e => { if(e.target===modal) modal.remove(); };
-  } catch(e) { alert('Could not load report. Try again.'); }
-}
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  API HELPERS
-// ═══════════════════════════════════════════════════════
-async function apiFetch(url) {
-  const r = await fetch(url);
-  if(!r.ok) throw new Error((await r.json()).error || 'Request failed');
+// ═══════════════════════════════════════
+async function apiFetch(url){
+  const r=await fetch(url,{credentials:'include'});
+  if(!r.ok)throw new Error((await r.json()).error||'Request failed');
   return r.json();
 }
-async function apiPost(url, body) {
-  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-  if(!r.ok) throw new Error((await r.json()).error || 'Request failed');
+async function apiPost(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
+  if(!r.ok)throw new Error((await r.json()).error||'Request failed');
   return r.json();
 }
 
-// ═══════════════════════════════════════════════════════
-//  INIT ON LOAD
-// ═══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    // Show "I'm not okay" button after login
-    if(currentUser) {
-      document.getElementById('not-okay-btn').style.display = 'block';
-      mood.init();
-    }
-  }, 1500);
-});
-
+// ═══════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════
+init();
 </script>
 </body>
 </html>
