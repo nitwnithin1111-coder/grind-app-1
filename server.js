@@ -24,39 +24,39 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('❌ MongoDB:', err.message));
 
 // ── SCHEMAS ───────────────────────────────────────────────
+
+// FIX: removed duplicate 'examDate' field (was defined twice)
 const userSchema = new mongoose.Schema({
-  googleId:        { type: String, unique: true, sparse: true },
-  email:           String,
-  name:            { type: String, required: true },
-  photo:           { type: String, default: '' },
-  gender:          { type: String, default: '' },
-  exam:            { type: String, default: '' },
-  class:           { type: String, default: '' },
-  coaching:        { type: String, default: '' },
-  biggestStruggle: { type: String, default: '' },
-  hoursPerDay:     { type: String, default: '' },
-  isOnboarded:     { type: Boolean, default: false },
-  streak:          { type: Number, default: 0 },
-  lastActive:      { type: Date, default: Date.now },
-  responseSpeed:   { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
-  examDate:        { type: Date, default: null },
-  quizXP:          { type: Number, default: 0 },
-  quizLevel:       { type: Number, default: 1 },
-  totalQSolved:    { type: Number, default: 0 },
-  totalQCorrect:   { type: Number, default: 0 },
-  quizStreak:      { type: Number, default: 0 },
-  maxQuizStreak:   { type: Number, default: 0 },
-  achievements:    [{ id: String, name: String, icon: String, unlockedAt: Date }],
-  weeklyXP:        { type: Number, default: 0 },
-  weeklyXPReset:   { type: Date, default: Date.now },
-  weakTopics:      { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
-  // NEW: stores feedback irritation flags for adaptive tone
-  feedbackFlags:   { type: Map, of: String, default: {} },
-  createdAt:            { type: Date, default: Date.now },
+  googleId:             { type: String, unique: true, sparse: true },
+  email:                String,
+  name:                 { type: String, required: true },
+  photo:                { type: String, default: '' },
+  gender:               { type: String, default: '' },
+  exam:                 { type: String, default: '' },
+  class:                { type: String, default: '' },
+  coaching:             { type: String, default: '' },
+  biggestStruggle:      { type: String, default: '' },
+  hoursPerDay:          { type: String, default: '' },
+  isOnboarded:          { type: Boolean, default: false },
+  streak:               { type: Number, default: 0 },
+  lastActive:           { type: Date, default: Date.now },
+  responseSpeed:        { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep', 'ultra'] },
+  examDate:             { type: Date, default: null },
+  quizXP:               { type: Number, default: 0 },
+  quizLevel:            { type: Number, default: 1 },
+  totalQSolved:         { type: Number, default: 0 },
+  totalQCorrect:        { type: Number, default: 0 },
+  quizStreak:           { type: Number, default: 0 },
+  maxQuizStreak:        { type: Number, default: 0 },
+  achievements:         [{ id: String, name: String, icon: String, unlockedAt: Date }],
+  weeklyXP:             { type: Number, default: 0 },
+  weeklyXPReset:        { type: Date, default: Date.now },
+  weakTopics:           { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+  feedbackFlags:        { type: Map, of: String, default: {} },
   shieldsUsedThisMonth: { type: Number, default: 0 },
   shieldResetDate:      { type: Date, default: null },
-  examDate:             { type: Date, default: null },
-  lastMoodDate:         { type: String, default: '' }
+  lastMoodDate:         { type: String, default: '' },
+  createdAt:            { type: Date, default: Date.now }
 });
 
 const sessionSchema = new mongoose.Schema({
@@ -72,26 +72,25 @@ const sessionSchema = new mongoose.Schema({
 });
 
 const mistakeSchema = new mongoose.Schema({
-  userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  questionId:    { type: String, default: '' },
-  question:      String,
-  subject:       String,
-  chapter:       String,
-  topic:         String,
-  explanation:   String,
-  cheatSheet:    { type: String, default: '' },
-  trapAlert:     { type: String, default: '' },
-  userAnswer:    String,
-  correctAnswer: String,
-  note:          { type: String, default: '' },
-  isPYQ:         { type: Boolean, default: false },
-  pyqYear:       { type: String, default: '' },
-  pyqExam:       { type: String, default: '' },
-  pyqShift:      { type: String, default: '' },
-  weekKey:       { type: String, default: '' },
-  // NEW: raw [MISTAKE_START]...[MISTAKE_END] extracted from chat
+  userId:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  questionId:       { type: String, default: '' },
+  question:         String,
+  subject:          String,
+  chapter:          String,
+  topic:            String,
+  explanation:      String,
+  cheatSheet:       { type: String, default: '' },
+  trapAlert:        { type: String, default: '' },
+  userAnswer:       String,
+  correctAnswer:    String,
+  note:             { type: String, default: '' },
+  isPYQ:            { type: Boolean, default: false },
+  pyqYear:          { type: String, default: '' },
+  pyqExam:          { type: String, default: '' },
+  pyqShift:         { type: String, default: '' },
+  weekKey:          { type: String, default: '' },
   mistakeBookEntry: { type: String, default: '' },
-  createdAt:     { type: Date, default: Date.now }
+  createdAt:        { type: Date, default: Date.now }
 });
 
 const plannerTaskSchema = new mongoose.Schema({
@@ -115,12 +114,10 @@ const feedbackSchema = new mongoose.Schema({
   rating:    Number,
   message:   String,
   type:      { type: String, default: 'exit' },
-  // NEW: structured irritation tags parsed from message
   flags:     [String],
   createdAt: { type: Date, default: Date.now }
 });
 
-// PYQ bank — verified cache so we never repeat across sessions
 const pyqSchema = new mongoose.Schema({
   subject:      String,
   chapter:      String,
@@ -138,17 +135,65 @@ const pyqSchema = new mongoose.Schema({
   createdAt:    { type: Date, default: Date.now }
 });
 
-const User        = mongoose.model('User', userSchema);
-const ChatSession = mongoose.model('ChatSession', sessionSchema);
-const Mistake     = mongoose.model('Mistake', mistakeSchema);
-const PlannerTask = mongoose.model('PlannerTask', plannerTaskSchema);
-const Feedback    = mongoose.model('Feedback', feedbackSchema);
-const PYQ         = mongoose.model('PYQ', pyqSchema);
+const moodSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  mood:   { type: Number, min: 1, max: 5, required: true },
+  note:   { type: String, default: '' },
+  date:   { type: String, required: true }
+}, { timestamps: true });
+
+const formulaSchema = new mongoose.Schema({
+  userId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  subject:     String,
+  chapter:     String,
+  formula:     { type: String, required: true },
+  context:     String,
+  nextReview:  { type: Date, default: Date.now },
+  interval:    { type: Number, default: 1 },
+  repetitions: { type: Number, default: 0 },
+  easeFactor:  { type: Number, default: 2.5 }
+}, { timestamps: true });
+
+const bossSchema = new mongoose.Schema({
+  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  subject:  String,
+  chapter:  String,
+  type:     { type: String, enum: ['chapter', 'world'], default: 'chapter' },
+  score:    Number,
+  total:    Number,
+  beaten:   { type: Boolean, default: false },
+  xpEarned: Number
+}, { timestamps: true });
+
+const storySessionSchema = new mongoose.Schema({
+  userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  subject:       String,
+  chapter:       String,
+  exam:          String,
+  questions:     [mongoose.Schema.Types.Mixed],
+  round1Score:   Number,
+  round2Score:   Number,
+  improvement:   Number,
+  xpEarned:      Number,
+  wrongConcepts: [String]
+}, { timestamps: true });
+
+const User         = mongoose.model('User', userSchema);
+const ChatSession  = mongoose.model('ChatSession', sessionSchema);
+const Mistake      = mongoose.model('Mistake', mistakeSchema);
+const PlannerTask  = mongoose.model('PlannerTask', plannerTaskSchema);
+const Feedback     = mongoose.model('Feedback', feedbackSchema);
+const PYQ          = mongoose.model('PYQ', pyqSchema);
+const Mood         = mongoose.model('Mood', moodSchema);
+const Formula      = mongoose.model('Formula', formulaSchema);
+const BossBattle   = mongoose.model('BossBattle', bossSchema);
+const StorySession = mongoose.model('StorySession', storySessionSchema);
 
 // ── SESSION ───────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'grindai-secret-2025',
-  resave: false, saveUninitialized: false,
+  resave: false,
+  saveUninitialized: false,
   store:  MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
   cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
 }));
@@ -189,7 +234,7 @@ passport.deserializeUser(async (id, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ── AUTH GUARD — strictly no guest mode ──────────────────
+// ── AUTH GUARD ────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) return next();
   res.status(401).json({ error: 'Login required', loginUrl: '/auth/google' });
@@ -215,14 +260,14 @@ const OPENROUTER_KEYS = [
 ].filter(Boolean);
 
 const OPENROUTER_MODELS = [
-  'deepseek/deepseek-v4-flash:free',      // Active: Top-tier free chain-of-thought reasoning for STEM
-  'nvidia/nemotron-3-ultra:free',         // NEW: 550B MoE frontier reasoning, massive 1M context
-  'openai/gpt-oss-120b:free',             // FIXED: Real endpoint name for OpenAI's open-weight MoE reasoning
-  'openai/gpt-oss-20b:free',              // ACTIVE: Lower latency 21B MoE variant by OpenAI
-  'z-ai/glm-4.5-air:free',                // FIXED: Corrected path for Zhipu's free advanced reasoning model
-  'google/gemma-4-31b:free',              // Active: Google's latest high-capacity open-weight logic model
-  'meta-llama/llama-3.3-70b:free',        // Active: Highly reliable for complex conceptual physics/chemistry
-  'openrouter/free' 
+  'deepseek/deepseek-v4-flash:free',
+  'nvidia/nemotron-3-ultra:free',
+  'openai/gpt-oss-120b:free',
+  'openai/gpt-oss-20b:free',
+  'z-ai/glm-4.5-air:free',
+  'google/gemma-4-31b:free',
+  'meta-llama/llama-3.3-70b:free',
+  'openrouter/free'
 ];
 
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
@@ -245,7 +290,6 @@ function safeParseJSON(raw) {
   return JSON.parse(clean);
 }
 
-// NEW: extract [MISTAKE_START]...[MISTAKE_END] blocks from AI reply
 function extractMistakeEntries(text) {
   const matches = [];
   const re      = /\[MISTAKE_START\]([\s\S]*?)\[MISTAKE_END\]/g;
@@ -254,11 +298,10 @@ function extractMistakeEntries(text) {
   return matches;
 }
 
-// NEW: parse feedback irritation flags from message text
 function parseFeedbackFlags(message = '') {
-  const flags  = [];
-  const lower  = message.toLowerCase();
-  if (lower.includes('confus') || lower.includes('unclear') || lower.includes('didn\'t understand'))
+  const flags = [];
+  const lower = message.toLowerCase();
+  if (lower.includes('confus') || lower.includes('unclear') || lower.includes("didn't understand"))
     flags.push('USER_FEEDBACK_IRRITATION:confusing_explanation');
   if (lower.includes('too fast') || lower.includes('too quick') || lower.includes('slow down'))
     flags.push('USER_FEEDBACK_IRRITATION:too_fast');
@@ -270,8 +313,6 @@ function parseFeedbackFlags(message = '') {
 }
 
 // ── SYSTEM PROMPT BUILDER ─────────────────────────────────
-// NEW: full rebuild with Grind AI persona spec, proactive weakness challenge,
-//      mistake book markers, feedback irritation adaptation, no guest mode language
 function buildSystemPrompt(user, plannerCtx = '', todayMistakes = [], feedbackFlags = []) {
   const name   = user?.name?.split(' ')[0] || 'there';
   const gender = user?.gender || '';
@@ -285,18 +326,15 @@ function buildSystemPrompt(user, plannerCtx = '', todayMistakes = [], feedbackFl
   };
   const speed = user?.responseSpeed || 'balanced';
 
-  // Build weak topic context for proactive opening challenge
-  const wk         = getWeekKey();
-  const weakMap     = user?.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user?.weakTopics || {}));
-  const weeklyWeak  = [...weakMap.entries()].filter(([, v]) => v?.weeks?.includes(wk)).map(([t]) => t);
-  const topWeak     = weeklyWeak.slice(0, 3).join(', ') || 'none identified yet';
+  const wk        = getWeekKey();
+  const weakMap   = user?.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user?.weakTopics || {}));
+  const weeklyWeak = [...weakMap.entries()].filter(([, v]) => v?.weeks?.includes(wk)).map(([t]) => t);
+  const topWeak   = weeklyWeak.slice(0, 3).join(', ') || 'none identified yet';
 
-  // Build today's mistake context
   const mistakeCtx = todayMistakes.length > 0
     ? `TODAY'S MISTAKE LOG (from this session):\n${todayMistakes.map(m => `- [${m.topic}] ${m.mistakeBookEntry || m.question?.slice(0, 80)}`).join('\n')}`
     : '';
 
-  // Build feedback irritation adaptation directive
   let feedbackAdapt = '';
   if (feedbackFlags.includes('USER_FEEDBACK_IRRITATION:confusing_explanation') || feedbackFlags.includes('USER_FEEDBACK_IRRITATION:too_fast')) {
     feedbackAdapt = 'FEEDBACK ADAPTATION: This student previously flagged explanations as confusing or too fast. You MUST break down every concept mathematically step-by-step. Never skip a single algebraic step. Use numbered substeps.';
@@ -320,8 +358,8 @@ CRITICAL IDENTITY RULES
 ========================================================
 STUDENT PROFILE
 ========================================================
-Name: ${name} | Gender: ${gender} (use "${slang}") 
-Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || '?'} 
+Name: ${name} | Gender: ${gender} (use "${slang}")
+Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || '?'}
 Coaching: ${user?.coaching || 'self-study'} | Biggest Struggle: ${user?.biggestStruggle || '?'}
 Weekly Weak Topics: ${topWeak}
 
@@ -477,36 +515,18 @@ Return ONLY this exact JSON — no markdown, no text outside JSON:
 }`;
 }
 
-// ── API CALL HELPERS ──────────────────────────────────────
-// Optimized for text-only JEE problem solving using deep reasoning models first
-// Global Configuration Variableserror.message);
- // =========================
-// AI PRIORITY ORDER
-// 1. OpenRouter (Best Reasoning)
-// 2. Gemini
-// 3. Groq
-// =========================
+// ── AI PROVIDER HELPERS ───────────────────────────────────
 
 async function fetchWithTimeout(url, options, ms = 30000) {
   const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, ms);
-
+  const timeout = setTimeout(() => controller.abort(), ms);
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-
+    const response = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
-
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`${response.status} - ${text}`);
     }
-
     return response;
   } catch (err) {
     clearTimeout(timeout);
@@ -514,188 +534,91 @@ async function fetchWithTimeout(url, options, ms = 30000) {
   }
 }
 
-// =========================
-// OPENROUTER
-// =========================
-
 async function callOR(messages, prompt) {
-
-  const key =
-    OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
-
-  const model =
-    OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
-
+  const key   = OPENROUTER_KEYS[orIdx++  % OPENROUTER_KEYS.length];
+  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
   console.log(`🧠 OpenRouter -> ${model}`);
-
-  const response = await fetchWithTimeout(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://grind-ai.onrender.com",
-        "X-Title": "GRIND AI"
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 4000,
-        temperature: 0.4,
-        messages: [
-          {
-            role: "system",
-            content: prompt
-          },
-          ...messages
-        ]
-      })
-    }
-  );
-
+  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+      'HTTP-Referer': 'https://grind-ai.onrender.com',
+      'X-Title': 'GRIND AI'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4000,
+      temperature: 0.4,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  });
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message);
-  }
-
+  if (data.error) throw new Error(data.error.message);
   return data.choices[0].message.content;
 }
 
-// =========================
-// GEMINI
-// =========================
-
-async function callGemini(
-  messages,
-  prompt,
-  imageBase64 = null
-) {
-
-  const key =
-    GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
-
+async function callGemini(messages, prompt, imageBase64 = null) {
+  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
   const contents = messages.map(msg => ({
-    role:
-      msg.role === "assistant"
-        ? "model"
-        : "user",
-    parts: [
-      {
-        text: msg.content
-      }
-    ]
+    role:  msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }]
   }));
-
   if (imageBase64 && contents.length > 0) {
     const last = contents[contents.length - 1];
-
-    if (last.role === "user") {
-      last.parts.push({
-        inline_data: {
-          mime_type: "image/jpeg",
-          data: imageBase64
-        }
-      });
+    if (last.role === 'user') {
+      last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
     }
   }
-
-  console.log("⚡ Gemini");
-
+  console.log('⚡ Gemini');
   const response = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [
-            {
-              text: prompt
-            }
-          ]
-        },
+        system_instruction: { parts: [{ text: prompt }] },
         contents,
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 4000
-        }
+        generationConfig: { temperature: 0.4, maxOutputTokens: 4000 }
       })
     }
   );
-
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message);
-  }
-
+  if (data.error) throw new Error(data.error.message);
   return data.candidates[0].content.parts[0].text;
 }
 
-// =========================
-// GROQ
-// =========================
-
 async function callGroq(messages, prompt) {
-
-  const key =
-    GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
-
-  console.log("🚀 Groq");
-
-  const response = await fetchWithTimeout(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 4000,
-        temperature: 0.4,
-        messages: [
-          {
-            role: "system",
-            content: prompt
-          },
-          ...messages
-        ]
-      })
-    }
-  );
-
+  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
+  console.log('🚀 Groq');
+  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 4000,
+      temperature: 0.4,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  });
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message);
-  }
-
+  if (data.error) throw new Error(data.error.message);
   return data.choices[0].message.content;
 }
 
-// ══════════════════════════════════════════════════
-// AI ROUTING ENGINE: OpenRouter → Gemini → Groq
-// ══════════════════════════════════════════════════
+// AI ROUTING: OpenRouter → Gemini → Groq
 async function getReply(messages, prompt, imageBase64 = null) {
-  // 1st: OpenRouter (DeepSeek R1 — best free reasoning)
   for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
     try { return await callOR(messages, prompt); }
-    catch (e) { console.log(`❌ OR${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
   }
-  // 2nd: Gemini (image support)
   for (let i = 0; i < GEMINI_KEYS.length; i++) {
     try { return await callGemini(messages, prompt, imageBase64); }
-    catch (e) { console.log(`❌ Gemini${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ Gemini${i + 1}:`, e.message); }
   }
-  // 3rd: Groq fallback
   for (let i = 0; i < GROQ_KEYS.length; i++) {
     try { return await callGroq(messages, prompt); }
-    catch (e) { console.log(`❌ Groq${i+1}:`, e.message); }
+    catch (e) { console.log(`❌ Groq${i + 1}:`, e.message); }
   }
   throw new Error('ALL_EXHAUSTED — check API keys');
 }
@@ -716,12 +639,12 @@ const ACHIEVEMENTS = [
 async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
   const user = await User.findById(userId);
   if (!user) return { newAchievements: [], levelUp: false };
-  const oldLevel         = calcLevel(user.quizXP);
-  user.quizXP           += xp;
-  user.weeklyXP         += xp;
-  user.totalQSolved      = totalSolved;
-  user.totalQCorrect     = totalCorrect;
-  user.quizStreak        = newStreak;
+  const oldLevel    = calcLevel(user.quizXP);
+  user.quizXP      += xp;
+  user.weeklyXP    += xp;
+  user.totalQSolved  = totalSolved;
+  user.totalQCorrect = totalCorrect;
+  user.quizStreak    = newStreak;
   if (newStreak > user.maxQuizStreak) user.maxQuizStreak = newStreak;
   const newLevel  = calcLevel(user.quizXP);
   user.quizLevel  = newLevel;
@@ -748,7 +671,7 @@ async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect
   return { newAchievements, levelUp: newLevel > oldLevel, newLevel, totalXP: user.quizXP };
 }
 
-// ── PLANNER CONTEXT ───────────────────────────────────────
+// ── PLANNER CONTEXT BUILDER ───────────────────────────────
 async function buildPlannerContext(userId) {
   try {
     const today    = new Date(); today.setHours(0, 0, 0, 0);
@@ -761,7 +684,6 @@ async function buildPlannerContext(userId) {
   } catch { return ''; }
 }
 
-// NEW: fetch today's mistakes for a user to pass into system prompt
 async function getTodayMistakes(userId) {
   try {
     const today    = new Date(); today.setHours(0, 0, 0, 0);
@@ -771,18 +693,21 @@ async function getTodayMistakes(userId) {
   } catch { return []; }
 }
 
-// NEW: fetch user's feedback flags from DB
 async function getUserFeedbackFlags(userId) {
   try {
     const feedbacks = await Feedback.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
     const allFlags  = feedbacks.flatMap(f => f.flags || []);
-    return [...new Set(allFlags)]; // deduplicate
+    return [...new Set(allFlags)];
   } catch { return []; }
 }
 
-// ── ROUTES ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// ROUTES
+// ══════════════════════════════════════════════════════════
+
 app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v8' }));
 
+// ── AUTH ──────────────────────────────────────────────────
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback',
@@ -796,6 +721,7 @@ app.get('/api/auth/status', (req, res) => {
   res.json({ authenticated: req.isAuthenticated(), user: req.user ? { id: req.user._id, name: req.user.name } : null });
 });
 
+// ── USER ──────────────────────────────────────────────────
 app.get('/api/me', requireAuth, (req, res) => {
   const u = req.user;
   res.json({
@@ -845,7 +771,7 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
       rank: i + 1,
       name: u.name?.split(' ')[0] || 'Student',
       photo: u.photo,
-      xp:   type === 'weekly' ? u.weeklyXP : u.quizXP,
+      xp:    type === 'weekly' ? u.weeklyXP : u.quizXP,
       level: u.quizLevel || 1,
       solved: u.totalQSolved || 0,
       maxStreak: u.maxQuizStreak || 0,
@@ -864,19 +790,17 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 
   const recent        = messages.slice(-20);
   const plannerCtx    = await buildPlannerContext(user._id);
-  const todayMistakes = await getTodayMistakes(user._id);    // NEW
-  const feedbackFlags = await getUserFeedbackFlags(user._id); // NEW
-
-  const prompt = buildSystemPrompt(user, plannerCtx, todayMistakes, feedbackFlags);
+  const todayMistakes = await getTodayMistakes(user._id);
+  const feedbackFlags = await getUserFeedbackFlags(user._id);
+  const prompt        = buildSystemPrompt(user, plannerCtx, todayMistakes, feedbackFlags);
 
   try {
     const reply = await getReply(recent, prompt, imageBase64 || null);
 
-    // NEW: auto-extract [MISTAKE_START]...[MISTAKE_END] blocks and save to DB
+    // Auto-extract mistake markers and save to DB
     const mistakeEntries = extractMistakeEntries(reply);
     for (const entry of mistakeEntries) {
       try {
-        // Parse "Concept: X | Context: Y" format
         const conceptMatch = entry.match(/Concept:\s*([^|]+)/i);
         const contextMatch = entry.match(/Context:\s*(.+)/i);
         const topic   = conceptMatch?.[1]?.trim() || 'General';
@@ -889,7 +813,6 @@ app.post('/api/chat', requireAuth, async (req, res) => {
           question:         context,
           weekKey:          getWeekKey()
         });
-        // Also update weakTopics map
         const wk   = getWeekKey();
         const wMap = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
         const ent  = wMap.get(topic) || { count: 0, weeks: [] };
@@ -912,14 +835,14 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       } catch (e) { console.error('Session save:', e.message); }
     }
 
-    res.json({ reply, autoMistakes: mistakeEntries.length }); // let frontend know how many were auto-logged
+    res.json({ reply, autoMistakes: mistakeEntries.length });
   } catch (err) {
     console.error('AI error:', err.message);
     res.status(500).json({ error: 'Our AI is taking a short break. Please try again.' });
   }
 });
 
-// ── QUIZ: SOLO QUESTION ───────────────────────────────────
+// ── QUIZ ──────────────────────────────────────────────────
 app.post('/api/quiz/question', requireAuth, async (req, res) => {
   const { subject, chapter, topic, difficulty, pyqMode, exam } = req.body;
   const user      = req.user;
@@ -929,11 +852,9 @@ app.post('/api/quiz/question', requireAuth, async (req, res) => {
   for (const [t, v] of weakMap.entries()) {
     if (v?.weeks?.includes(wk)) adaptTopics.push(t);
   }
-
   const prompt = pyqMode
     ? buildPYQPrompt(subject || 'Physics', chapter, exam, difficulty)
     : buildPracticePrompt(subject || 'Physics', chapter, topic, difficulty, adaptTopics.length ? adaptTopics : null);
-
   try {
     const reply = await getReply(
       [{ role: 'user', content: prompt }],
@@ -948,7 +869,6 @@ app.post('/api/quiz/question', requireAuth, async (req, res) => {
   }
 });
 
-// ── QUIZ: AWARD XP ────────────────────────────────────────
 app.post('/api/quiz/award-xp', requireAuth, async (req, res) => {
   try {
     const { correct, streak, totalSolved, totalCorrect, xpEarned } = req.body;
@@ -957,7 +877,6 @@ app.post('/api/quiz/award-xp', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not award XP.' }); }
 });
 
-// ── QUIZ: LOG WRONG ANSWER ────────────────────────────────
 app.post('/api/quiz/log-wrong', requireAuth, async (req, res) => {
   try {
     const { topic, subject, chapter, question, userAnswer, correctAnswer, explanation, cheatSheet, trapAlert, isPYQ, pyqYear, pyqExam, pyqShift } = req.body;
@@ -968,7 +887,6 @@ app.post('/api/quiz/log-wrong', requireAuth, async (req, res) => {
     if (!ent.weeks.includes(wk)) ent.weeks.push(wk);
     wMap.set(topic, ent);
     await User.findByIdAndUpdate(req.user._id, { weakTopics: wMap });
-    // Also auto-save to mistake book
     await Mistake.create({
       userId: req.user._id, topic, subject, chapter, question,
       userAnswer, correctAnswer, explanation, cheatSheet, trapAlert,
@@ -980,7 +898,6 @@ app.post('/api/quiz/log-wrong', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not log wrong answer.' }); }
 });
 
-// ── QUIZ: SYNC WEAK TOPICS ────────────────────────────────
 app.post('/api/quiz/sync-weak-topics', requireAuth, async (req, res) => {
   try {
     const { weakTopics } = req.body;
@@ -1053,7 +970,7 @@ app.get('/api/planner/tasks', requireAuth, async (req, res) => {
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     const weekEnd  = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
     let filter     = { userId: req.user._id };
-    if (view === 'today')          { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
+    if      (view === 'today')     { filter.scheduledDate = { $gte: today, $lt: tomorrow }; filter.status = { $in: ['pending', 'completed', 'missed'] }; }
     else if (view === 'week')      { filter.scheduledDate = { $gte: today, $lt: weekEnd };  filter.status = { $in: ['pending', 'completed', 'missed'] }; }
     else if (view === 'completed') { filter.status = 'completed'; }
     else                           { filter.scheduledDate = { $gte: today, $lt: tomorrow }; }
@@ -1103,6 +1020,67 @@ Rules: Max 6 tasks if tired, 8 medium, 10 energized. Include breaks. Be realisti
   } catch (err) { console.error('Planner gen:', err.message); res.status(500).json({ error: 'Could not generate plan.' }); }
 });
 
+app.post('/api/planner/smart-generate', requireAuth, async (req, res) => {
+  try {
+    const { period, energyLevel, targetDate, customNote } = req.body;
+    const user = req.user;
+    const name = user.name?.split(' ')[0] || 'Student';
+    const wk   = getWeekKey();
+    const weakMap = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+    const weakTopics = [...weakMap.entries()]
+      .filter(([, v]) => v?.count > 0)
+      .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
+      .slice(0, 5).map(([t]) => t);
+
+    const last3Moods = await Mood.find({ userId: user._id }).sort({ createdAt: -1 }).limit(3).lean();
+    const avgMood    = last3Moods.length ? (last3Moods.reduce((a, m) => a + m.mood, 0) / last3Moods.length).toFixed(1) : 3;
+    const recoveryMode = last3Moods.length >= 3 && last3Moods.every(m => m.mood <= 2);
+    const daysLeft   = user.examDate ? Math.max(0, Math.ceil((new Date(user.examDate) - new Date()) / 86400000)) : null;
+
+    const prompt = `You are GRIND — a smart JEE study planner for ${name}.
+
+STUDENT PROFILE:
+- Exam: ${user.exam || 'JEE Main'} | Class: ${user.class || '12th'}
+- Study hours/day: ${user.hoursPerDay || '6'}
+- ${daysLeft ? `Days to exam: ${daysLeft}` : 'Exam date not set'}
+- Average mood (last 3 days): ${avgMood}/5
+- Recovery mode needed: ${recoveryMode ? 'YES — keep sessions short and gentle' : 'No'}
+- Energy level today: ${energyLevel || 'medium'}
+- Weak topics (prioritize these): ${weakTopics.join(', ') || 'Not tracked yet'}
+- Special note: ${customNote || 'none'}
+
+TASK: Generate a ${period || 'daily'} study plan as a JSON array.
+
+RULES:
+1. Max tasks: ${energyLevel === 'low' || recoveryMode ? 4 : energyLevel === 'high' ? 8 : 6}
+2. Mix subjects (not 3 Physics in a row)
+3. First task after morning = easiest (warm up)
+4. Hardest task = second slot when brain is fresh
+5. Include 1 Formula Fortress review (10 min)
+6. Include 1 Mistake Book revision (15 min)
+7. If recovery mode → all tasks max 20 min, only revision (no new chapters)
+8. Each task must have clear, specific title — NOT vague like "Study Physics"
+
+Return ONLY this JSON (no markdown, no explanation):
+[{"title":"...","subject":"...","priority":"high","estimatedMins":45,"notes":"...","type":"story_mode | revision | formula_fortress | mistake_book | mock | break"}]`;
+
+    const reply = await getReply([{ role: 'user', content: prompt }], 'Return ONLY a valid JSON array. No markdown. No extra text before or after.');
+    const tasks = safeParseJSON(reply);
+    if (!Array.isArray(tasks) || !tasks.length) throw new Error('Invalid plan format');
+
+    const date = new Date(targetDate || new Date());
+    date.setHours(6, 0, 0, 0);
+    const saved = [];
+    for (const t of tasks) {
+      saved.push(await PlannerTask.create({ userId: user._id, ...t, scheduledDate: date, aiGenerated: true }));
+    }
+    res.json({ tasks: saved, recoveryMode, weakTopicsUsed: weakTopics });
+  } catch (err) {
+    console.error('Smart planner:', err.message);
+    res.status(500).json({ error: 'Could not generate plan. Try again.' });
+  }
+});
+
 app.post('/api/planner/rollover', requireAuth, async (req, res) => {
   try {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1115,17 +1093,11 @@ app.post('/api/planner/rollover', requireAuth, async (req, res) => {
 });
 
 // ── FEEDBACK ──────────────────────────────────────────────
-// NEW: auto-parses irritation flags and stores them, syncs to user feedbackFlags
 app.post('/api/feedback', async (req, res) => {
   try {
     const { message, rating, type } = req.body;
     const flags = parseFeedbackFlags(message || '');
-    const fb    = await Feedback.create({
-      userId: req.user?._id,
-      name:   req.user?.name || 'User',
-      rating, message, type, flags
-    });
-    // Persist flags to user doc for fast access in system prompt
+    await Feedback.create({ userId: req.user?._id, name: req.user?.name || 'User', rating, message, type, flags });
     if (req.user && flags.length > 0) {
       const existing = req.user.feedbackFlags instanceof Map
         ? req.user.feedbackFlags
@@ -1143,184 +1115,12 @@ app.get('/api/admin/feedback', async (req, res) => {
   catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
-// ── SOCKET.IO MULTIPLAYER QUIZ ROOMS ─────────────────────
-const quizRooms = {};
-
-io.on('connection', socket => {
-  socket.on('create-room', ({ name, config }) => {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    quizRooms[code] = {
-      host: socket.id,
-      config: config || { questionCount: 10, difficulty: 'mixed', pyqMode: false, subjects: ['Physics'], chapters: [] },
-      players: [{ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 }],
-      started: false, currentQ: 0, currentAnswer: ''
-    };
-    socket.join(code);
-    socket.emit('room-created', { code });
-    io.to(code).emit('players-update', quizRooms[code].players);
-  });
-
-  socket.on('join-room', ({ code, name }) => {
-    const room = quizRooms[code];
-    if (!room) return socket.emit('room-error', 'Room not found. Check the code.');
-    if (room.started) return socket.emit('room-error', 'Game already started.');
-    room.players.push({ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 });
-    socket.join(code);
-    socket.emit('room-joined', { code, config: room.config });
-    io.to(code).emit('players-update', room.players);
-  });
-
-  socket.on('start-game', ({ code }) => {
-    const room = quizRooms[code];
-    if (!room || room.host !== socket.id) return;
-    room.started = true;
-    io.to(code).emit('game-started', { totalQ: room.config?.questionCount || 10 });
-    startMultiQuestion(code);
-  });
-
-  socket.on('submit-answer', ({ code, answer, timeLeft }) => {
-    const room = quizRooms[code];
-    if (!room) return;
-    const player = room.players.find(p => p.id === socket.id);
-    if (!player) return;
-    player.total  = (player.total || 0) + 1;
-    const correct = answer === room.currentAnswer;
-    if (correct) {
-      player.score  += 10 + Math.floor((timeLeft || 0) / 3);
-      player.streak  = (player.streak || 0) + 1;
-      player.correct = (player.correct || 0) + 1;
-    } else {
-      player.streak = 0;
-    }
-    socket.emit('answer-result', { correct, correctAnswer: room.currentAnswer });
-    io.to(code).emit('players-update', room.players);
-  });
-
-  socket.on('use-sabotage', ({ code, type }) => {
-    const room   = quizRooms[code];
-    if (!room) return;
-    const player = room.players.find(p => p.id === socket.id);
-    if (!player || (player.streak || 0) < 3) return;
-    player.streak = 0;
-    socket.to(code).emit('sabotage-activated', { type, by: player.name });
-  });
-
-  socket.on('send-emoji', ({ code, emoji }) => {
-    const room   = quizRooms[code];
-    if (!room) return;
-    const player = room.players.find(p => p.id === socket.id);
-    io.to(code).emit('emoji-broadcast', { emoji, name: player?.name || 'Someone' });
-  });
-
-  socket.on('disconnect', () => {
-    Object.keys(quizRooms).forEach(code => {
-      const room = quizRooms[code];
-      if (room) {
-        room.players = room.players.filter(p => p.id !== socket.id);
-        io.to(code).emit('players-update', room.players);
-        if (!room.players.length) delete quizRooms[code];
-      }
-    });
-  });
-});
-
-async function startMultiQuestion(code) {
-  const room   = quizRooms[code];
-  if (!room) return;
-  const totalQ = room.config?.questionCount || 10;
-  if (room.currentQ >= totalQ) {
-    io.to(code).emit('game-over', { players: room.players });
-    delete quizRooms[code];
-    return;
-  }
-  const subjects   = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
-  const subject    = subjects[room.currentQ % subjects.length];
-  const chapters   = room.config?.chapters?.length ? room.config.chapters.join(', ') : '';
-  const difficulty = room.config?.difficulty || 'mixed';
-  const pyqMode    = room.config?.pyqMode || false;
-
-  const qPrompt = pyqMode
-    ? buildPYQPrompt(subject, chapters, room.config?.exam || 'JEE Main', difficulty)
-    : buildPracticePrompt(subject, chapters, null, difficulty, null);
-
-  try {
-    const reply = await getReply([{ role: 'user', content: qPrompt }], 'Return ONLY valid JSON, no markdown.');
-    const q     = safeParseJSON(reply);
-    if (!q.question || !q.options || !q.answer) throw new Error('Bad structure');
-    room.currentAnswer = q.answer;
-    io.to(code).emit('new-question', { ...q, timeLimit: 45, questionNumber: room.currentQ + 1, totalQuestions: totalQ });
-    setTimeout(() => {
-      io.to(code).emit('question-ended', { correctAnswer: q.answer, explanation: q.explanation, cheatSheet: q.cheatSheet });
-      setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 8000);
-    }, 45000);
-  } catch (err) {
-    console.error('Multi quiz error:', err.message);
-    io.to(code).emit('quiz-error', 'Question failed. Skipping...');
-    setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 3000);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════
-// NEW SCHEMAS
-// ══════════════════════════════════════════════════════════════════
-const moodSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  mood:   { type: Number, min: 1, max: 5, required: true },
-  note:   { type: String, default: '' },
-  date:   { type: String, required: true }
-}, { timestamps: true });
-const Mood = mongoose.model('Mood', moodSchema);
-
-const formulaSchema = new mongoose.Schema({
-  userId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  subject:     String,
-  chapter:     String,
-  formula:     { type: String, required: true },
-  context:     String,
-  nextReview:  { type: Date, default: Date.now },
-  interval:    { type: Number, default: 1 },
-  repetitions: { type: Number, default: 0 },
-  easeFactor:  { type: Number, default: 2.5 }
-}, { timestamps: true });
-const Formula = mongoose.model('Formula', formulaSchema);
-
-const bossSchema = new mongoose.Schema({
-  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  subject:  String,
-  chapter:  String,
-  type:     { type: String, enum: ['chapter','world'], default: 'chapter' },
-  score:    Number,
-  total:    Number,
-  beaten:   { type: Boolean, default: false },
-  xpEarned: Number
-}, { timestamps: true });
-const BossBattle = mongoose.model('BossBattle', bossSchema);
-
-const storySessionSchema = new mongoose.Schema({
-  userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  subject:      String,
-  chapter:      String,
-  exam:         String,
-  questions:    [mongoose.Schema.Types.Mixed],
-  round1Score:  Number,
-  round2Score:  Number,
-  improvement:  Number,
-  xpEarned:     Number,
-  wrongConcepts:[String]
-}, { timestamps: true });
-const StorySession = mongoose.model('StorySession', storySessionSchema);
-
-// ══════════════════════════════════════════════════════════════════
-// JEE PYQ DATABASE — seed from GitHub repo data into MongoDB
-// ══════════════════════════════════════════════════════════════════
-// Run once: POST /api/admin/seed-pyqs?key=ADMIN_KEY to populate
+// ── PYQ DATABASE ──────────────────────────────────────────
 app.post('/api/admin/seed-pyqs', async (req, res) => {
   if (req.query.key !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
   try {
-    // The jee_mains_pyqs_data_base GitHub repo stores questions as JSON
-    // We fetch directly from raw GitHub and store in MongoDB PYQ collection
-    const baseUrl = 'https://raw.githubusercontent.com/HostServer001/jee_mains_pyqs_data_base/main';
-    const subjects = ['physics','chemistry','mathematics'];
+    const baseUrl  = 'https://raw.githubusercontent.com/HostServer001/jee_mains_pyqs_data_base/main';
+    const subjects = ['physics', 'chemistry', 'mathematics'];
     let totalSeeded = 0;
     for (const subj of subjects) {
       try {
@@ -1330,7 +1130,7 @@ app.post('/api/admin/seed-pyqs', async (req, res) => {
         const arr = Array.isArray(questions) ? questions : Object.values(questions).flat();
         for (const q of arr) {
           await PYQ.findOneAndUpdate(
-            { question: q.question?.slice(0,80) },
+            { question: q.question?.slice(0, 80) },
             {
               subject:      subj.charAt(0).toUpperCase() + subj.slice(1),
               chapter:      q.chapter || q.topic || '',
@@ -1350,33 +1150,29 @@ app.post('/api/admin/seed-pyqs', async (req, res) => {
           );
           totalSeeded++;
         }
-      } catch(e) { console.log(`Skip ${subj}:`, e.message); }
+      } catch (e) { console.log(`Skip ${subj}:`, e.message); }
     }
     res.json({ success: true, totalSeeded });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Get PYQs from MongoDB for a chapter (with AI fallback)
-app.post('/api/pyqs/chapter', requireAuth, async (req, res) => {
-  const { subject, chapter, exam, count = 8 } = req.body;
-  try {
-    // Try MongoDB first
-    const regex = new RegExp(chapter, 'i');
-    let dbQs = await PYQ.find({
-      subject: new RegExp(subject, 'i'),
-      $or: [{ chapter: regex }, { question: regex }],
-      ...(exam && exam !== 'All' ? { exam: new RegExp(exam, 'i') } : {})
-    }).limit(count * 3).lean();
+// FIX: extracted as standalone async function so /api/story/questions
+// can call it directly instead of making a fragile internal HTTP request
+async function getPYQsForChapter(subject, chapter, exam, count = 8) {
+  const regex = new RegExp(chapter, 'i');
+  let dbQs = await PYQ.find({
+    subject: new RegExp(subject, 'i'),
+    $or: [{ chapter: regex }, { question: regex }],
+    ...(exam && exam !== 'All' ? { exam: new RegExp(exam, 'i') } : {})
+  }).limit(count * 3).lean();
 
-    // Shuffle and pick count
-    dbQs = dbQs.sort(() => Math.random() - 0.5).slice(0, count);
+  dbQs = dbQs.sort(() => Math.random() - 0.5).slice(0, count);
 
-    if (dbQs.length >= 4) {
-      return res.json({ questions: dbQs, source: 'database' });
-    }
+  if (dbQs.length >= 4) {
+    return { questions: dbQs, source: 'database' };
+  }
 
-    // Fallback: AI generates PYQ-style questions
-    const prompt = `Generate exactly ${count} real JEE PYQ-style questions for:
+  const prompt = `Generate exactly ${count} real JEE PYQ-style questions for:
 Subject: ${subject} | Chapter: ${chapter} | Exam: ${exam || 'JEE Main'}
 
 Cover DIFFERENT sub-concepts across all ${count} questions. No repetition.
@@ -1399,46 +1195,44 @@ Return ONLY JSON (no markdown):
     }
   ]
 }`;
-    const raw = await getReply([{ role:'user', content: prompt }],
-      'Return ONLY valid JSON. No markdown. No extra text.');
-    const data = safeParseJSON(raw);
-    if (!data.questions?.length) throw new Error('No questions from AI');
+  const raw  = await getReply([{ role: 'user', content: prompt }], 'Return ONLY valid JSON. No markdown. No extra text.');
+  const data = safeParseJSON(raw);
+  if (!data.questions?.length) throw new Error('No questions from AI');
 
-    // Cache AI questions to DB for future use
-    for (const q of data.questions) {
-      await PYQ.create({
-        subject, chapter, exam: q.exam || exam,
-        year: q.year || '', question: q.question,
-        options: q.options, answer: q.answer,
-        explanation: q.explanation, cheatSheet: q.cheatSheet,
-        trapAlert: q.trapAlert, wrongPercent: q.wrongPercent,
-        verified: false
-      }).catch(() => {});
-    }
+  // Cache to DB
+  for (const q of data.questions) {
+    await PYQ.create({
+      subject, chapter, exam: q.exam || exam,
+      year: q.year || '', question: q.question,
+      options: q.options, answer: q.answer,
+      explanation: q.explanation, cheatSheet: q.cheatSheet,
+      trapAlert: q.trapAlert, wrongPercent: q.wrongPercent,
+      verified: false
+    }).catch(() => {});
+  }
+  return { questions: data.questions, source: 'ai-generated' };
+}
 
-    res.json({ questions: data.questions, source: 'ai-generated' });
-  } catch(e) {
+app.post('/api/pyqs/chapter', requireAuth, async (req, res) => {
+  const { subject, chapter, exam, count = 8 } = req.body;
+  try {
+    const result = await getPYQsForChapter(subject, chapter, exam, count);
+    res.json(result);
+  } catch (e) {
     console.error('PYQ chapter:', e.message);
     res.status(500).json({ error: 'Could not load questions. Try again.' });
   }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// STORY MODE (4 ACTs — Reverse Engineering PYQ Learning)
-// ══════════════════════════════════════════════════════════════════
+// ── STORY MODE ────────────────────────────────────────────
+// FIX: now calls getPYQsForChapter() directly — no fragile localhost fetch
 app.post('/api/story/questions', requireAuth, async (req, res) => {
   const { subject, chapter, exam } = req.body;
   if (!chapter) return res.status(400).json({ error: 'Chapter is required.' });
   try {
-    // Use MongoDB PYQ bank first
-    const r = await fetch(`http://localhost:${process.env.PORT || 3000}/api/pyqs/chapter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': req.headers.cookie || '' },
-      body: JSON.stringify({ subject, chapter, exam, count: 8 })
-    });
-    const data = await r.json();
+    const data = await getPYQsForChapter(subject, chapter, exam, 8);
     res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/story/teach', requireAuth, async (req, res) => {
@@ -1446,47 +1240,43 @@ app.post('/api/story/teach', requireAuth, async (req, res) => {
   const user = req.user;
   const name = user?.name?.split(' ')[0] || 'bhai';
 
-  const wrongQs = (questions || []).filter((q, i) => round1Answers[i] !== q.answer);
-  const rightQs = (questions || []).filter((q, i) => round1Answers[i] === q.answer);
+  const wrongQs      = (questions || []).filter((q, i) => round1Answers[i] !== q.answer);
+  const rightQs      = (questions || []).filter((q, i) => round1Answers[i] === q.answer);
   const wrongConcepts = wrongQs.map(q => q.concept || q.chapter).join(', ') || 'a few concepts';
 
   const prompt = `You are GRIND — a warm IITian senior mentor teaching ${name}.
 
 STUDENT JUST SCORED: ${score}/8 on ${chapter} (${subject}) — BEFORE learning.
 GOT WRONG: ${wrongConcepts}
-GOT RIGHT: ${rightQs.map(q=>q.concept||'').join(', ') || 'none'}
+GOT RIGHT: ${rightQs.map(q => q.concept || '').join(', ') || 'none'}
 
 YOUR JOB: Teach them everything they need to ace the SAME questions in Round 2.
 
 FORMAT YOUR RESPONSE LIKE THIS:
 
 ## 🎯 Let's Fix What Tripped You Up
-
 [Teach each WRONG concept first — give the core idea, a solved example similar to the question, and the key trick]
 
 ## 📚 The Full Picture — ${chapter}
-
 [Now complete the chapter — cover remaining concepts they need for JEE]
 
 ## ⚡ Your Cheat Sheet
-
 [3-5 bullet points: formulas, patterns, what JEE loves to ask from this chapter]
 
 ## 🔄 You're Ready for Round 2
-
 [One warm sentence of encouragement — not fake, genuine]
 
 RULES:
-- Use LaTeX for math: $inline$ and $$block$$  
+- Use LaTeX for math: $inline$ and $$block$$
 - Talk like a real person, not a textbook
 - Keep each section tight and useful — no padding
 - ${name} recently recovered from a rough time — be warm, never harsh`;
 
   try {
-    const teaching = await getReply([{ role:'user', content: prompt }],
-      `You are GRIND — warm IITian mentor. Teach ${chapter} targeting wrong answers first. Use LaTeX for math.`);
-
-    // Auto-save wrong answers to Mistake Book
+    const teaching = await getReply(
+      [{ role: 'user', content: prompt }],
+      `You are GRIND — warm IITian mentor. Teach ${chapter} targeting wrong answers first. Use LaTeX for math.`
+    );
     for (const q of wrongQs) {
       await Mistake.create({
         userId: user._id, topic: q.concept || chapter,
@@ -1495,26 +1285,25 @@ RULES:
         cheatSheet: q.cheatSheet || '', isPYQ: true,
         pyqYear: q.year || '', pyqExam: q.exam || '',
         weekKey: getWeekKey(),
-        mistakeBookEntry: `${q.concept}: ${(q.explanation||'').slice(0,120)}`
-      }).catch(()=>{});
+        mistakeBookEntry: `${q.concept}: ${(q.explanation || '').slice(0, 120)}`
+      }).catch(() => {});
     }
-
     res.json({ teaching, wrongConcepts: wrongQs.map(q => q.concept || '') });
-  } catch(e) { res.status(500).json({ error: 'Could not generate teaching. Try again.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not generate teaching. Try again.' }); }
 });
 
 app.post('/api/story/complete', requireAuth, async (req, res) => {
   try {
     const { subject, chapter, exam, questions, round1Score, round2Score } = req.body;
-    const improvement = round2Score - round1Score;
-    const xp = Math.max(20, improvement * 20 + round2Score * 8 + 10);
-    const wrongConcepts = (questions||[])
-      .filter((q,i) => (req.body.round2Answers||[])[i] !== q.answer)
+    const improvement   = round2Score - round1Score;
+    const xp            = Math.max(20, improvement * 20 + round2Score * 8 + 10);
+    const wrongConcepts = (questions || [])
+      .filter((q, i) => (req.body.round2Answers || [])[i] !== q.answer)
       .map(q => q.concept || '');
 
     await StorySession.create({
       userId: req.user._id, subject, chapter, exam,
-      questions: questions?.map(q=>({question:q.question,concept:q.concept,answer:q.answer})),
+      questions: questions?.map(q => ({ question: q.question, concept: q.concept, answer: q.answer })),
       round1Score, round2Score, improvement, xpEarned: xp, wrongConcepts
     });
 
@@ -1533,204 +1322,100 @@ app.post('/api/story/complete', requireAuth, async (req, res) => {
               : `🔄 Attempt this chapter again in 2 days — it'll click.`;
 
     res.json({ ...result, improvement, xpEarned: xp, message: msg });
-  } catch(e) { res.status(500).json({ error: 'Could not save results.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not save results.' }); }
 });
 
 app.get('/api/story/history', requireAuth, async (req, res) => {
   try {
-    const sessions = await StorySession.find({ userId: req.user._id })
-      .sort({ createdAt: -1 }).limit(20).lean();
+    const sessions = await StorySession.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(20).lean();
     res.json({ sessions });
-  } catch(e) { res.status(500).json({ error: 'Could not load history.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not load history.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// MOOD CHECK-IN
-// ══════════════════════════════════════════════════════════════════
+// ── MOOD CHECK-IN ─────────────────────────────────────────
 app.post('/api/mood', requireAuth, async (req, res) => {
   try {
     const { mood, note } = req.body;
     const date = new Date().toISOString().split('T')[0];
     await Mood.findOneAndUpdate(
       { userId: req.user._id, date },
-      { mood, note: note||'', userId: req.user._id, date },
+      { mood, note: note || '', userId: req.user._id, date },
       { upsert: true, new: true }
     );
     await User.findByIdAndUpdate(req.user._id, { lastMoodDate: date });
-
-    const last3 = await Mood.find({ userId: req.user._id })
-      .sort({ createdAt: -1 }).limit(3).lean();
+    const last3 = await Mood.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(3).lean();
     const recoveryMode = last3.length >= 3 && last3.every(m => m.mood <= 2);
-
-    let aiMsg = '';
-    const name = req.user.name?.split(' ')[0] || 'hey';
-    if (mood === 5) aiMsg = `${name}, you're in flow state today. Let's make it count. ⚡`;
-    else if (mood === 4) aiMsg = `Good energy, ${name}. Push one chapter harder today. 💪`;
-    else if (mood === 3) aiMsg = `Steady. Even 60% effort today adds up. You got this. 🙂`;
-    else if (mood === 2) aiMsg = `That's okay. Do one small thing — just one. That's enough. 🌱`;
-    else aiMsg = `Rest mode activated. Your only job today: show up. That's it. 💙`;
-
+    const name  = req.user.name?.split(' ')[0] || 'hey';
+    const aiMsg = mood === 5 ? `${name}, you're in flow state today. Let's make it count. ⚡`
+                : mood === 4 ? `Good energy, ${name}. Push one chapter harder today. 💪`
+                : mood === 3 ? `Steady. Even 60% effort today adds up. 🙂`
+                : mood === 2 ? `That's okay. Do one small thing — just one. That's enough. 🌱`
+                : `Rest mode activated. Your only job today: show up. That's it. 💙`;
     res.json({ success: true, recoveryMode, aiMsg, mood });
-  } catch(e) { res.status(500).json({ error: 'Could not save mood.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not save mood.' }); }
 });
 
 app.get('/api/mood/history', requireAuth, async (req, res) => {
   try {
-    const moods = await Mood.find({ userId: req.user._id })
-      .sort({ createdAt: -1 }).limit(14).lean();
-    const last3 = moods.slice(0,3);
+    const moods = await Mood.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(14).lean();
+    const last3 = moods.slice(0, 3);
     const recoveryMode = last3.length >= 3 && last3.every(m => m.mood <= 2);
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate    = new Date().toISOString().split('T')[0];
     const checkedToday = moods.length > 0 && moods[0].date === todayDate;
     res.json({ moods, recoveryMode, checkedToday });
-  } catch(e) { res.status(500).json({ error: 'Could not load moods.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not load moods.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// IMPROVED STUDY PLAN GENERATOR
-// ══════════════════════════════════════════════════════════════════
-app.post('/api/planner/smart-generate', requireAuth, async (req, res) => {
-  try {
-    const { period, energyLevel, targetDate, customNote } = req.body;
-    const user = req.user;
-    const name = user.name?.split(' ')[0] || 'Student';
-
-    // Get weak topics from DB
-    const wk = getWeekKey();
-    const weakMap = user.weakTopics instanceof Map
-      ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
-    const weakTopics = [...weakMap.entries()]
-      .filter(([,v]) => v?.count > 0)
-      .sort((a,b) => (b[1].count||0)-(a[1].count||0))
-      .slice(0,5).map(([t]) => t);
-
-    // Get mood data
-    const last3Moods = await Mood.find({ userId: user._id })
-      .sort({ createdAt: -1 }).limit(3).lean();
-    const avgMood = last3Moods.length
-      ? (last3Moods.reduce((a,m)=>a+m.mood,0)/last3Moods.length).toFixed(1) : 3;
-    const recoveryMode = last3Moods.length >= 3 && last3Moods.every(m => m.mood <= 2);
-
-    const daysLeft = user.examDate
-      ? Math.max(0, Math.ceil((new Date(user.examDate)-new Date())/86400000)) : null;
-
-    const prompt = `You are GRIND — a smart JEE study planner for ${name}.
-
-STUDENT PROFILE:
-- Exam: ${user.exam || 'JEE Main'} | Class: ${user.class || '12th'}
-- Study hours/day: ${user.hoursPerDay || '6'}
-- ${daysLeft ? `Days to exam: ${daysLeft}` : 'Exam date not set'}
-- Average mood (last 3 days): ${avgMood}/5
-- Recovery mode needed: ${recoveryMode ? 'YES — keep sessions short and gentle' : 'No'}
-- Energy level today: ${energyLevel || 'medium'}
-- Weak topics (prioritize these): ${weakTopics.join(', ') || 'Not tracked yet'}
-- Special note: ${customNote || 'none'}
-
-TASK: Generate a ${period || 'daily'} study plan as a JSON array.
-
-RULES:
-1. Max tasks: ${energyLevel==='low'||recoveryMode ? 4 : energyLevel==='high' ? 8 : 6}
-2. Mix subjects (not 3 Physics in a row)
-3. First task after morning = easiest (warm up)
-4. Hardest task = second slot when brain is fresh
-5. Include 1 Formula Fortress review (10 min)
-6. Include 1 Mistake Book revision (15 min)
-7. If recovery mode → all tasks max 20 min, only revision (no new chapters)
-8. Each task must have clear, specific title — NOT vague like "Study Physics"
-
-Return ONLY this JSON (no markdown, no explanation):
-[
-  {
-    "title": "Specific task name e.g. Solve 5 Thermodynamics PYQs",
-    "subject": "Physics",
-    "priority": "high",
-    "estimatedMins": 45,
-    "notes": "Focus on Carnot cycle — you missed 3 questions last week",
-    "type": "story_mode | revision | formula_fortress | mistake_book | mock | break"
-  }
-]`;
-
-    const reply = await getReply([{ role:'user', content: prompt }],
-      'Return ONLY a valid JSON array. No markdown. No extra text before or after.');
-    const tasks = safeParseJSON(reply);
-    if (!Array.isArray(tasks) || !tasks.length) throw new Error('Invalid plan format');
-
-    const date = new Date(targetDate || new Date());
-    date.setHours(6, 0, 0, 0);
-
-    const saved = [];
-    for (const t of tasks) {
-      saved.push(await PlannerTask.create({
-        userId: user._id, ...t, scheduledDate: date, aiGenerated: true
-      }));
-    }
-    res.json({ tasks: saved, recoveryMode, weakTopicsUsed: weakTopics });
-  } catch(err) {
-    console.error('Smart planner:', err.message);
-    res.status(500).json({ error: 'Could not generate plan. Try again.' });
-  }
-});
-
-// ══════════════════════════════════════════════════════════════════
-// FORMULA FORTRESS (Spaced Repetition — SM-2 Algorithm)
-// ══════════════════════════════════════════════════════════════════
+// ── FORMULA FORTRESS ──────────────────────────────────────
 app.get('/api/formulas', requireAuth, async (req, res) => {
   try {
-    const due = await Formula.find({
-      userId: req.user._id,
-      nextReview: { $lte: new Date() }
-    }).sort({ nextReview: 1 }).limit(20).lean();
-    const total = await Formula.countDocuments({ userId: req.user._id });
+    const due     = await Formula.find({ userId: req.user._id, nextReview: { $lte: new Date() } }).sort({ nextReview: 1 }).limit(20).lean();
+    const total   = await Formula.countDocuments({ userId: req.user._id });
     const mastered = await Formula.countDocuments({ userId: req.user._id, repetitions: { $gte: 5 } });
     res.json({ formulas: due, total, mastered, dueCount: due.length });
-  } catch(e) { res.status(500).json({ error: 'Could not load formulas.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not load formulas.' }); }
 });
 
 app.post('/api/formulas', requireAuth, async (req, res) => {
   try {
     const f = await Formula.create({ userId: req.user._id, ...req.body });
     res.json({ formula: f });
-  } catch(e) { res.status(500).json({ error: 'Could not save formula.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not save formula.' }); }
 });
 
 app.post('/api/formulas/:id/review', requireAuth, async (req, res) => {
   try {
-    const { quality } = req.body; // 0=forgot, 3=hard, 4=good, 5=easy
+    const { quality } = req.body;
     const f = await Formula.findOne({ _id: req.params.id, userId: req.user._id });
     if (!f) return res.status(404).json({ error: 'Not found.' });
     if (quality >= 3) {
-      f.interval = f.repetitions === 0 ? 1 : f.repetitions === 1 ? 6 : Math.round(f.interval * f.easeFactor);
+      f.interval    = f.repetitions === 0 ? 1 : f.repetitions === 1 ? 6 : Math.round(f.interval * f.easeFactor);
       f.repetitions++;
     } else { f.repetitions = 0; f.interval = 1; }
-    f.easeFactor = Math.max(1.3, f.easeFactor + 0.1 - (5-quality)*(0.08+(5-quality)*0.02));
+    f.easeFactor = Math.max(1.3, f.easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
     f.nextReview = new Date(Date.now() + f.interval * 86400000);
     await f.save();
     res.json({ formula: f, mastered: f.repetitions >= 5 });
-  } catch(e) { res.status(500).json({ error: 'Review failed.' }); }
+  } catch (e) { res.status(500).json({ error: 'Review failed.' }); }
 });
 
 app.delete('/api/formulas/:id', requireAuth, async (req, res) => {
   try {
     await Formula.deleteOne({ _id: req.params.id, userId: req.user._id });
     res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: 'Delete failed.' }); }
+  } catch (e) { res.status(500).json({ error: 'Delete failed.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// ARJUN — AI COMPANION (Friendly, remembers, JEE-focused)
-// ══════════════════════════════════════════════════════════════════
+// ── ARJUN COMPANION ───────────────────────────────────────
 app.post('/api/arjun', requireAuth, async (req, res) => {
   const { messages } = req.body;
   const user = req.user;
   const name = user?.name?.split(' ')[0] || 'yaar';
-  const wk = getWeekKey();
-  const weakMap = user.weakTopics instanceof Map
-    ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
-  const weakTopics = [...weakMap.entries()]
-    .filter(([,v])=>v?.weeks?.includes(wk)).map(([t])=>t).slice(0,3);
-
-  const last3Moods = await Mood.find({ userId: user._id }).sort({ createdAt:-1 }).limit(3).lean().catch(()=>[]);
-  const avgMood = last3Moods.length ? (last3Moods.reduce((a,m)=>a+m.mood,0)/last3Moods.length) : 3;
+  const wk   = getWeekKey();
+  const weakMap   = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+  const weakTopics = [...weakMap.entries()].filter(([, v]) => v?.weeks?.includes(wk)).map(([t]) => t).slice(0, 3);
+  const last3Moods = await Mood.find({ userId: user._id }).sort({ createdAt: -1 }).limit(3).lean().catch(() => []);
+  const avgMood    = last3Moods.length ? (last3Moods.reduce((a, m) => a + m.mood, 0) / last3Moods.length) : 3;
   const recoveryMode = last3Moods.length >= 3 && last3Moods.every(m => m.mood <= 2);
 
   const systemPrompt = `You are Arjun — a 22-year-old IIT Bombay student who cracked JEE in 2023. You're ${name}'s personal mentor inside GRIND.
@@ -1757,30 +1442,24 @@ FOR JEE ADVANCED QUESTIONS:
 - Use LaTeX for math: $inline$ and $$block$$`;
 
   try {
-    const reply = await getReply(
-      (messages || []).slice(-12),
-      systemPrompt
-    );
+    const reply = await getReply((messages || []).slice(-12), systemPrompt);
     res.json({ reply });
-  } catch(e) { res.status(500).json({ error: 'Arjun is thinking... try again in a sec.' }); }
+  } catch (e) { res.status(500).json({ error: 'Arjun is thinking... try again in a sec.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// BOSS BATTLES
-// ══════════════════════════════════════════════════════════════════
+// ── BOSS BATTLES ──────────────────────────────────────────
 app.post('/api/boss/start', requireAuth, async (req, res) => {
   const { subject, chapter, type } = req.body;
   const isWorld = type === 'world';
-  const count = isWorld ? 25 : 15;
-
-  const prompt = `Generate ${count} JEE PYQ-style questions for a BOSS BATTLE.
+  const count   = isWorld ? 25 : 15;
+  const prompt  = `Generate ${count} JEE PYQ-style questions for a BOSS BATTLE.
 Subject: ${subject}${chapter && !isWorld ? ` | Chapter: ${chapter}` : ' | ALL chapters mixed'}.
 ${isWorld ? 'Include JEE Advanced level questions. Mix easy/medium/hard.' : 'Medium-hard difficulty.'}
 Negative marking: -1 for wrong answer.
 
 Return ONLY JSON:
 {
-  "bossName": "${isWorld ? subject + ' World Boss' : chapter + ' Boss'}",
+  "bossName": "${isWorld ? subject + ' World Boss' : (chapter || subject) + ' Boss'}",
   "intro": "dramatic 1-sentence battle intro",
   "questions": [
     {
@@ -1796,76 +1475,69 @@ Return ONLY JSON:
   ]
 }`;
   try {
-    const raw = await getReply([{ role:'user', content: prompt }],
-      'Return ONLY valid JSON for boss battle. No markdown.');
+    const raw  = await getReply([{ role: 'user', content: prompt }], 'Return ONLY valid JSON for boss battle. No markdown.');
     const data = safeParseJSON(raw);
     res.json({ ...data, total: count, type, negativeMarking: true });
-  } catch(e) { res.status(500).json({ error: 'Could not start boss battle.' }); }
+  } catch (e) { res.status(500).json({ error: 'Could not start boss battle.' }); }
 });
 
 app.post('/api/boss/complete', requireAuth, async (req, res) => {
   try {
-    const { subject, chapter, type, score, total, negativeScore } = req.body;
+    const { subject, chapter, type, score, total } = req.body;
     const beaten = type === 'world' ? score >= total * 0.7 : score >= total * 0.6;
-    const xp = beaten ? (type === 'world' ? 600 : 200) : Math.max(30, score * 10);
-    await BossBattle.create({
-      userId: req.user._id, subject, chapter, type, score, total, beaten, xpEarned: xp
-    });
-    const result = await awardXP(req.user._id, xp, beaten,
-      req.user.quizStreak, req.user.totalQSolved + total, req.user.totalQCorrect + score);
+    const xp     = beaten ? (type === 'world' ? 600 : 200) : Math.max(30, score * 10);
+    await BossBattle.create({ userId: req.user._id, subject, chapter, type, score, total, beaten, xpEarned: xp });
+    const result    = await awardXP(req.user._id, xp, beaten, req.user.quizStreak, req.user.totalQSolved + total, req.user.totalQCorrect + score);
     const newBadges = [];
-    if (beaten && type === 'world') newBadges.push({ id:'world_slayer', name:'World Boss Slayer', icon:'🌍', unlockedAt: new Date() });
-    if (beaten && type === 'chapter') newBadges.push({ id:`boss_${(chapter||'').slice(0,8)}`, name:'Chapter Conqueror', icon:'⚔️', unlockedAt: new Date() });
+    if (beaten && type === 'world')   newBadges.push({ id: 'world_slayer',                    name: 'World Boss Slayer',   icon: '🌍', unlockedAt: new Date() });
+    if (beaten && type === 'chapter') newBadges.push({ id: `boss_${(chapter || '').slice(0, 8)}`, name: 'Chapter Conqueror', icon: '⚔️', unlockedAt: new Date() });
     if (newBadges.length) await User.findByIdAndUpdate(req.user._id, { $push: { achievements: { $each: newBadges } } });
-    res.json({ ...result, beaten, xpEarned: xp, newBadges,
+    res.json({
+      ...result, beaten, xpEarned: xp, newBadges,
       message: beaten
         ? `🔥 BOSS DEFEATED! ${xp} XP earned. You're getting dangerous.`
-        : `💀 Boss wins this round. Review your weak concepts and challenge again.` });
-  } catch(e) { res.status(500).json({ error: 'Could not save battle.' }); }
+        : `💀 Boss wins this round. Review your weak concepts and challenge again.`
+    });
+  } catch (e) { res.status(500).json({ error: 'Could not save battle.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// STREAK SHIELDS
-// ══════════════════════════════════════════════════════════════════
+// ── STREAK SHIELDS ────────────────────────────────────────
 app.get('/api/shield', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).lean();
-    const now = new Date();
+    const user        = await User.findById(req.user._id).lean();
+    const now         = new Date();
     const shieldReset = user.shieldResetDate ? new Date(user.shieldResetDate) : new Date(0);
-    const sameMonth = shieldReset.getMonth()===now.getMonth() && shieldReset.getFullYear()===now.getFullYear();
-    const used = sameMonth ? (user.shieldsUsedThisMonth || 0) : 0;
+    const sameMonth   = shieldReset.getMonth() === now.getMonth() && shieldReset.getFullYear() === now.getFullYear();
+    const used        = sameMonth ? (user.shieldsUsedThisMonth || 0) : 0;
     res.json({ shieldsLeft: 2 - used, shieldsUsed: used });
-  } catch(e) { res.status(500).json({ error: 'Shield status failed.' }); }
+  } catch (e) { res.status(500).json({ error: 'Shield status failed.' }); }
 });
 
 app.post('/api/shield/use', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    const now = new Date();
+    const user        = await User.findById(req.user._id);
+    const now         = new Date();
     const shieldReset = user.shieldResetDate ? new Date(user.shieldResetDate) : new Date(0);
-    const sameMonth = shieldReset.getMonth()===now.getMonth() && shieldReset.getFullYear()===now.getFullYear();
+    const sameMonth   = shieldReset.getMonth() === now.getMonth() && shieldReset.getFullYear() === now.getFullYear();
     if (!sameMonth) { user.shieldsUsedThisMonth = 0; user.shieldResetDate = now; }
-    if ((user.shieldsUsedThisMonth||0) >= 2) {
+    if ((user.shieldsUsedThisMonth || 0) >= 2) {
       return res.json({ success: false, message: 'No shields left this month. Come back next month.', shieldsLeft: 0 });
     }
-    user.shieldsUsedThisMonth = (user.shieldsUsedThisMonth||0) + 1;
+    user.shieldsUsedThisMonth = (user.shieldsUsedThisMonth || 0) + 1;
     user.shieldResetDate = now;
     await user.save();
     const left = 2 - user.shieldsUsedThisMonth;
-    res.json({ success: true, shieldsLeft: left,
-      message: `🛡️ Shield used! Streak protected. ${left} shield${left!==1?'s':''} left this month.` });
-  } catch(e) { res.status(500).json({ error: 'Shield failed.' }); }
+    res.json({ success: true, shieldsLeft: left, message: `🛡️ Shield used! Streak protected. ${left} shield${left !== 1 ? 's' : ''} left this month.` });
+  } catch (e) { res.status(500).json({ error: 'Shield failed.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// WEEKLY WAR REPORT
-// ══════════════════════════════════════════════════════════════════
+// ── WEEKLY WAR REPORT ─────────────────────────────────────
 app.get('/api/report/weekly', requireAuth, async (req, res) => {
   try {
-    const user = req.user;
-    const name = user.name?.split(' ')[0] || 'Warrior';
-    const weekAgo = new Date(Date.now() - 7*86400000);
-    const wk = getWeekKey();
+    const user    = req.user;
+    const name    = user.name?.split(' ')[0] || 'Warrior';
+    const weekAgo = new Date(Date.now() - 7 * 86400000);
+    const wk      = getWeekKey();
 
     const [mistakes, tasks, moods, bosses, storySessions] = await Promise.all([
       Mistake.find({ userId: user._id, createdAt: { $gte: weekAgo } }).lean(),
@@ -1875,16 +1547,13 @@ app.get('/api/report/weekly', requireAuth, async (req, res) => {
       StorySession.find({ userId: user._id, createdAt: { $gte: weekAgo } }).lean()
     ]);
 
-    const weakMap = user.weakTopics instanceof Map
-      ? user.weakTopics : new Map(Object.entries(user.weakTopics||{}));
-    const weakTopics = [...weakMap.entries()]
-      .filter(([,v])=>v?.weeks?.includes(wk)).map(([t])=>t);
-
-    const avgMood = moods.length ? (moods.reduce((a,m)=>a+m.mood,0)/moods.length).toFixed(1) : 'N/A';
-    const completedTasks = tasks.filter(t=>t.status==='completed').length;
-    const bossesBeaten = bosses.filter(b=>b.beaten).length;
-    const avgImprovement = storySessions.length
-      ? (storySessions.reduce((a,s)=>a+(s.improvement||0),0)/storySessions.length).toFixed(1) : 0;
+    const weakMap    = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+    const weakTopics = [...weakMap.entries()].filter(([, v]) => v?.weeks?.includes(wk)).map(([t]) => t);
+    const avgMood    = moods.length ? (moods.reduce((a, m) => a + m.mood, 0) / moods.length).toFixed(1) : 'N/A';
+    const completedTasks  = tasks.filter(t => t.status === 'completed').length;
+    const bossesBeaten    = bosses.filter(b => b.beaten).length;
+    const avgImprovement  = storySessions.length
+      ? (storySessions.reduce((a, s) => a + (s.improvement || 0), 0) / storySessions.length).toFixed(1) : 0;
 
     const prompt = `Write a personal weekly war report for ${name} — a JEE student.
 
@@ -1894,7 +1563,7 @@ DATA:
 - Mistakes logged: ${mistakes.length} | Tasks done: ${completedTasks}/${tasks.length}
 - Boss battles beaten: ${bossesBeaten}/${bosses.length}
 - Average mood this week: ${avgMood}/5
-- Weak topics: ${weakTopics.slice(0,4).join(', ') || 'not tracked'}
+- Weak topics: ${weakTopics.slice(0, 4).join(', ') || 'not tracked'}
 
 WRITE:
 1. Opening — personal, acknowledges their actual week (1-2 sentences)
@@ -1907,30 +1576,26 @@ Tone: Like a senior IITian who genuinely cares. Real talk, not corporate. Warm b
 ${name} recently came out of a tough period — celebrate showing up, not just scores.
 Length: 150-180 words. No headers with #. Use emojis sparingly.`;
 
-    const reportText = await getReply([{ role:'user', content: prompt }],
-      'You are GRIND — IITian mentor writing a personal weekly war report.');
-
+    const reportText = await getReply([{ role: 'user', content: prompt }], 'You are GRIND — IITian mentor writing a personal weekly war report.');
     res.json({
       weeklyXP: user.weeklyXP, streak: user.streak, level: user.quizLevel,
       storySessions: storySessions.length, avgImprovement,
       mistakesLogged: mistakes.length,
       tasksCompleted: completedTasks, totalTasks: tasks.length,
-      avgMood, bossesBeaten, weakTopics: weakTopics.slice(0,5),
+      avgMood, bossesBeaten, weakTopics: weakTopics.slice(0, 5),
       reportText
     });
-  } catch(e) { console.error(e.message); res.status(500).json({ error: 'Could not generate report.' }); }
+  } catch (e) { console.error(e.message); res.status(500).json({ error: 'Could not generate report.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// VIRTUAL RIVAL "ARYAN"
-// ══════════════════════════════════════════════════════════════════
+// ── VIRTUAL RIVAL ─────────────────────────────────────────
 app.get('/api/rival', requireAuth, async (req, res) => {
   try {
-    const user = req.user;
-    const aryanLevel = Math.min(100, user.quizLevel + Math.floor(Math.random()*3) + 1);
-    const aryanXP = user.quizXP + Math.floor(Math.random()*600) + 200;
-    const aryanStreak = Math.max(user.streak, user.streak + Math.floor(Math.random()*4) + 1);
-    const xpGap = aryanXP - user.quizXP;
+    const user        = req.user;
+    const aryanLevel  = Math.min(100, user.quizLevel + Math.floor(Math.random() * 3) + 1);
+    const aryanXP     = user.quizXP + Math.floor(Math.random() * 600) + 200;
+    const aryanStreak = Math.max(user.streak, user.streak + Math.floor(Math.random() * 4) + 1);
+    const xpGap       = aryanXP - user.quizXP;
     const taunts = [
       `Aryan just conquered Thermodynamics. Level ${aryanLevel} now. You still on ${user.quizLevel}?`,
       `Aryan did 3 Story Mode sessions today. That's ${xpGap} XP ahead of you.`,
@@ -1940,38 +1605,149 @@ app.get('/api/rival', requireAuth, async (req, res) => {
     ];
     res.json({
       aryanLevel, aryanXP, aryanStreak,
-      taunt: taunts[Math.floor(Math.random()*taunts.length)],
+      taunt: taunts[Math.floor(Math.random() * taunts.length)],
       gap: { xp: xpGap, level: aryanLevel - user.quizLevel, streak: aryanStreak - user.streak }
     });
-  } catch(e) { res.status(500).json({ error: 'Rival unavailable.' }); }
+  } catch (e) { res.status(500).json({ error: 'Rival unavailable.' }); }
 });
 
-// ══════════════════════════════════════════════════════════════════
-// WAR ROOM — Chapter mastery map
-// ══════════════════════════════════════════════════════════════════
+// ── WAR ROOM ──────────────────────────────────────────────
 app.get('/api/warroom', requireAuth, async (req, res) => {
   try {
-    const user = req.user;
+    const user     = req.user;
     const sessions = await StorySession.find({ userId: user._id }).lean();
-    const bosses = await BossBattle.find({ userId: user._id }).lean();
-
-    // Build chapter status map
     const chapterMap = {};
     for (const s of sessions) {
       const key = `${s.subject}::${s.chapter}`;
       if (!chapterMap[key]) chapterMap[key] = { subject: s.subject, chapter: s.chapter, attempts: 0, bestImprovement: 0, bestRound2: 0, conquered: false };
       chapterMap[key].attempts++;
-      chapterMap[key].bestImprovement = Math.max(chapterMap[key].bestImprovement, s.improvement||0);
-      chapterMap[key].bestRound2 = Math.max(chapterMap[key].bestRound2, s.round2Score||0);
+      chapterMap[key].bestImprovement = Math.max(chapterMap[key].bestImprovement, s.improvement || 0);
+      chapterMap[key].bestRound2      = Math.max(chapterMap[key].bestRound2, s.round2Score || 0);
       if (s.round2Score >= 7) chapterMap[key].conquered = true;
     }
-
     const chapters = Object.values(chapterMap).map(c => ({
       ...c,
-      status: c.conquered ? 'conquered' : c.attempts >= 1 ? 'in-battle' : 'locked',
-      masteryPct: Math.round((c.bestRound2/8)*100)
+      status:     c.conquered ? 'conquered' : c.attempts >= 1 ? 'in-battle' : 'locked',
+      masteryPct: Math.round((c.bestRound2 / 8) * 100)
     }));
+    res.json({ chapters, totalConquered: chapters.filter(c => c.conquered).length, total: chapters.length });
+  } catch (e) { res.status(500).json({ error: 'War room failed.' }); }
+});
 
-    res.json({ chapters, totalConquered: chapters.filter(c=>c.conquered).length, total: chapters.length });
-  } catch(e) { res.status(500).json({ error: 'War room failed.' }); }
+// ── SOCKET.IO MULTIPLAYER ─────────────────────────────────
+const quizRooms = {};
+
+io.on('connection', socket => {
+  socket.on('create-room', ({ name, config }) => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    quizRooms[code] = {
+      host: socket.id,
+      config: config || { questionCount: 10, difficulty: 'mixed', pyqMode: false, subjects: ['Physics'], chapters: [] },
+      players: [{ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 }],
+      started: false, currentQ: 0, currentAnswer: ''
+    };
+    socket.join(code);
+    socket.emit('room-created', { code, config: quizRooms[code].config });
+    io.to(code).emit('players-update', quizRooms[code].players);
+  });
+
+  socket.on('join-room', ({ code, name }) => {
+    const room = quizRooms[code];
+    if (!room)          return socket.emit('room-error', 'Room not found. Check the code.');
+    if (room.started)   return socket.emit('room-error', 'Game already started.');
+    room.players.push({ id: socket.id, name, score: 0, streak: 0, correct: 0, total: 0 });
+    socket.join(code);
+    socket.emit('room-joined', { code, config: room.config });
+    io.to(code).emit('players-update', room.players);
+  });
+
+  socket.on('start-game', ({ code }) => {
+    const room = quizRooms[code];
+    if (!room || room.host !== socket.id) return;
+    room.started = true;
+    io.to(code).emit('game-started', { totalQ: room.config?.questionCount || 10 });
+    startMultiQuestion(code);
+  });
+
+  socket.on('submit-answer', ({ code, answer, timeLeft }) => {
+    const room   = quizRooms[code]; if (!room) return;
+    const player = room.players.find(p => p.id === socket.id); if (!player) return;
+    player.total = (player.total || 0) + 1;
+    const correct = answer === room.currentAnswer;
+    if (correct) {
+      player.score  += 10 + Math.floor((timeLeft || 0) / 3);
+      player.streak  = (player.streak || 0) + 1;
+      player.correct = (player.correct || 0) + 1;
+    } else { player.streak = 0; }
+    socket.emit('answer-result', { correct, correctAnswer: room.currentAnswer });
+    io.to(code).emit('players-update', room.players);
+  });
+
+  socket.on('use-sabotage', ({ code, type }) => {
+    const room   = quizRooms[code]; if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || (player.streak || 0) < 3) return;
+    player.streak = 0;
+    socket.to(code).emit('sabotage-activated', { type, by: player.name });
+  });
+
+  socket.on('send-emoji', ({ code, emoji }) => {
+    const room   = quizRooms[code]; if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    io.to(code).emit('emoji-broadcast', { emoji, name: player?.name || 'Someone' });
+  });
+
+  socket.on('disconnect', () => {
+    Object.keys(quizRooms).forEach(code => {
+      const room = quizRooms[code];
+      if (room) {
+        room.players = room.players.filter(p => p.id !== socket.id);
+        io.to(code).emit('players-update', room.players);
+        if (!room.players.length) delete quizRooms[code];
+      }
+    });
+  });
+});
+
+async function startMultiQuestion(code) {
+  const room   = quizRooms[code]; if (!room) return;
+  const totalQ = room.config?.questionCount || 10;
+  if (room.currentQ >= totalQ) {
+    io.to(code).emit('game-over', { players: room.players });
+    delete quizRooms[code];
+    return;
+  }
+  const subjects   = room.config?.subjects?.length ? room.config.subjects : ['Physics'];
+  const subject    = subjects[room.currentQ % subjects.length];
+  const chapters   = room.config?.chapters?.length ? room.config.chapters.join(', ') : '';
+  const difficulty = room.config?.difficulty || 'mixed';
+  const pyqMode    = room.config?.pyqMode || false;
+  const qPrompt    = pyqMode
+    ? buildPYQPrompt(subject, chapters, room.config?.exam || 'JEE Main', difficulty)
+    : buildPracticePrompt(subject, chapters, null, difficulty, null);
+  try {
+    const reply = await getReply([{ role: 'user', content: qPrompt }], 'Return ONLY valid JSON, no markdown.');
+    const q     = safeParseJSON(reply);
+    if (!q.question || !q.options || !q.answer) throw new Error('Bad structure');
+    room.currentAnswer = q.answer;
+    io.to(code).emit('new-question', { ...q, timeLimit: 45, questionNumber: room.currentQ + 1, totalQuestions: totalQ });
+    setTimeout(() => {
+      io.to(code).emit('question-ended', { correctAnswer: q.answer, explanation: q.explanation, cheatSheet: q.cheatSheet });
+      setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 8000);
+    }, 45000);
+  } catch (err) {
+    console.error('Multi quiz error:', err.message);
+    io.to(code).emit('quiz-error', 'Question failed. Skipping...');
+    setTimeout(() => { room.currentQ++; startMultiQuestion(code); }, 3000);
+  }
+}
+
+// ── SPA FALLBACK ──────────────────────────────────────────
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
+// ── START SERVER ──────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🧠 GRIND AI v8 running on port ${PORT}`);
+  console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
