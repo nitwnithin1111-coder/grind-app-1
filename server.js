@@ -215,12 +215,13 @@ const OPENROUTER_KEYS = [
 ].filter(Boolean);
 
 const OPENROUTER_MODELS = [
-  'deepseek/deepseek-v4-flash:free',      // Top-tier free chain-of-thought reasoning for STEM
-  'deepseek/deepseek-r1-distill:free',    // Deep math, analysis, and problem-solving architecture
-  'openai/gpt-oss-20b:free',              // Excellent open frontier multi-step logic
-  'zhipu/glm-5.1:free',                   // Advanced scientific and mathematical benchmark performer
-  'google/gemma-4-31b:free',              // Google's latest high-capacity open-weight logic model
-  'meta-llama/llama-3.3-70b:free',        // Highly reliable for complex conceptual physics/chemistry
+  'deepseek/deepseek-v4-flash:free',      // Active: Top-tier free chain-of-thought reasoning for STEM
+  'nvidia/nemotron-3-ultra:free',         // NEW: 550B MoE frontier reasoning, massive 1M context
+  'openai/gpt-oss-120b:free',             // FIXED: Real endpoint name for OpenAI's open-weight MoE reasoning
+  'openai/gpt-oss-20b:free',              // ACTIVE: Lower latency 21B MoE variant by OpenAI
+  'z-ai/glm-4.5-air:free',                // FIXED: Corrected path for Zhipu's free advanced reasoning model
+  'google/gemma-4-31b:free',              // Active: Google's latest high-capacity open-weight logic model
+  'meta-llama/llama-3.3-70b:free',        // Active: Highly reliable for complex conceptual physics/chemistry
   'openrouter/free' 
 ];
 
