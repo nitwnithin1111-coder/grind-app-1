@@ -24,8 +24,6 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('❌ MongoDB:', err.message));
 
 // ── SCHEMAS ───────────────────────────────────────────────
-
-// FIX: removed duplicate 'examDate' field (was defined twice)
 const userSchema = new mongoose.Schema({
   googleId:             { type: String, unique: true, sparse: true },
   email:                String,
@@ -56,6 +54,9 @@ const userSchema = new mongoose.Schema({
   shieldsUsedThisMonth: { type: Number, default: 0 },
   shieldResetDate:      { type: Date, default: null },
   lastMoodDate:         { type: String, default: '' },
+  dailyChallengeDate:   { type: String, default: '' },
+  dailyChallengeXP:     { type: Number, default: 0 },
+  comboMultiplier:      { type: Number, default: 1 },
   createdAt:            { type: Date, default: Date.now }
 });
 
@@ -178,16 +179,31 @@ const storySessionSchema = new mongoose.Schema({
   wrongConcepts: [String]
 }, { timestamps: true });
 
-const User         = mongoose.model('User', userSchema);
-const ChatSession  = mongoose.model('ChatSession', sessionSchema);
-const Mistake      = mongoose.model('Mistake', mistakeSchema);
-const PlannerTask  = mongoose.model('PlannerTask', plannerTaskSchema);
-const Feedback     = mongoose.model('Feedback', feedbackSchema);
-const PYQ          = mongoose.model('PYQ', pyqSchema);
-const Mood         = mongoose.model('Mood', moodSchema);
-const Formula      = mongoose.model('Formula', formulaSchema);
-const BossBattle   = mongoose.model('BossBattle', bossSchema);
-const StorySession = mongoose.model('StorySession', storySessionSchema);
+// NEW: Daily challenge schema
+const dailyChallengeSchema = new mongoose.Schema({
+  date:       { type: String, required: true, unique: true },
+  subject:    String,
+  chapter:    String,
+  question:   String,
+  options:    [String],
+  answer:     String,
+  explanation:String,
+  cheatSheet: String,
+  xpReward:   { type: Number, default: 100 },
+  solvedBy:   [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+}, { timestamps: true });
+
+const User             = mongoose.model('User', userSchema);
+const ChatSession      = mongoose.model('ChatSession', sessionSchema);
+const Mistake          = mongoose.model('Mistake', mistakeSchema);
+const PlannerTask      = mongoose.model('PlannerTask', plannerTaskSchema);
+const Feedback         = mongoose.model('Feedback', feedbackSchema);
+const PYQ              = mongoose.model('PYQ', pyqSchema);
+const Mood             = mongoose.model('Mood', moodSchema);
+const Formula          = mongoose.model('Formula', formulaSchema);
+const BossBattle       = mongoose.model('BossBattle', bossSchema);
+const StorySession     = mongoose.model('StorySession', storySessionSchema);
+const DailyChallenge   = mongoose.model('DailyChallenge', dailyChallengeSchema);
 
 // ── SESSION ───────────────────────────────────────────────
 app.use(session({
@@ -370,10 +386,39 @@ ${plannerCtx ? 'PLANNER CONTEXT:\n' + plannerCtx + '\n' : ''}
 ${mistakeCtx ? mistakeCtx + '\n' : ''}
 
 ========================================================
+CRITICAL LATEX & MATH FORMATTING RULES (MANDATORY — NEVER VIOLATE)
+========================================================
+These rules prevent UI layout bleed and broken rendering on the frontend.
+
+RULE 1 — INLINE MATH: Every single variable, Greek letter, operator, or short expression MUST use $...$
+  WRONG: "sintheta / costheta", "F = ma", "delta x", "alpha"
+  CORRECT: $\sin\theta$, $\cos\theta$, $F = ma$, $\Delta x$, $\alpha$
+
+RULE 2 — BLOCK DISPLAY MATH: Use \[...\] for standalone equations, derivations, or multi-step proofs.
+  - ALWAYS insert a blank line BEFORE and AFTER every \[...\] block.
+  - NEVER attach plain text directly against \[ or \].
+  CORRECT FORMAT:
+  "The work-energy theorem gives us:
+
+  \[W = \Delta KE = \frac{1}{2}mv_f^2 - \frac{1}{2}mv_i^2\]
+
+  Substituting the values:"
+
+RULE 3 — DELIMITER PAIRING: Every $ must have a closing $. Every \[ must have \]. Unclosed delimiters crash the UI parser.
+
+RULE 4 — NO TEXT MATH: NEVER write fractions, powers, or subscripts in plain text.
+  WRONG: "v^2 = u^2 + 2as", "PV = nRT", "1/2 mv^2"
+  CORRECT: $v^2 = u^2 + 2as$, $PV = nRT$, $\frac{1}{2}mv^2$
+
+RULE 5 — PARAGRAPH LENGTH: Never write unbroken text blocks longer than 3 sentences. Use line breaks, bullets, or numbered steps to prevent container bleed.
+
+RULE 6 — STEP SEPARATION: In multi-step solutions, every step must be on its own line with a blank line after the display equation.
+
+========================================================
 DYNAMIC PROACTIVE SESSION OPENING
 ========================================================
 When this is the first message in a session AND weekly weak topics exist, open the conversation with:
-"Welcome back to the Grind. Earlier today, you struggled with [top weak topic]. Let's make sure that concept error is dead before you move forward. Answer this right now: [Insert 1 high-yield conceptual question targeting that exact weakness]."
+"Welcome back to the Grind, ${name}. Earlier today, you struggled with [top weak topic]. Let's make sure that concept error is dead before you move forward. Answer this right now: [Insert 1 high-yield conceptual question targeting that exact weakness]."
 Do NOT do this on subsequent messages in the same session.
 
 ========================================================
@@ -387,7 +432,7 @@ LANGUAGE & TONE
 ACADEMIC RESPONSE FORMAT
 ========================================================
 - Format: **Concept Name** → Step-by-Step derivation → ⚡ Shortcut/trick
-- Use LaTeX: $inline$ and $$block$$ for ALL math/physics formulas. Never write formulas in plain text.
+- Use $inline$ and \[block\] LaTeX for ALL math. Never write formulas in plain text.
 - After every academic explanation, end with ONE sharp challenge labeled "**YOUR NEXT CHALLENGE:**" — keep the learning loop active until student says: "stop", "enough", "break", "bas", "ruk", "done".
 - During normal chat, inject MCQ-style micro-questions: (A) opt1  (B) opt2  (C) opt3  (D) type your own
 
@@ -438,7 +483,8 @@ HARD RULES
 - Address ${name} by name occasionally, use "${slang}" naturally
 - NEVER say: "You got this!" / "Believe in yourself!" / "Great question!" — no hollow filler phrases
 - NEVER mention guest mode, free trial, or unauthenticated access
-- NEVER give passive, vague, or generic answers — always anchor to NTA exam reality`;
+- NEVER give passive, vague, or generic answers — always anchor to NTA exam reality
+- ALWAYS use LaTeX for every mathematical symbol, variable, or equation — no exceptions`;
 }
 
 // ── PYQ GENERATION PROMPT ─────────────────────────────────
@@ -457,17 +503,22 @@ STRICT RULES — NEVER VIOLATE:
 2. Provide the exact year, exact exam name, and exact shift/date it appeared.
 3. If you are less than 90% confident the question is real, generate a NEW question matching the style and difficulty of that exam BUT mark "verified": false.
 4. The answer MUST match the official answer key.
-5. Explanation: concept name + formula + complete step-by-step working.
+5. Explanation: concept name + formula + complete step-by-step working. Use LaTeX for ALL math: $inline$ and \\[block\\].
 6. wrongPercent: estimated % of students who historically got it wrong.
 7. The 3 wrong options MUST be calculated using common student errors (sign mistake, factor of 2 error, wrong formula variant).
 
+LATEX RULES FOR JSON OUTPUT:
+- Use \\( ... \\) for inline math inside JSON strings (not $ which breaks JSON)
+- Use \\[ ... \\] for display math inside JSON strings
+- All variables, Greek letters, equations must use LaTeX notation
+
 Return ONLY this exact JSON — no markdown, no text outside JSON:
 {
-  "question": "full question text with all given data",
+  "question": "full question text with LaTeX for all math using \\( \\) and \\[ \\]",
   "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
   "answer": "A",
-  "explanation": "Step 1: ... Step 2: ... Step 3: ... Final answer: ...",
-  "cheatSheet": "one powerful shortcut or formula trick",
+  "explanation": "Step 1: ... Step 2: ... Step 3: ... Final answer: ... (use LaTeX for all math)",
+  "cheatSheet": "one powerful shortcut or formula trick (use LaTeX for math)",
   "trapAlert": "specific NTA trap in this type of question or empty string",
   "wrongPercent": 72,
   "year": "2023",
@@ -496,14 +547,15 @@ Rules:
 - 3 distractor options must represent values computed from real student errors (wrong sign, missing factor, misapplied condition).
 - Include a conceptual trap that punishes shallow knowledge.
 - Explanation must include: concept name, formula, full step-by-step working.
+- Use LaTeX for ALL math in JSON: \\( \\) for inline, \\[ \\] for display blocks.
 
 Return ONLY this exact JSON — no markdown, no text outside JSON:
 {
-  "question": "full question text",
+  "question": "full question text with LaTeX using \\( \\) for all math",
   "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
   "answer": "A",
-  "explanation": "Concept: ... | Formula: ... | Step 1: ... Step 2: ... Step 3: ... Final: ...",
-  "cheatSheet": "one powerful shortcut trick",
+  "explanation": "Concept: ... | Formula: ... | Step 1: ... Step 2: ... Step 3: ... Final: ... (use LaTeX for all math)",
+  "cheatSheet": "one powerful shortcut trick (use LaTeX for math)",
   "trapAlert": "specific common mistake or empty string",
   "wrongPercent": 65,
   "year": "",
@@ -516,7 +568,6 @@ Return ONLY this exact JSON — no markdown, no text outside JSON:
 }
 
 // ── AI PROVIDER HELPERS ───────────────────────────────────
-
 async function fetchWithTimeout(url, options, ms = 30000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
@@ -608,15 +659,18 @@ async function callGroq(messages, prompt) {
 
 // AI ROUTING: OpenRouter → Gemini → Groq
 async function getReply(messages, prompt, imageBase64 = null) {
-  for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
+  // Try OpenRouter keys round-robin
+  for (let i = 0; i < Math.max(OPENROUTER_KEYS.length, 1); i++) {
     try { return await callOR(messages, prompt); }
     catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
   }
-  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+  // Fallback to Gemini
+  for (let i = 0; i < Math.max(GEMINI_KEYS.length, 1); i++) {
     try { return await callGemini(messages, prompt, imageBase64); }
     catch (e) { console.log(`❌ Gemini${i + 1}:`, e.message); }
   }
-  for (let i = 0; i < GROQ_KEYS.length; i++) {
+  // Last resort: Groq
+  for (let i = 0; i < Math.max(GROQ_KEYS.length, 1); i++) {
     try { return await callGroq(messages, prompt); }
     catch (e) { console.log(`❌ Groq${i + 1}:`, e.message); }
   }
@@ -634,6 +688,9 @@ const ACHIEVEMENTS = [
   { id: 'level_10',      name: 'JEE Warrior',       icon: '⚔️' },
   { id: 'level_20',      name: 'IIT Bound',         icon: '🚀' },
   { id: 'accuracy_90',   name: 'Sniper',            icon: '🎖️' },
+  { id: 'daily_7',       name: 'Week Warrior',      icon: '📅' },
+  { id: 'daily_30',      name: 'Month Legend',      icon: '🗓️' },
+  { id: 'night_owl',     name: 'Night Owl',         icon: '🦉' },
 ];
 
 async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect) {
@@ -650,6 +707,7 @@ async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect
   user.quizLevel  = newLevel;
   const newAchievements = [];
   const existingIds     = user.achievements.map(a => a.id);
+  const hour = new Date().getHours();
   const checks = [
     { id: 'first_blood',   condition: totalCorrect >= 1 },
     { id: 'hot_streak_5',  condition: newStreak >= 5 },
@@ -660,6 +718,7 @@ async function awardXP(userId, xp, correct, newStreak, totalSolved, totalCorrect
     { id: 'level_10',      condition: newLevel >= 10 },
     { id: 'level_20',      condition: newLevel >= 20 },
     { id: 'accuracy_90',   condition: totalSolved >= 20 && (totalCorrect / totalSolved) >= 0.9 },
+    { id: 'night_owl',     condition: hour >= 23 || hour <= 4 },
   ];
   for (const check of checks) {
     if (check.condition && !existingIds.includes(check.id)) {
@@ -705,7 +764,7 @@ async function getUserFeedbackFlags(userId) {
 // ROUTES
 // ══════════════════════════════════════════════════════════
 
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v8' }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v9' }));
 
 // ── AUTH ──────────────────────────────────────────────────
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -735,7 +794,9 @@ app.get('/api/me', requireAuth, (req, res) => {
       totalQCorrect: u.totalQCorrect, quizStreak: u.quizStreak,
       maxQuizStreak: u.maxQuizStreak, achievements: u.achievements,
       weeklyXP: u.weeklyXP,
-      weakTopics: Object.fromEntries(u.weakTopics || new Map())
+      weakTopics: Object.fromEntries(u.weakTopics || new Map()),
+      dailyChallengeDate: u.dailyChallengeDate,
+      dailyChallengeXP: u.dailyChallengeXP
     }
   });
 });
@@ -765,7 +826,7 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
     const { type } = req.query;
     const sortField = type === 'weekly' ? 'weeklyXP' : 'quizXP';
     const users = await User.find({ isOnboarded: true })
-      .select('name photo quizXP weeklyXP quizLevel totalQSolved maxQuizStreak achievements')
+      .select('name photo quizXP weeklyXP quizLevel totalQSolved maxQuizStreak achievements streak exam')
       .sort({ [sortField]: -1 }).limit(50).lean();
     const board = users.map((u, i) => ({
       rank: i + 1,
@@ -775,11 +836,121 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
       level: u.quizLevel || 1,
       solved: u.totalQSolved || 0,
       maxStreak: u.maxQuizStreak || 0,
+      streak: u.streak || 0,
       badges: (u.achievements || []).length,
+      exam: u.exam || '',
       isMe: u._id?.toString() === req.user._id?.toString()
     }));
     res.json({ board });
   } catch { res.status(500).json({ error: 'Could not load leaderboard.' }); }
+});
+
+// ── DAILY CHALLENGE ───────────────────────────────────────
+app.get('/api/daily-challenge', requireAuth, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let challenge = await DailyChallenge.findOne({ date: today });
+
+    if (!challenge) {
+      // Generate new daily challenge
+      const user = req.user;
+      const subjects = ['Physics', 'Chemistry', 'Mathematics'];
+      const subject = subjects[new Date().getDay() % 3];
+      const prompt = `Generate ONE high-difficulty JEE-level daily challenge question for ${subject}.
+This should be a HARD question that ~80% of students get wrong.
+Return ONLY this JSON (no markdown):
+{
+  "subject": "${subject}",
+  "chapter": "chapter name",
+  "question": "full question with LaTeX using \\\\( \\\\) for inline and \\\\[ \\\\] for display math",
+  "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+  "answer": "A",
+  "explanation": "complete step-by-step with LaTeX",
+  "cheatSheet": "key trick to remember"
+}`;
+      const raw = await getReply([{ role: 'user', content: prompt }], 'Return ONLY valid JSON. No markdown.');
+      const q = safeParseJSON(raw);
+      challenge = await DailyChallenge.create({
+        date: today,
+        subject: q.subject || subject,
+        chapter: q.chapter || '',
+        question: q.question,
+        options: q.options,
+        answer: q.answer,
+        explanation: q.explanation,
+        cheatSheet: q.cheatSheet,
+        xpReward: 100,
+        solvedBy: []
+      });
+    }
+
+    const alreadySolved = challenge.solvedBy.some(id => id.toString() === req.user._id.toString());
+    const userDailyChallengeDate = req.user.dailyChallengeDate;
+
+    res.json({
+      challenge: {
+        id: challenge._id,
+        date: challenge.date,
+        subject: challenge.subject,
+        chapter: challenge.chapter,
+        question: challenge.question,
+        options: challenge.options,
+        answer: alreadySolved ? challenge.answer : undefined,
+        explanation: alreadySolved ? challenge.explanation : undefined,
+        cheatSheet: alreadySolved ? challenge.cheatSheet : undefined,
+        xpReward: challenge.xpReward,
+        solversCount: challenge.solvedBy.length
+      },
+      alreadySolved,
+      alreadyAttempted: userDailyChallengeDate === today
+    });
+  } catch (e) {
+    console.error('Daily challenge:', e.message);
+    res.status(500).json({ error: 'Could not load daily challenge.' });
+  }
+});
+
+app.post('/api/daily-challenge/submit', requireAuth, async (req, res) => {
+  try {
+    const { challengeId, answer } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const challenge = await DailyChallenge.findById(challengeId);
+    if (!challenge) return res.status(404).json({ error: 'Challenge not found.' });
+
+    const alreadySolved = challenge.solvedBy.some(id => id.toString() === req.user._id.toString());
+    const correct = answer === challenge.answer;
+
+    if (correct && !alreadySolved) {
+      challenge.solvedBy.push(req.user._id);
+      await challenge.save();
+    }
+
+    // Update user
+    await User.findByIdAndUpdate(req.user._id, {
+      dailyChallengeDate: today,
+      $inc: { dailyChallengeXP: correct && !alreadySolved ? challenge.xpReward : 0 }
+    });
+
+    let xpEarned = 0;
+    if (correct && !alreadySolved) {
+      xpEarned = challenge.xpReward;
+      await awardXP(req.user._id, xpEarned, true,
+        req.user.quizStreak + 1, req.user.totalQSolved + 1,
+        req.user.totalQCorrect + 1);
+    }
+
+    res.json({
+      correct,
+      alreadySolved,
+      xpEarned,
+      correctAnswer: challenge.answer,
+      explanation: challenge.explanation,
+      cheatSheet: challenge.cheatSheet,
+      solversCount: challenge.solvedBy.length
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not submit answer.' });
+  }
 });
 
 // ── MAIN CHAT ─────────────────────────────────────────────
@@ -1156,8 +1327,7 @@ app.post('/api/admin/seed-pyqs', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// FIX: extracted as standalone async function so /api/story/questions
-// can call it directly instead of making a fragile internal HTTP request
+// ── PYQs FOR CHAPTER ──────────────────────────────────────
 async function getPYQsForChapter(subject, chapter, exam, count = 8) {
   const regex = new RegExp(chapter, 'i');
   let dbQs = await PYQ.find({
@@ -1177,16 +1347,17 @@ Subject: ${subject} | Chapter: ${chapter} | Exam: ${exam || 'JEE Main'}
 
 Cover DIFFERENT sub-concepts across all ${count} questions. No repetition.
 Include questions from JEE Main AND JEE Advanced where relevant.
+Use LaTeX for ALL math in JSON strings: \\\\( \\\\) for inline, \\\\[ \\\\] for display.
 Return ONLY JSON (no markdown):
 {
   "questions": [
     {
       "id": 1,
       "concept": "sub-concept name",
-      "question": "full question text with all given data",
+      "question": "full question text with LaTeX \\\\( \\\\) for all math",
       "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
       "answer": "A",
-      "explanation": "complete step-by-step solution",
+      "explanation": "complete step-by-step solution with LaTeX",
       "cheatSheet": "key formula or trick to remember",
       "trapAlert": "common mistake students make or empty string",
       "year": "2022",
@@ -1225,7 +1396,6 @@ app.post('/api/pyqs/chapter', requireAuth, async (req, res) => {
 });
 
 // ── STORY MODE ────────────────────────────────────────────
-// FIX: now calls getPYQsForChapter() directly — no fragile localhost fetch
 app.post('/api/story/questions', requireAuth, async (req, res) => {
   const { subject, chapter, exam } = req.body;
   if (!chapter) return res.status(400).json({ error: 'Chapter is required.' });
@@ -1252,6 +1422,12 @@ GOT RIGHT: ${rightQs.map(q => q.concept || '').join(', ') || 'none'}
 
 YOUR JOB: Teach them everything they need to ace the SAME questions in Round 2.
 
+CRITICAL LATEX RULES — MANDATORY:
+- Use $...$ for ALL inline math, variables, Greek letters
+- Use \\[...\\] for ALL display equations, with a blank line before and after
+- NEVER write math in plain text (e.g., never "v^2 = u^2 + 2as", ALWAYS $v^2 = u^2 + 2as$)
+- NEVER leave LaTeX delimiters unclosed
+
 FORMAT YOUR RESPONSE LIKE THIS:
 
 ## 🎯 Let's Fix What Tripped You Up
@@ -1267,7 +1443,7 @@ FORMAT YOUR RESPONSE LIKE THIS:
 [One warm sentence of encouragement — not fake, genuine]
 
 RULES:
-- Use LaTeX for math: $inline$ and $$block$$
+- Use LaTeX for ALL math: $inline$ and \\[block\\]
 - Talk like a real person, not a textbook
 - Keep each section tight and useful — no padding
 - ${name} recently recovered from a rough time — be warm, never harsh`;
@@ -1275,7 +1451,7 @@ RULES:
   try {
     const teaching = await getReply(
       [{ role: 'user', content: prompt }],
-      `You are GRIND — warm IITian mentor. Teach ${chapter} targeting wrong answers first. Use LaTeX for math.`
+      `You are GRIND — warm IITian mentor. Teach ${chapter} targeting wrong answers first. Use LaTeX for ALL math: $inline$ and \\[block\\].`
     );
     for (const q of wrongQs) {
       await Mistake.create({
@@ -1429,6 +1605,11 @@ PERSONALITY:
 - End every reply with ONE question OR one small challenge. Never leave them hanging.
 - Never start with "I" or "As an AI" — you're Arjun.
 
+CRITICAL LATEX RULES:
+- Use $...$ for ALL inline math, variables, Greek letters (e.g., $F = ma$, $\theta$, $\Delta x$)
+- Use \\[...\\] for display equations with blank line before/after
+- NEVER write math in plain text
+
 STUDENT DATA:
 Name: ${name} | Exam: ${user.exam || 'JEE'} | Level: ${user.quizLevel} | Streak: ${user.streak} days
 Weak topics this week: ${weakTopics.join(', ') || 'nothing logged yet'}
@@ -1437,9 +1618,9 @@ ${recoveryMode ? '⚠️ RECOVERY MODE: Student has been struggling — be extra
 
 FOR JEE ADVANCED QUESTIONS:
 - Give complete solutions with all steps shown
+- Use LaTeX for ALL math
 - Mention common traps in that type
-- Always end with "similar questions to practice" if they ask about a concept
-- Use LaTeX for math: $inline$ and $$block$$`;
+- Always end with "similar questions to practice" if they ask about a concept`;
 
   try {
     const reply = await getReply((messages || []).slice(-12), systemPrompt);
@@ -1456,6 +1637,7 @@ app.post('/api/boss/start', requireAuth, async (req, res) => {
 Subject: ${subject}${chapter && !isWorld ? ` | Chapter: ${chapter}` : ' | ALL chapters mixed'}.
 ${isWorld ? 'Include JEE Advanced level questions. Mix easy/medium/hard.' : 'Medium-hard difficulty.'}
 Negative marking: -1 for wrong answer.
+Use LaTeX in JSON: \\\\( \\\\) for inline math, \\\\[ \\\\] for display math.
 
 Return ONLY JSON:
 {
@@ -1465,10 +1647,10 @@ Return ONLY JSON:
     {
       "id": 1,
       "concept": "concept name",
-      "question": "full question",
+      "question": "full question with LaTeX \\\\( \\\\) for all math",
       "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
       "answer": "A",
-      "explanation": "step by step solution",
+      "explanation": "step by step solution with LaTeX",
       "difficulty": "medium",
       "isAdvanced": false
     }
@@ -1489,7 +1671,7 @@ app.post('/api/boss/complete', requireAuth, async (req, res) => {
     await BossBattle.create({ userId: req.user._id, subject, chapter, type, score, total, beaten, xpEarned: xp });
     const result    = await awardXP(req.user._id, xp, beaten, req.user.quizStreak, req.user.totalQSolved + total, req.user.totalQCorrect + score);
     const newBadges = [];
-    if (beaten && type === 'world')   newBadges.push({ id: 'world_slayer',                    name: 'World Boss Slayer',   icon: '🌍', unlockedAt: new Date() });
+    if (beaten && type === 'world')   newBadges.push({ id: 'world_slayer', name: 'World Boss Slayer', icon: '🌍', unlockedAt: new Date() });
     if (beaten && type === 'chapter') newBadges.push({ id: `boss_${(chapter || '').slice(0, 8)}`, name: 'Chapter Conqueror', icon: '⚔️', unlockedAt: new Date() });
     if (newBadges.length) await User.findByIdAndUpdate(req.user._id, { $push: { achievements: { $each: newBadges } } });
     res.json({
@@ -1574,7 +1756,8 @@ WRITE:
 
 Tone: Like a senior IITian who genuinely cares. Real talk, not corporate. Warm but honest.
 ${name} recently came out of a tough period — celebrate showing up, not just scores.
-Length: 150-180 words. No headers with #. Use emojis sparingly.`;
+Length: 150-180 words. No headers with #. Use emojis sparingly.
+DO NOT use LaTeX in this report — it's prose only.`;
 
     const reportText = await getReply([{ role: 'user', content: prompt }], 'You are GRIND — IITian mentor writing a personal weekly war report.');
     res.json({
@@ -1748,6 +1931,6 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 // ── START SERVER ──────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v8 running on port ${PORT}`);
+  console.log(`🧠 GRIND AI v9 running on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
