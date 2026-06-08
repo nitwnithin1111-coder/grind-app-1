@@ -276,14 +276,12 @@ const OPENROUTER_KEYS = [
 ].filter(Boolean);
 
 const OPENROUTER_MODELS = [
-  'deepseek/deepseek-v4-flash:free',
-  'nvidia/nemotron-3-ultra:free',
-  'openai/gpt-oss-120b:free',
-  'openai/gpt-oss-20b:free',
-  'z-ai/glm-4.5-air:free',
-  'google/gemma-4-31b:free',
-  'meta-llama/llama-3.3-70b:free',
-  'openrouter/free'
+  nvidia/nemotron-3-ultra-550b-a55b:free
+google/gemma-4-31b:free
+meta-llama/llama-3.3-70b:free
+openai/gpt-oss-120b:free
+openai/gpt-oss-20b:free
+openrouter/free
 ];
 
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
