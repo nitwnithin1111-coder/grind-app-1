@@ -393,6 +393,10 @@ These rules prevent UI layout bleed and broken rendering on the frontend.
 RULE 1 — INLINE MATH: Every single variable, Greek letter, operator, or short expression MUST use $...$
   WRONG: "sintheta / costheta", "F = ma", "delta x", "alpha"
   CORRECT: $\sin\theta$, $\cos\theta$, $F = ma$, $\Delta x$, $\alpha$
+  RULE 1B — NO SPACES INSIDE DELIMITERS: NEVER put a space immediately after $ or immediately before the closing $.
+  WRONG: $ F = ma $, $ \epsilon_0 $
+  CORRECT: $F = ma$, $\epsilon_0$
+  Same applies to \( \) and \[ \] — no space right after \( or \[, and no space right before \) or \].
 
 RULE 2 — BLOCK DISPLAY MATH: Use \[...\] for standalone equations, derivations, or multi-step proofs.
   - ALWAYS insert a blank line BEFORE and AFTER every \[...\] block.
