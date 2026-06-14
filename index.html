@@ -1571,7 +1571,24 @@ function esc(t) {
 
 function safeParse(text) {
   if (typeof marked === 'undefined') return esc(text);
-  try { return marked.parse(String(text || '')); } catch(e) { return esc(text); }
+  try {
+    const str = String(text || '');
+    const mathBlocks = [];
+    const placeholder = str.replace(/(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^\$\n]+?\$)/g, (m) => {
+      mathBlocks.push(m);
+      return `@@MATH${mathBlocks.length - 1}@@`;
+    });
+    let html = marked.parse(placeholder);
+    html = html.replace(/@@MATH(\d+)@@/g, (_, i) => {
+      let m = mathBlocks[+i];
+      m = m.replace(/^\$\s+/, '$').replace(/\s+\$$/, '$');
+      m = m.replace(/^\\\(\s+/, '\\(').replace(/\s+\\\)$/, '\\)');
+      m = m.replace(/^\\\[\s+/, '\\[').replace(/\s+\\\]$/, '\\]');
+      return m;
+    });
+    return html;
+  } catch(e) { return esc(text); }
+} }
 }
 
 function safeRenderMath(el) {
