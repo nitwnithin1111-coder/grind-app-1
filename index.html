@@ -1579,7 +1579,11 @@ function safeParse(text) {
 }
 
 function safeRenderMath(el) {
-  if (!el || typeof renderMathInElement === 'undefined') return;
+  if (!el) return;
+  if (typeof renderMathInElement === 'undefined') {
+    setTimeout(() => safeRenderMath(el), 200);
+    return;
+  }
   try {
     renderMathInElement(el, {
       delimiters: [
@@ -1966,41 +1970,21 @@ function addMsgDirect(role, text) {
   const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
   if (role === 'ai' || role === 'assistant') {
     bubble.innerHTML = safeParse(text || '');
-    safeRenderMath(bubble);
-    bubble.appendChild(makeCopyBtn(text));
-  } else {
-    bubble.textContent = text;
+    wrap.appendChild(sender); wrap.appendChild(bubble);
+    area.appendChild(wrap); area.scrollTop = area.scrollHeight;
+    requestAnimationFrame(() => {
+      safeRenderMath(bubble);
+      bubble.appendChild(makeCopyBtn(text));
+    });
+    return;
   }
+  bubble.textContent = text;
   wrap.appendChild(sender); wrap.appendChild(bubble);
   area.appendChild(wrap); area.scrollTop = area.scrollHeight;
 }
 
 function addAiMsg(text, instant=false) {
-  if (instant) { addMsgDirect('ai', text); return; }
-  const area = document.getElementById('chat-area');
-  const wrap = document.createElement('div'); wrap.className = 'msg ai';
-  const sender = document.createElement('div'); sender.className = 'msg-sender'; sender.textContent = 'GRIND';
-  const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
-  wrap.appendChild(sender); wrap.appendChild(bubble);
-  area.appendChild(wrap); area.scrollTop = area.scrollHeight;
-  let i = 0;
-  const speeds = {fast:6, balanced:16, deep:22};
-  const cs = speeds[responseSpeed] || 16;
-  typewriterInterval = setInterval(() => {
-    if (stopRequested || i >= text.length) {
-      clearInterval(typewriterInterval); typewriterInterval = null;
-      bubble.innerHTML = safeParse(text);
-      safeRenderMath(bubble);
-      bubble.appendChild(makeCopyBtn(text));
-      area.scrollTop = area.scrollHeight;
-      return;
-    }
-    i++;
-    bubble.innerHTML = safeParse(text.substring(0, i));
-    const cur = document.createElement('span'); cur.className = 'tw-cursor';
-    bubble.appendChild(cur);
-    area.scrollTop = area.scrollHeight;
-  }, cs);
+  addMsgDirect('ai', text);
 }
 
 function makeCopyBtn(text) {
