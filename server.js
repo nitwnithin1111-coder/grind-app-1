@@ -66,6 +66,7 @@ const sessionSchema = new mongoose.Schema({
   messages: [{
     role:      { type: String, enum: ['user', 'assistant'] },
     content:   String,
+    image:     { type: String, default: '' },
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -179,7 +180,6 @@ const storySessionSchema = new mongoose.Schema({
   wrongConcepts: [String]
 }, { timestamps: true });
 
-// NEW: Daily challenge schema
 const dailyChallengeSchema = new mongoose.Schema({
   date:       { type: String, required: true, unique: true },
   subject:    String,
@@ -193,6 +193,18 @@ const dailyChallengeSchema = new mongoose.Schema({
   solvedBy:   [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
+// NEW: Notes (Notion-style) schema
+const noteSchema = new mongoose.Schema({
+  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title:     { type: String, default: 'Untitled' },
+  content:   { type: String, default: '' }, // markdown
+  subject:   { type: String, default: '' },
+  pinned:    { type: Boolean, default: false },
+  tags:      [String],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 const User             = mongoose.model('User', userSchema);
 const ChatSession      = mongoose.model('ChatSession', sessionSchema);
 const Mistake          = mongoose.model('Mistake', mistakeSchema);
@@ -204,6 +216,7 @@ const Formula          = mongoose.model('Formula', formulaSchema);
 const BossBattle       = mongoose.model('BossBattle', bossSchema);
 const StorySession     = mongoose.model('StorySession', storySessionSchema);
 const DailyChallenge   = mongoose.model('DailyChallenge', dailyChallengeSchema);
+const Note             = mongoose.model('Note', noteSchema);
 
 // ── SESSION ───────────────────────────────────────────────
 app.use(session({
@@ -388,35 +401,18 @@ ${mistakeCtx ? mistakeCtx + '\n' : ''}
 ========================================================
 CRITICAL LATEX & MATH FORMATTING RULES (MANDATORY — NEVER VIOLATE)
 ========================================================
-These rules prevent UI layout bleed and broken rendering on the frontend.
-
 RULE 1 — INLINE MATH: Every single variable, Greek letter, operator, or short expression MUST use $...$
-  WRONG: "sintheta / costheta", "F = ma", "delta x", "alpha"
-  CORRECT: $\sin\theta$, $\cos\theta$, $F = ma$, $\Delta x$, $\alpha$
-  RULE 1B — NO SPACES INSIDE DELIMITERS: NEVER put a space immediately after $ or immediately before the closing $.
-  WRONG: $ F = ma $, $ \epsilon_0 $
-  CORRECT: $F = ma$, $\epsilon_0$
-  Same applies to \( \) and \[ \] — no space right after \( or \[, and no space right before \) or \].
-
-RULE 2 — BLOCK DISPLAY MATH: Use \[...\] for standalone equations, derivations, or multi-step proofs.
-  - ALWAYS insert a blank line BEFORE and AFTER every \[...\] block.
-  - NEVER attach plain text directly against \[ or \].
-  CORRECT FORMAT:
-  "The work-energy theorem gives us:
-
-  \[W = \Delta KE = \frac{1}{2}mv_f^2 - \frac{1}{2}mv_i^2\]
-
-  Substituting the values:"
-
-RULE 3 — DELIMITER PAIRING: Every $ must have a closing $. Every \[ must have \]. Unclosed delimiters crash the UI parser.
-
+RULE 1B — NO SPACES INSIDE DELIMITERS: NEVER put a space immediately after $ or immediately before the closing $. Same for \\( \\) and \\[ \\].
+RULE 2 — BLOCK DISPLAY MATH: Use \\[...\\] for standalone equations. ALWAYS insert a blank line BEFORE and AFTER every \\[...\\] block.
+RULE 3 — DELIMITER PAIRING: Every $ must have a closing $. Every \\[ must have \\].
 RULE 4 — NO TEXT MATH: NEVER write fractions, powers, or subscripts in plain text.
-  WRONG: "v^2 = u^2 + 2as", "PV = nRT", "1/2 mv^2"
-  CORRECT: $v^2 = u^2 + 2as$, $PV = nRT$, $\frac{1}{2}mv^2$
-
-RULE 5 — PARAGRAPH LENGTH: Never write unbroken text blocks longer than 3 sentences. Use line breaks, bullets, or numbered steps to prevent container bleed.
-
+RULE 5 — PARAGRAPH LENGTH: Never write unbroken text blocks longer than 3 sentences.
 RULE 6 — STEP SEPARATION: In multi-step solutions, every step must be on its own line with a blank line after the display equation.
+
+========================================================
+IMAGE UNDERSTANDING
+========================================================
+If the user has attached an image, it is usually a photo of a textbook question, handwritten work, or a diagram. Read it carefully, transcribe the relevant question/work in your reply before solving, and point out any errors in handwritten work.
 
 ========================================================
 DYNAMIC PROACTIVE SESSION OPENING
@@ -436,7 +432,7 @@ LANGUAGE & TONE
 ACADEMIC RESPONSE FORMAT
 ========================================================
 - Format: **Concept Name** → Step-by-Step derivation → ⚡ Shortcut/trick
-- Use $inline$ and \[block\] LaTeX for ALL math. Never write formulas in plain text.
+- Use $inline$ and \\[block\\] LaTeX for ALL math. Never write formulas in plain text.
 - After every academic explanation, end with ONE sharp challenge labeled "**YOUR NEXT CHALLENGE:**" — keep the learning loop active until student says: "stop", "enough", "break", "bas", "ruk", "done".
 - During normal chat, inject MCQ-style micro-questions: (A) opt1  (B) opt2  (C) opt3  (D) type your own
 
@@ -453,12 +449,8 @@ This marker must appear for EVERY identified mistake. Never skip it. Never modif
 PYQ & QUIZ GENERATION (when asked to generate questions)
 ========================================================
 DIFFICULTY RULES:
-- JEE Main / NEET: Single or dual-concept application problems. Algebraic accuracy, NCERT traps, trick options that punish formula-misapplication.
-- JEE Advanced: Deep multi-concept fusion (e.g. Electrostatics + Rotational Dynamics). First-principles thinking, structural visualization, advanced math manipulation.
-
-STRUCTURE MANDATE:
-- Match official formats: Single Correct MCQ, Multi-Correct MCQ, Numerical/Integer Type, or Matrix Match. Never create direct formula-substitution questions.
-- 3 distractor options must represent EXACT values obtained through common student errors (factor of 1/2 forgotten, sign error, wrong condition applied).
+- JEE Main / NEET: Single or dual-concept application problems.
+- JEE Advanced: Deep multi-concept fusion.
 
 When outputting quiz JSON, use this exact schema (no markdown code blocks):
 {
@@ -509,12 +501,7 @@ STRICT RULES — NEVER VIOLATE:
 4. The answer MUST match the official answer key.
 5. Explanation: concept name + formula + complete step-by-step working. Use LaTeX for ALL math: $inline$ and \\[block\\].
 6. wrongPercent: estimated % of students who historically got it wrong.
-7. The 3 wrong options MUST be calculated using common student errors (sign mistake, factor of 2 error, wrong formula variant).
-
-LATEX RULES FOR JSON OUTPUT:
-- Use \\( ... \\) for inline math inside JSON strings (not $ which breaks JSON)
-- Use \\[ ... \\] for display math inside JSON strings
-- All variables, Greek letters, equations must use LaTeX notation
+7. The 3 wrong options MUST be calculated using common student errors.
 
 Return ONLY this exact JSON — no markdown, no text outside JSON:
 {
@@ -547,9 +534,9 @@ ${adaptLine}
 
 Generate ONE high-quality practice MCQ.
 Rules:
-- Requires at least 3 logical/mathematical steps to solve. No direct formula substitution.
-- 3 distractor options must represent values computed from real student errors (wrong sign, missing factor, misapplied condition).
-- Include a conceptual trap that punishes shallow knowledge.
+- Requires at least 3 logical/mathematical steps to solve.
+- 3 distractor options must represent values computed from real student errors.
+- Include a conceptual trap.
 - Explanation must include: concept name, formula, full step-by-step working.
 - Use LaTeX for ALL math in JSON: \\( \\) for inline, \\[ \\] for display blocks.
 
@@ -613,6 +600,58 @@ async function callOR(messages, prompt) {
   return data.choices[0].message.content;
 }
 
+// Streaming variant of OpenRouter call. Calls onToken(chunk) as text arrives.
+async function callORStream(messages, prompt, onToken, abortSignal) {
+  const key   = OPENROUTER_KEYS[orIdx++  % OPENROUTER_KEYS.length];
+  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
+  console.log(`🧠 OpenRouter(stream) -> ${model}`);
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+      'HTTP-Referer': 'https://grind-ai.onrender.com',
+      'X-Title': 'GRIND AI'
+    },
+    signal: abortSignal,
+    body: JSON.stringify({
+      model,
+      max_tokens: 4000,
+      temperature: 0.4,
+      stream: true,
+      messages: [{ role: 'system', content: prompt }, ...messages]
+    })
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`${response.status} - ${text}`);
+  }
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const data = trimmed.slice(5).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const json  = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content;
+        if (delta) { full += delta; onToken(delta); }
+      } catch (e) { /* ignore partial json */ }
+    }
+  }
+  if (!full) throw new Error('Empty stream response');
+  return full;
+}
+
 async function callGemini(messages, prompt, imageBase64 = null) {
   const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
   const contents = messages.map(msg => ({
@@ -663,22 +702,36 @@ async function callGroq(messages, prompt) {
 
 // AI ROUTING: OpenRouter → Gemini → Groq
 async function getReply(messages, prompt, imageBase64 = null) {
-  // Try OpenRouter keys round-robin
   for (let i = 0; i < Math.max(OPENROUTER_KEYS.length, 1); i++) {
     try { return await callOR(messages, prompt); }
     catch (e) { console.log(`❌ OR${i + 1}:`, e.message); }
   }
-  // Fallback to Gemini
   for (let i = 0; i < Math.max(GEMINI_KEYS.length, 1); i++) {
     try { return await callGemini(messages, prompt, imageBase64); }
     catch (e) { console.log(`❌ Gemini${i + 1}:`, e.message); }
   }
-  // Last resort: Groq
   for (let i = 0; i < Math.max(GROQ_KEYS.length, 1); i++) {
     try { return await callGroq(messages, prompt); }
     catch (e) { console.log(`❌ Groq${i + 1}:`, e.message); }
   }
   throw new Error('ALL_EXHAUSTED — check API keys');
+}
+
+// Streaming-capable reply. Falls back to a single emitted chunk if streaming fails.
+async function getReplyStream(messages, prompt, onToken, abortSignal, imageBase64 = null) {
+  for (let i = 0; i < Math.max(OPENROUTER_KEYS.length, 1); i++) {
+    try { return await callORStream(messages, prompt, onToken, abortSignal); }
+    catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.log(`❌ OR-stream${i + 1}:`, e.message);
+    }
+  }
+  // Fallback: non-streaming providers, emit whole text as one token
+  try {
+    const text = await getReply(messages, prompt, imageBase64);
+    onToken(text);
+    return text;
+  } catch (e) { throw e; }
 }
 
 // ── ACHIEVEMENTS ENGINE ───────────────────────────────────
@@ -768,7 +821,7 @@ async function getUserFeedbackFlags(userId) {
 // ROUTES
 // ══════════════════════════════════════════════════════════
 
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v9' }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date(), version: 'v10' }));
 
 // ── AUTH ──────────────────────────────────────────────────
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -856,7 +909,6 @@ app.get('/api/daily-challenge', requireAuth, async (req, res) => {
     let challenge = await DailyChallenge.findOne({ date: today });
 
     if (!challenge) {
-      // Generate new daily challenge
       const user = req.user;
       const subjects = ['Physics', 'Chemistry', 'Mathematics'];
       const subject = subjects[new Date().getDay() % 3];
@@ -929,7 +981,6 @@ app.post('/api/daily-challenge/submit', requireAuth, async (req, res) => {
       await challenge.save();
     }
 
-    // Update user
     await User.findByIdAndUpdate(req.user._id, {
       dailyChallengeDate: today,
       $inc: { dailyChallengeXP: correct && !alreadySolved ? challenge.xpReward : 0 }
@@ -957,7 +1008,7 @@ app.post('/api/daily-challenge/submit', requireAuth, async (req, res) => {
   }
 });
 
-// ── MAIN CHAT ─────────────────────────────────────────────
+// ── MAIN CHAT (non-streaming, kept for compatibility) ──────
 app.post('/api/chat', requireAuth, async (req, res) => {
   const { messages, sessionId, imageBase64 } = req.body;
   const user = req.user;
@@ -971,51 +1022,99 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 
   try {
     const reply = await getReply(recent, prompt, imageBase64 || null);
-
-    // Auto-extract mistake markers and save to DB
-    const mistakeEntries = extractMistakeEntries(reply);
-    for (const entry of mistakeEntries) {
-      try {
-        const conceptMatch = entry.match(/Concept:\s*([^|]+)/i);
-        const contextMatch = entry.match(/Context:\s*(.+)/i);
-        const topic   = conceptMatch?.[1]?.trim() || 'General';
-        const context = contextMatch?.[1]?.trim() || entry;
-        await Mistake.create({
-          userId:           user._id,
-          topic,
-          subject:          user.exam?.includes('NEET') ? 'Biology' : 'General',
-          mistakeBookEntry: context,
-          question:         context,
-          weekKey:          getWeekKey()
-        });
-        const wk   = getWeekKey();
-        const wMap = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
-        const ent  = wMap.get(topic) || { count: 0, weeks: [] };
-        ent.count += 1;
-        if (!ent.weeks.includes(wk)) ent.weeks.push(wk);
-        wMap.set(topic, ent);
-        await User.findByIdAndUpdate(user._id, { weakTopics: wMap });
-      } catch (e) { console.error('Auto-mistake save:', e.message); }
-    }
-
-    // Save chat to session
-    if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId.length === 24) {
-      try {
-        const userMsg = messages[messages.length - 1];
-        const title   = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
-        await ChatSession.findByIdAndUpdate(sessionId, {
-          $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
-          $set:  { updatedAt: new Date(), ...(title ? { title } : {}) }
-        }, { upsert: true });
-      } catch (e) { console.error('Session save:', e.message); }
-    }
-
-    res.json({ reply, autoMistakes: mistakeEntries.length });
+    await postProcessReply(reply, user, sessionId, messages);
+    res.json({ reply });
   } catch (err) {
     console.error('AI error:', err.message);
     res.status(500).json({ error: 'Our AI is taking a short break. Please try again.' });
   }
 });
+
+// ── MAIN CHAT (streaming via SSE) ───────────────────────────
+// Client opens a POST request and reads the response body as a stream of
+// "data: {...}\n\n" events. We can't use native EventSource (GET only), so
+// the client uses fetch() + ReadableStream reading instead.
+app.post('/api/chat/stream', requireAuth, async (req, res) => {
+  const { messages, sessionId, imageBase64 } = req.body;
+  const user = req.user;
+  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Invalid request.' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const send = (event, data) => {
+    res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+  };
+
+  const abortController = new AbortController();
+  req.on('close', () => abortController.abort());
+
+  try {
+    const recent        = messages.slice(-20);
+    const plannerCtx    = await buildPlannerContext(user._id);
+    const todayMistakes = await getTodayMistakes(user._id);
+    const feedbackFlags = await getUserFeedbackFlags(user._id);
+    const prompt        = buildSystemPrompt(user, plannerCtx, todayMistakes, feedbackFlags);
+
+    let full = '';
+    const reply = await getReplyStream(recent, prompt, (chunk) => {
+      full += chunk;
+      send('chunk', { text: chunk });
+    }, abortController.signal, imageBase64 || null);
+
+    await postProcessReply(reply || full, user, sessionId, messages);
+    send('done', { reply: reply || full });
+    res.end();
+  } catch (err) {
+    if (err.name === 'AbortError') { res.end(); return; }
+    console.error('Stream AI error:', err.message);
+    send('error', { error: 'Our AI is taking a short break. Please try again.' });
+    res.end();
+  }
+});
+
+async function postProcessReply(reply, user, sessionId, messages) {
+  // Auto-extract mistake markers and save to DB
+  const mistakeEntries = extractMistakeEntries(reply);
+  for (const entry of mistakeEntries) {
+    try {
+      const conceptMatch = entry.match(/Concept:\s*([^|]+)/i);
+      const contextMatch = entry.match(/Context:\s*(.+)/i);
+      const topic   = conceptMatch?.[1]?.trim() || 'General';
+      const context = contextMatch?.[1]?.trim() || entry;
+      await Mistake.create({
+        userId:           user._id,
+        topic,
+        subject:          user.exam?.includes('NEET') ? 'Biology' : 'General',
+        mistakeBookEntry: context,
+        question:         context,
+        weekKey:          getWeekKey()
+      });
+      const wk   = getWeekKey();
+      const wMap = user.weakTopics instanceof Map ? user.weakTopics : new Map(Object.entries(user.weakTopics || {}));
+      const ent  = wMap.get(topic) || { count: 0, weeks: [] };
+      ent.count += 1;
+      if (!ent.weeks.includes(wk)) ent.weeks.push(wk);
+      wMap.set(topic, ent);
+      await User.findByIdAndUpdate(user._id, { weakTopics: wMap });
+    } catch (e) { console.error('Auto-mistake save:', e.message); }
+  }
+
+  // Save chat to session
+  if (sessionId && sessionId !== 'new' && sessionId !== 'quiz' && sessionId.length === 24) {
+    try {
+      const userMsg = messages[messages.length - 1];
+      const title   = messages.length <= 2 ? userMsg.content.slice(0, 50) + (userMsg.content.length > 50 ? '...' : '') : undefined;
+      await ChatSession.findByIdAndUpdate(sessionId, {
+        $push: { messages: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: reply }] },
+        $set:  { updatedAt: new Date(), ...(title ? { title } : {}) }
+      }, { upsert: true });
+    } catch (e) { console.error('Session save:', e.message); }
+  }
+  return mistakeEntries.length;
+}
 
 // ── QUIZ ──────────────────────────────────────────────────
 app.post('/api/quiz/question', requireAuth, async (req, res) => {
@@ -1090,6 +1189,26 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
+app.get('/api/sessions/search', requireAuth, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ sessions: [] });
+    const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const sessions = await ChatSession.find({
+      userId: req.user._id,
+      $or: [{ title: regex }, { 'messages.content': regex }]
+    }).select('title updatedAt messages').sort({ updatedAt: -1 }).limit(20).lean();
+    const results = sessions.map(s => {
+      const match = (s.messages || []).find(m => regex.test(m.content || ''));
+      return {
+        _id: s._id, title: s.title, updatedAt: s.updatedAt,
+        snippet: match ? match.content.slice(0, 120) : ''
+      };
+    });
+    res.json({ sessions: results });
+  } catch { res.status(500).json({ error: 'Search failed.' }); }
+});
+
 app.get('/api/sessions/:id', requireAuth, async (req, res) => {
   try {
     const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
@@ -1103,6 +1222,19 @@ app.post('/api/sessions/new', requireAuth, async (req, res) => {
     const s = await ChatSession.create({ userId: req.user._id, title: 'New Conversation', messages: [] });
     res.json({ sessionId: s._id });
   } catch { res.status(500).json({ error: 'Could not create.' }); }
+});
+
+// Truncate a session's messages to a given index (used for edit/regenerate)
+app.post('/api/sessions/:id/truncate', requireAuth, async (req, res) => {
+  try {
+    const { keepCount } = req.body; // number of messages to keep
+    const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!s) return res.status(404).json({ error: 'Not found.' });
+    s.messages = s.messages.slice(0, Math.max(0, keepCount || 0));
+    s.updatedAt = new Date();
+    await s.save();
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not truncate.' }); }
 });
 
 app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
@@ -1267,6 +1399,75 @@ app.post('/api/planner/rollover', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Rollover failed.' }); }
 });
 
+// ── NOTES (Notion-style) ───────────────────────────────────
+app.get('/api/notes', requireAuth, async (req, res) => {
+  try {
+    const notes = await Note.find({ userId: req.user._id }).sort({ pinned: -1, updatedAt: -1 }).lean();
+    res.json({ notes });
+  } catch { res.status(500).json({ error: 'Could not load notes.' }); }
+});
+
+app.post('/api/notes', requireAuth, async (req, res) => {
+  try {
+    const note = await Note.create({ userId: req.user._id, title: req.body.title || 'Untitled', content: req.body.content || '', subject: req.body.subject || '' });
+    res.json({ note });
+  } catch { res.status(500).json({ error: 'Could not create note.' }); }
+});
+
+app.get('/api/notes/:id', requireAuth, async (req, res) => {
+  try {
+    const note = await Note.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!note) return res.status(404).json({ error: 'Not found.' });
+    res.json({ note });
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
+});
+
+app.patch('/api/notes/:id', requireAuth, async (req, res) => {
+  try {
+    const update = { ...req.body, updatedAt: new Date() };
+    const note = await Note.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, update, { new: true });
+    res.json({ note });
+  } catch { res.status(500).json({ error: 'Could not update.' }); }
+});
+
+app.delete('/api/notes/:id', requireAuth, async (req, res) => {
+  try {
+    await Note.deleteOne({ _id: req.params.id, userId: req.user._id });
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not delete.' }); }
+});
+
+// AI-assist actions on note content: improve / summarize / expand / fix-grammar / make-bullets / explain
+app.post('/api/notes/ai-assist', requireAuth, async (req, res) => {
+  try {
+    const { content, action, customInstruction } = req.body;
+    if (!content) return res.status(400).json({ error: 'No content provided.' });
+
+    const actionPrompts = {
+      improve:     'Improve the clarity, flow and grammar of this text. Keep the meaning and length similar. Keep any LaTeX/markdown formatting intact.',
+      summarize:   'Summarize this text into a tight, high-yield summary using bullet points. Keep key formulas in LaTeX.',
+      expand:      'Expand this text with more detail, examples, and explanation, useful for a JEE/NEET student. Use LaTeX for all math.',
+      fix_grammar: 'Fix all spelling and grammar mistakes in this text. Do not change the meaning or formatting.',
+      bullets:     'Convert this text into clean, well-organized bullet points. Keep LaTeX for math intact.',
+      explain:     'Explain this content simply, as if teaching a JEE/NEET student who is confused. Use analogies. Use LaTeX for math.',
+      custom:      customInstruction || 'Improve this text.'
+    };
+    const instruction = actionPrompts[action] || actionPrompts.improve;
+
+    const prompt = `You are a writing/study assistant embedded in a notes app for JEE/NEET students.
+Task: ${instruction}
+
+Respond with ONLY the rewritten/processed text — no preamble, no "Here is...", no markdown code fences.
+Use $inline$ and \\[block\\] LaTeX for any math.`;
+
+    const result = await getReply([{ role: 'user', content: content }], prompt);
+    res.json({ result: result.trim() });
+  } catch (e) {
+    console.error('Notes AI assist:', e.message);
+    res.status(500).json({ error: 'AI assist failed. Try again.' });
+  }
+});
+
 // ── FEEDBACK ──────────────────────────────────────────────
 app.post('/api/feedback', async (req, res) => {
   try {
@@ -1374,7 +1575,6 @@ Return ONLY JSON (no markdown):
   const data = safeParseJSON(raw);
   if (!data.questions?.length) throw new Error('No questions from AI');
 
-  // Cache to DB
   for (const q of data.questions) {
     await PYQ.create({
       subject, chapter, exam: q.exam || exam,
@@ -1429,27 +1629,26 @@ YOUR JOB: Teach them everything they need to ace the SAME questions in Round 2.
 CRITICAL LATEX RULES — MANDATORY:
 - Use $...$ for ALL inline math, variables, Greek letters
 - Use \\[...\\] for ALL display equations, with a blank line before and after
-- NEVER write math in plain text (e.g., never "v^2 = u^2 + 2as", ALWAYS $v^2 = u^2 + 2as$)
+- NEVER write math in plain text
 - NEVER leave LaTeX delimiters unclosed
 
 FORMAT YOUR RESPONSE LIKE THIS:
 
 ## 🎯 Let's Fix What Tripped You Up
-[Teach each WRONG concept first — give the core idea, a solved example similar to the question, and the key trick]
+[Teach each WRONG concept first]
 
 ## 📚 The Full Picture — ${chapter}
-[Now complete the chapter — cover remaining concepts they need for JEE]
+[Now complete the chapter]
 
 ## ⚡ Your Cheat Sheet
-[3-5 bullet points: formulas, patterns, what JEE loves to ask from this chapter]
+[3-5 bullet points]
 
 ## 🔄 You're Ready for Round 2
-[One warm sentence of encouragement — not fake, genuine]
+[One warm sentence]
 
 RULES:
 - Use LaTeX for ALL math: $inline$ and \\[block\\]
 - Talk like a real person, not a textbook
-- Keep each section tight and useful — no padding
 - ${name} recently recovered from a rough time — be warm, never harsh`;
 
   try {
@@ -1602,15 +1801,15 @@ app.post('/api/arjun', requireAuth, async (req, res) => {
 
 PERSONALITY:
 - Talk like a real dost, not a corporate bot. Mix English and Hindi naturally.
-- You GENUINELY care about this student. They went through a tough time recently — be human first.
+- You GENUINELY care about this student.
 - Short replies by default (3-4 sentences). Go longer only if they ask for explanation.
 - When they share something sad → drop all JEE talk. Just be there.
-- When they're crushing it → celebrate for real. Not "great job!" but something specific.
-- End every reply with ONE question OR one small challenge. Never leave them hanging.
+- When they're crushing it → celebrate for real.
+- End every reply with ONE question OR one small challenge.
 - Never start with "I" or "As an AI" — you're Arjun.
 
 CRITICAL LATEX RULES:
-- Use $...$ for ALL inline math, variables, Greek letters (e.g., $F = ma$, $\theta$, $\Delta x$)
+- Use $...$ for ALL inline math, variables, Greek letters
 - Use \\[...\\] for display equations with blank line before/after
 - NEVER write math in plain text
 
@@ -1623,8 +1822,7 @@ ${recoveryMode ? '⚠️ RECOVERY MODE: Student has been struggling — be extra
 FOR JEE ADVANCED QUESTIONS:
 - Give complete solutions with all steps shown
 - Use LaTeX for ALL math
-- Mention common traps in that type
-- Always end with "similar questions to practice" if they ask about a concept`;
+- Mention common traps in that type`;
 
   try {
     const reply = await getReply((messages || []).slice(-12), systemPrompt);
@@ -1759,7 +1957,6 @@ WRITE:
 5. Closing battle cry (1 sentence, genuine energy)
 
 Tone: Like a senior IITian who genuinely cares. Real talk, not corporate. Warm but honest.
-${name} recently came out of a tough period — celebrate showing up, not just scores.
 Length: 150-180 words. No headers with #. Use emojis sparingly.
 DO NOT use LaTeX in this report — it's prose only.`;
 
@@ -1935,6 +2132,6 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 // ── START SERVER ──────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v9 running on port ${PORT}`);
+  console.log(`🧠 GRIND AI v10 running on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OR=${OPENROUTER_KEYS.length}`);
 });
