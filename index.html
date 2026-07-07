@@ -1,724 +1,2237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GRIND AI PRO — JEE/NEET Companion</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GRIND AI — Your JEE/NEET Cognitive Coach</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/index.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/index.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <style>
-:root {
-  --bg: #0A0E17;
-  --surface: #161F30;
-  --card: #1C2840;
-  --border: #1E2D45;
-  --fg: #F1F5F9;
-  --xp: #00D2FF;
-  --green: #00C853;
-  --red: #FF3B5C;
-  --grad-xp: linear-gradient(90deg, #00D2FF, #00FF66);
+:root{
+  --bg:#0a0a0f; --bg2:#12121a; --bg3:#1a1a25; --panel:#16161f;
+  --border:#2a2a38; --border2:#3a3a4a;
+  --text:#e8e8f0; --text2:#a8a8b8; --text3:#6a6a7a;
+  --accent:#8b5cf6; --accent2:#a78bfa; --accent-glow:rgba(139,92,246,.35);
+  --green:#10b981; --red:#ef4444; --yellow:#f59e0b; --blue:#3b82f6; --pink:#ec4899; --cyan:#06b6d4;
+  --gold:#fbbf24; --silver:#9ca3af; --bronze:#d97706;
 }
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; }
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: 'DM Sans', sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;
+  background-image:radial-gradient(ellipse at top,rgba(139,92,246,.08),transparent 50%),radial-gradient(ellipse at bottom,rgba(236,72,153,.05),transparent 50%);
 }
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{font-family:inherit;outline:none;border:none;background:none;color:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border2)}
+.hidden{display:none !important}
 
-.container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
-.screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
-.screen.active { display: flex; }
+/* AUTH */
+.auth-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.auth-bg{position:absolute;inset:0;background:linear-gradient(135deg,#0a0a0f 0%,#1a0a2e 50%,#0a0a0f 100%);overflow:hidden}
+.auth-bg::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(circle at 20% 30%,rgba(139,92,246,.3),transparent 40%),
+  radial-gradient(circle at 80% 70%,rgba(236,72,153,.2),transparent 40%),
+  radial-gradient(circle at 50% 50%,rgba(59,130,246,.15),transparent 50%);
+  animation:bgMove 20s ease-in-out infinite}
+@keyframes bgMove{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.auth-card{position:relative;max-width:440px;width:100%;background:rgba(22,22,31,.85);backdrop-filter:blur(24px);border:1px solid var(--border);border-radius:24px;padding:48px 40px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.logo-big{font-size:56px;margin-bottom:8px;filter:drop-shadow(0 0 20px var(--accent-glow));animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.brand-name{font-size:42px;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand-tag{color:var(--text2);font-size:14px;margin-top:4px;margin-bottom:32px}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;background:#fff;color:#1a1a25;border-radius:12px;font-weight:600;font-size:15px;transition:all .2s}
+.btn-google:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,255,255,.15)}
+.auth-foot{margin-top:24px;font-size:12px;color:var(--text3)}
 
-/* LOGIN SCREEN */
-.login-card {
-  background: rgba(22, 31, 48, 0.95);
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  border-radius: 20px;
-  padding: 40px;
-  width: 90%;
-  max-width: 420px;
-  text-align: center;
+/* ONBOARDING */
+.onboard-screen{position:fixed;inset:0;overflow-y:auto;padding:40px 20px;z-index:99;background:var(--bg)}
+.onboard-card{max-width:640px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:40px}
+.onboard-title{font-size:28px;font-weight:800;margin-bottom:8px}
+.onboard-sub{color:var(--text2);margin-bottom:32px}
+.onboard-section{margin-bottom:28px}
+.onboard-label{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.chip-group{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:10px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--accent)}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 20px var(--accent-glow)}
+.btn-start{width:100%;padding:16px;background:linear-gradient(135deg,#8b5cf6,#ec4899);border-radius:12px;font-weight:700;font-size:16px;margin-top:20px;transition:all .2s}
+.btn-start:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(139,92,246,.4)}
+
+/* MAIN APP */
+.app{display:grid;grid-template-columns:260px 1fr;height:100vh;overflow:hidden}
+.sidebar{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-head{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-logo{font-size:22px}
+.sidebar-brand{font-size:18px;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.new-chat-btn{margin:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;transition:all .15s}
+.new-chat-btn:hover{border-color:var(--accent);background:rgba(139,92,246,.1)}
+.nav-list{flex:1;overflow-y:auto;padding:8px}
+.nav-group-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:12px 14px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s;margin-bottom:2px;color:var(--text2)}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(139,92,246,.15);color:var(--text);border-left:2px solid var(--accent)}
+.nav-item .icon{font-size:16px}
+.nav-item .badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700}
+.sidebar-foot{padding:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-meta{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px}
+.logout-btn{padding:6px 8px;border-radius:6px;font-size:16px;transition:all .15s}
+.logout-btn:hover{background:var(--bg3)}
+
+/* MAIN */
+.main{overflow:hidden;display:flex;flex-direction:column;background:var(--bg)}
+.topbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--panel)}
+.view-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.coin-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600}
+.streak-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(245,158,11,.15));border:1px solid rgba(239,68,68,.3);border-radius:20px;font-size:12px;font-weight:600}
+.xp-bar{flex:1;max-width:200px;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.xp-bar-fill{height:100%;background:linear-gradient(90deg,#8b5cf6,#ec4899);transition:width .5s}
+.level-pill{padding:4px 10px;background:var(--accent);border-radius:10px;font-size:11px;font-weight:700;color:#fff}
+
+/* VIEWS */
+.view{flex:1;overflow:hidden;display:flex}
+.view-chat{flex-direction:column}
+.chat-list{width:260px;border-right:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+.chat-list-head{padding:14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)}
+.chat-list-items{flex:1;overflow-y:auto;padding:8px}
+.chat-list-item{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:4px;transition:all .15s;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chat-list-item:hover{background:var(--bg3)}
+.chat-list-item.active{background:rgba(139,92,246,.15)}
+.chat-list-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-list-del{opacity:0;font-size:14px;padding:2px 4px;border-radius:4px;transition:opacity .15s}
+.chat-list-item:hover .chat-list-del{opacity:1}
+.chat-list-del:hover{background:var(--red);color:#fff}
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.msg{max-width:800px;width:100%;margin:0 auto;display:flex;gap:12px}
+.msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg3)}
+.msg.user .msg-avatar{background:linear-gradient(135deg,#8b5cf6,#ec4899)}
+.msg-body{flex:1;line-height:1.7;font-size:14px;overflow-wrap:break-word;word-wrap:break-word;overflow:hidden}
+.msg-body p{margin-bottom:8px}
+.msg-body p:last-child{margin-bottom:0}
+.msg-body ul,.msg-body ol{margin:8px 0 8px 24px}
+.msg-body li{margin-bottom:4px}
+.msg-body code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.msg-body pre{background:var(--bg3);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid var(--border)}
+.msg-body pre code{background:none;padding:0}
+.msg-body h1,.msg-body h2,.msg-body h3{margin:12px 0 8px;font-weight:700}
+.msg-body h1{font-size:20px}.msg-body h2{font-size:17px}.msg-body h3{font-size:15px}
+.msg-body blockquote{border-left:3px solid var(--accent);padding-left:12px;margin:8px 0;color:var(--text2)}
+.msg-body .katex-display{margin:12px 0;overflow-x:auto}
+.msg-actions{display:flex;gap:8px;margin-top:8px;opacity:.6;transition:opacity .15s}
+.msg:hover .msg-actions{opacity:1}
+.msg-action{padding:4px 8px;font-size:11px;border-radius:6px;background:var(--bg3);border:1px solid var(--border)}
+.msg-action:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.chat-input-area{border-top:1px solid var(--border);padding:16px 24px;background:var(--panel)}
+.chat-input-wrap{max-width:800px;margin:0 auto;display:flex;gap:8px;align-items:flex-end;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:8px 8px 8px 14px;transition:border-color .15s}
+.chat-input-wrap:focus-within{border-color:var(--accent)}
+.chat-input{flex:1;resize:none;font-size:14px;line-height:1.5;max-height:180px;min-height:24px;padding:6px 0}
+.send-btn{width:36px;height:36px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0;transition:all .15s}
+.send-btn:hover{background:var(--accent2);transform:scale(1.05)}
+.send-btn:disabled{background:var(--border);cursor:not-allowed}
+.typing-dots{display:inline-flex;gap:4px;padding:8px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--text2);animation:typing 1.4s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+/* QUIZ */
+.quiz-view{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;align-items:center}
+.quiz-container{max-width:900px;width:100%}
+.quiz-hero{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(236,72,153,.1));border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.quiz-stat{text-align:center;flex:1;min-width:80px}
+.quiz-stat-val{font-size:24px;font-weight:800;color:var(--accent2)}
+.quiz-stat-lbl{font-size:11px;text-transform:uppercase;color:var(--text3);letter-spacing:1px;margin-top:2px}
+.quiz-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.quiz-control{display:flex;flex-direction:column;gap:6px}
+.quiz-control label{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text3);letter-spacing:1px}
+.quiz-control select,.quiz-control input{padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:13px}
+.btn-quiz{padding:14px 20px;border-radius:10px;font-weight:600;font-size:14px;transition:all .15s}
+.btn-quiz.primary{background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff}
+.btn-quiz.primary:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(139,92,246,.4)}
+.btn-quiz.secondary{background:var(--bg3);border:1px solid var(--border);color:var(--text)}
+.btn-quiz.secondary:hover{border-color:var(--accent)}
+.quiz-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px}
+.quiz-qnum{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.quiz-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:var(--accent);color:#fff}
+.quiz-badge.pyq{background:var(--yellow);color:#000}
+.quiz-question{font-size:16px;line-height:1.7;margin-bottom:20px}
+.quiz-options{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.quiz-opt{padding:14px 16px;background:var(--bg3);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px;text-align:left;font-size:14px;line-height:1.5}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-opt.selected{border-color:var(--accent);background:rgba(139,92,246,.1)}
+.quiz-opt.correct{border-color:var(--green);background:rgba(16,185,129,.15)}
+.quiz-opt.wrong{border-color:var(--red);background:rgba(239,68,68,.15)}
+.quiz-opt-letter{width:28px;height:28px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.quiz-opt.selected .quiz-opt-letter{background:var(--accent);color:#fff}
+.quiz-opt.correct .quiz-opt-letter{background:var(--green);color:#fff}
+.quiz-opt.wrong .quiz-opt-letter{background:var(--red);color:#fff}
+.quiz-explain{padding:16px;background:var(--bg3);border-radius:10px;border-left:3px solid var(--accent);margin-top:12px;line-height:1.7;font-size:13px}
+.quiz-explain-title{font-weight:700;margin-bottom:6px;color:var(--accent2)}
+.cheat-sheet{margin-top:10px;padding:10px 12px;background:rgba(245,158,11,.1);border-radius:8px;border:1px solid rgba(245,158,11,.3);font-size:13px}
+.cheat-sheet-title{font-weight:700;color:var(--yellow);margin-bottom:4px;font-size:12px}
+.trap-alert{margin-top:10px;padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;border:1px solid rgba(239,68,68,.3);font-size:13px}
+.trap-alert-title{font-weight:700;color:var(--red);margin-bottom:4px;font-size:12px}
+
+/* PLANNER */
+.planner-view{flex:1;overflow-y:auto;padding:24px}
+.planner-container{max-width:1000px;margin:0 auto}
+.planner-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.planner-tabs{display:flex;gap:6px;background:var(--panel);padding:4px;border-radius:10px;border:1px solid var(--border)}
+.planner-tab{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+.planner-tab.active{background:var(--accent);color:#fff}
+.task-list{display:flex;flex-direction:column;gap:10px}
+.task-item{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;transition:all .15s}
+.task-item:hover{border-color:var(--accent)}
+.task-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.task-check.done{background:var(--green);border-color:var(--green)}
+.task-check.done::after{content:'✓';color:#fff;font-weight:700;font-size:14px}
+.task-content{flex:1;min-width:0}
+.task-title{font-weight:500;margin-bottom:2px}
+.task-item.done .task-title{text-decoration:line-through;color:var(--text3)}
+.task-meta{font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap}
+.task-priority{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase}
+.task-priority.high{background:rgba(239,68,68,.2);color:#f87171}
+.task-priority.medium{background:rgba(245,158,11,.2);color:#fbbf24}
+.task-priority.low{background:rgba(16,185,129,.2);color:#10b981}
+.task-del{opacity:0;padding:6px;border-radius:6px;transition:opacity .15s}
+.task-item:hover .task-del{opacity:1}
+.task-del:hover{background:var(--red);color:#fff}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+
+/* FORMULA FORTRESS */
+.formula-view{flex:1;overflow-y:auto;padding:24px}
+.formula-container{max-width:800px;margin:0 auto}
+.formula-card{background:linear-gradient(135deg,var(--panel),var(--bg3));border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;text-align:center}
+.formula-text{font-size:22px;margin:16px 0;min-height:60px;display:flex;align-items:center;justify-content:center}
+.formula-context{color:var(--text2);font-size:13px;margin-bottom:16px}
+.formula-buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.formula-btn{padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;transition:all .15s}
+.formula-btn.again{background:rgba(239,68,68,.2);color:#f87171}
+.formula-btn.hard{background:rgba(245,158,11,.2);color:#fbbf24}
+.formula-btn.good{background:rgba(16,185,129,.2);color:#10b981}
+.formula-btn.easy{background:rgba(59,130,246,.2);color:#60a5fa}
+.formula-btn:hover{transform:translateY(-2px)}
+.add-formula-form{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.add-formula-form input,.add-formula-form select,.add-formula-form textarea{width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:13px}
+.add-formula-form textarea{min-height:60px;resize:vertical}
+
+/* STORY MODE */
+.story-view{flex:1;overflow-y:auto;padding:24px}
+.story-container{max-width:900px;margin:0 auto}
+.story-hero{background:linear-gradient(135deg,rgba(139,92,246,.2),rgba(236,72,153,.2));border:1px solid var(--accent);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center}
+.story-hero h2{font-size:24px;margin-bottom:8px}
+.story-hero p{color:var(--text2);font-size:14px;max-width:600px;margin:0 auto}
+.story-step{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.story-step-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.story-step-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.teaching-content{line-height:1.7;font-size:14px}
+.teaching-content p{margin-bottom:10px}
+.teaching-content h3{margin:16px 0 8px;color:var(--accent2)}
+
+/* BOSS BATTLES */
+.boss-view{flex:1;overflow-y:auto;padding:24px}
+.boss-container{max-width:900px;margin:0 auto}
+.boss-hero{background:linear-gradient(135deg,rgba(239,68,68,.2),rgba(245,158,11,.2));border:2px solid rgba(239,68,68,.4);border-radius:16px;padding:24px;text-align:center;margin-bottom:20px}
+.boss-name{font-size:28px;font-weight:900;color:#f87171;margin-bottom:8px;text-shadow:0 0 20px rgba(239,68,68,.5)}
+.boss-intro{color:var(--text2);font-style:italic}
+.boss-hp{margin-top:16px}
+.boss-hp-bar{height:12px;background:var(--bg3);border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.boss-hp-fill{height:100%;background:linear-gradient(90deg,#ef4444,#f59e0b);transition:width .5s}
+.boss-config{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+
+/* DAILY CHALLENGE */
+.daily-view{flex:1;overflow-y:auto;padding:24px}
+.daily-container{max-width:800px;margin:0 auto}
+.daily-hero{background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(245,158,11,.1));border:2px solid rgba(251,191,36,.4);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center}
+.daily-title{font-size:28px;font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.daily-solvers{color:var(--text2);font-size:13px;margin-top:8px}
+
+/* MULTIPLAYER */
+.mp-view{flex:1;overflow-y:auto;padding:24px}
+.mp-container{max-width:900px;margin:0 auto}
+.mp-lobby{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;margin-bottom:20px}
+.mp-code{font-size:36px;font-weight:900;letter-spacing:4px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:12px 0}
+.mp-players{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.mp-player{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px}
+.mp-player-avatar{width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:18px}
+.mp-player-info{flex:1}
+.mp-player-name{font-weight:600;margin-bottom:2px}
+.mp-player-score{font-size:12px;color:var(--text2)}
+
+/* LEADERBOARD */
+.lb-view{flex:1;overflow-y:auto;padding:24px}
+.lb-container{max-width:800px;margin:0 auto}
+.lb-tabs{display:flex;gap:6px;margin-bottom:16px;background:var(--panel);padding:4px;border-radius:10px;border:1px solid var(--border);width:fit-content}
+.lb-tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500}
+.lb-tab.active{background:var(--accent);color:#fff}
+.lb-list{display:flex;flex-direction:column;gap:8px}
+.lb-item{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.lb-item.me{border-color:var(--accent);background:rgba(139,92,246,.1)}
+.lb-rank{width:32px;font-weight:900;font-size:16px;text-align:center}
+.lb-rank.gold{color:#fbbf24}
+.lb-rank.silver{color:#9ca3af}
+.lb-rank.bronze{color:#d97706}
+.lb-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg3);overflow:hidden;display:flex;align-items:center;justify-content:center;font-weight:700}
+.lb-avatar img{width:100%;height:100%;object-fit:cover}
+.lb-name{flex:1;font-weight:500}
+.lb-xp{font-weight:700;color:var(--accent2)}
+
+/* RIVAL */
+.rival-card{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(245,158,11,.05));border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:16px;margin-bottom:16px}
+.rival-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.rival-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff}
+.rival-name{font-weight:700;font-size:15px}
+.rival-level{font-size:11px;color:var(--text3)}
+.rival-taunt{font-style:italic;color:var(--text2);font-size:13px;line-height:1.5}
+.rival-stats{display:flex;gap:12px;margin-top:10px}
+.rival-stat{flex:1;text-align:center;padding:8px;background:rgba(0,0,0,.2);border-radius:8px}
+.rival-stat-val{font-weight:700;color:#f87171}
+.rival-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;animation:slideUp .3s}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:var(--bg3)}
+
+/* TOAST */
+.toast-wrap{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.4);animation:slideIn .3s;max-width:360px}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+.toast.achievement{border-color:var(--gold);background:linear-gradient(135deg,rgba(251,191,36,.15),var(--panel))}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}
+
+/* ACHIEVEMENT POPUP */
+.ach-popup{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s}
+.ach-card{background:linear-gradient(135deg,#1a0a2e,#0a0a0f);border:2px solid var(--gold);border-radius:24px;padding:40px;text-align:center;max-width:420px;animation:achBurst .6s;box-shadow:0 0 80px rgba(251,191,36,.5)}
+@keyframes achBurst{0%{transform:scale(0) rotate(-180deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+.ach-icon{font-size:80px;margin-bottom:16px;animation:achSpin 2s ease-in-out}
+@keyframes achSpin{0%,100%{transform:rotate(0)}50%{transform:rotate(20deg)}}
+.ach-label{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gold);margin-bottom:8px}
+.ach-name{font-size:28px;font-weight:900;margin-bottom:8px;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.ach-close{margin-top:20px;padding:10px 24px;background:var(--gold);color:#000;border-radius:10px;font-weight:700}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3)}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* POMODORO FLOATING */
+.pomo-float{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent);border-radius:50%;width:60px;height:60px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 40px rgba(139,92,246,.3);z-index:500;font-size:24px;transition:all .2s}
+.pomo-float:hover{transform:scale(1.1)}
+.pomo-float.active{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 10px 40px rgba(139,92,246,.3)}50%{box-shadow:0 10px 60px rgba(139,92,246,.6)}}
+
+/* MOOD CHECK */
+.mood-widget{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.mood-widget-title{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text2)}
+.mood-buttons{display:flex;gap:6px;justify-content:space-between}
+.mood-btn{flex:1;padding:10px;border-radius:8px;font-size:20px;background:var(--bg3);transition:all .15s}
+.mood-btn:hover{background:var(--bg2);transform:scale(1.1)}
+.mood-btn.selected{background:var(--accent);transform:scale(1.1)}
+.mood-ai{margin-top:10px;padding:10px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text2);font-style:italic}
+
+/* REPORT */
+.report-card{background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(236,72,153,.05));border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;line-height:1.7}
+.report-title{font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.stat-val{font-size:28px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+/* MOBILE */
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-280px;top:0;bottom:0;width:260px;z-index:200;transition:left .3s}
+  .sidebar.open{left:0}
+  .chat-list{display:none}
+  .menu-toggle{display:block !important}
 }
-
-.login-logo {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 20px;
-  background: var(--grad-xp);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
-}
-
-.login-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  background: var(--grad-xp);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.login-sub {
-  font-size: 13px;
-  color: #6B82A0;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
-.google-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: var(--fg);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.2s;
-  font-family: 'DM Sans', sans-serif;
-}
-
-.google-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  transform: translateY(-1px);
-}
-
-.login-note {
-  font-size: 11px;
-  color: #3A4E6B;
-  margin-top: 16px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* LOADING SCREEN */
-.loading-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(0, 210, 255, 0.2);
-  border-top: 4px solid var(--xp);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 14px;
-  color: #6B82A0;
-}
-
-/* ONBOARDING SCREEN */
-.onboard-card {
-  background: rgba(22, 31, 48, 0.95);
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  border-radius: 18px;
-  padding: 32px;
-  width: 90%;
-  max-width: 480px;
-}
-
-.ob-section {
-  margin-bottom: 24px;
-}
-
-.ob-label {
-  font-size: 11px;
-  color: #6B82A0;
-  font-family: 'JetBrains Mono', monospace;
-  margin-bottom: 10px;
-  display: block;
-  font-weight: 600;
-}
-
-.ob-opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ob-opt {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-  color: #6B82A0;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.ob-opt:hover,
-.ob-opt.selected {
-  border-color: var(--xp);
-  color: var(--xp);
-  background: rgba(0, 210, 255, 0.08);
-}
-
-.ob-input {
-  width: 100%;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--fg);
-  font-size: 13px;
-  font-family: 'DM Sans', sans-serif;
-  margin-bottom: 16px;
-}
-
-.ob-submit {
-  width: 100%;
-  padding: 12px;
-  background: var(--grad-xp);
-  border: none;
-  border-radius: 12px;
-  color: #000;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.ob-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 30px rgba(0, 210, 255, 0.3);
-}
-
-.ob-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* DASHBOARD */
-.dashboard {
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.dash-header {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 20px;
-  background: var(--grad-xp);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 30px;
-}
-
-.stat-card {
-  background: rgba(22, 31, 48, 0.8);
-  border: 1px solid rgba(0, 210, 255, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #6B82A0;
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--xp);
-}
-
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-}
-
-.btn {
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: var(--grad-xp);
-  color: #000;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  background: rgba(0, 210, 255, 0.1);
-  color: var(--xp);
-  border: 1px solid rgba(0, 210, 255, 0.2);
-}
-
-.btn-secondary:hover {
-  background: rgba(0, 210, 255, 0.15);
-}
-
-.btn-danger {
-  background: rgba(255, 59, 92, 0.1);
-  color: var(--red);
-  border: 1px solid rgba(255, 59, 92, 0.2);
-}
-
-.btn-danger:hover {
-  background: rgba(255, 59, 92, 0.15);
-}
-
-/* ERROR MESSAGE */
-.error-box {
-  background: rgba(255, 59, 92, 0.1);
-  border: 1px solid rgba(255, 59, 92, 0.3);
-  border-radius: 10px;
-  padding: 16px;
-  color: var(--red);
-  margin-bottom: 20px;
-  font-size: 13px;
-}
-
-.success-box {
-  background: rgba(0, 200, 83, 0.1);
-  border: 1px solid rgba(0, 200, 83, 0.3);
-  border-radius: 10px;
-  padding: 16px;
-  color: var(--green);
-  margin-bottom: 20px;
-  font-size: 13px;
-}
-
-.hidden { display: none !important; }
-
-@media (max-width: 768px) {
-  .login-card,
-  .onboard-card {
-    width: 95%;
-    padding: 24px;
-  }
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.menu-toggle{display:none;padding:6px 10px;border-radius:6px;font-size:18px}
+.menu-toggle:hover{background:var(--bg3)}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:none}
+.sidebar-overlay.open{display:block}
 </style>
 </head>
 <body>
 
-<div class="container">
-  <!-- LOGIN SCREEN -->
-  <div id="login-screen" class="screen active">
-    <div class="login-card">
-      <div class="login-logo">🧠</div>
-      <div class="login-title">GRIND AI</div>
-      <div class="login-sub">
-        Elite JEE/NEET AI mentor.<br>
-        Real talk. No fluff.
-      </div>
-      <a href="/auth/google" class="google-btn">
-        <span>🔐</span> Continue with Google
-      </a>
-      <div class="login-note">✓ Secure • ✓ Private • ✓ No ads</div>
-    </div>
-  </div>
-
-  <!-- LOADING SCREEN -->
-  <div id="loading-screen" class="screen">
-    <div class="loading-screen">
-      <div class="spinner"></div>
-      <div class="loading-text">Authenticating...</div>
-    </div>
-  </div>
-
-  <!-- ONBOARDING SCREEN -->
-  <div id="onboarding-screen" class="screen">
-    <div class="onboard-card">
-      <div style="font-size: 28px; margin-bottom: 16px;">👋</div>
-      <h1 style="font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px;">Setup Your Profile</h1>
-      <p style="font-size: 13px; color: #6B82A0; margin-bottom: 24px;">Help us personalize your experience</p>
-
-      <div id="onboarding-error" class="error-box hidden"></div>
-
-      <div class="ob-section">
-        <label class="ob-label">EXAM</label>
-        <div class="ob-opts" id="exam-opts">
-          <div class="ob-opt" data-val="JEE Main">JEE Main</div>
-          <div class="ob-opt" data-val="JEE Advanced">JEE Advanced</div>
-          <div class="ob-opt" data-val="NEET">NEET</div>
-          <div class="ob-opt" data-val="Both">Both JEE & NEET</div>
-        </div>
-      </div>
-
-      <div class="ob-section">
-        <label class="ob-label">CLASS / YEAR</label>
-        <div class="ob-opts" id="class-opts">
-          <div class="ob-opt" data-val="Class 11">Class 11</div>
-          <div class="ob-opt" data-val="Class 12">Class 12</div>
-          <div class="ob-opt" data-val="Dropper">Dropper</div>
-        </div>
-      </div>
-
-      <div class="ob-section">
-        <label class="ob-label">BIGGEST STRUGGLE</label>
-        <div class="ob-opts" id="struggle-opts">
-          <div class="ob-opt" data-val="Focus">Focus & Concentration</div>
-          <div class="ob-opt" data-val="Motivation">Motivation & Burnout</div>
-          <div class="ob-opt" data-val="Concepts">Concepts Not Clicking</div>
-          <div class="ob-opt" data-val="Time">Time Management</div>
-          <div class="ob-opt" data-val="Anxiety">Exam Anxiety</div>
-        </div>
-      </div>
-
-      <button class="ob-submit" onclick="submitOnboarding()">
-        Start Grinding 🔥
-      </button>
-    </div>
-  </div>
-
-  <!-- DASHBOARD SCREEN -->
-  <div id="dashboard-screen" class="screen">
-    <div class="dashboard">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <div class="dash-header">Welcome, <span id="user-name">Student</span>!</div>
-        <button class="btn btn-danger" onclick="handleLogout()">Logout</button>
-      </div>
-
-      <div id="dashboard-error" class="error-box hidden"></div>
-      <div id="dashboard-success" class="success-box hidden"></div>
-
-      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0;">Your Progress</h2>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Current Level</div>
-          <div class="stat-value" id="stat-level">1</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total XP</div>
-          <div class="stat-value" id="stat-xp">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Study Streak</div>
-          <div class="stat-value" id="stat-streak">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Questions Solved</div>
-          <div class="stat-value" id="stat-solved">0</div>
-        </div>
-      </div>
-
-      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0;">Quick Actions</h2>
-      <div class="quick-actions">
-        <button class="btn btn-primary" onclick="startChat()">💬 Chat with AI</button>
-        <button class="btn btn-primary" onclick="viewNotes()">📝 My Notes</button>
-        <button class="btn btn-primary" onclick="viewSessions()">📚 History</button>
-        <button class="btn btn-secondary" onclick="viewAnalytics()">📊 Analytics</button>
-      </div>
-
-      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0; color: #6B82A0;">Features Coming Soon</h2>
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; color: #6B82A0; font-size: 13px;">
-        <div>✓ Mock Tests</div>
-        <div>✓ Mistake Book</div>
-        <div>✓ Study Planner</div>
-        <div>✓ Leaderboards</div>
-      </div>
-    </div>
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-bg"></div>
+  <div class="auth-card">
+    <div class="logo-big">🧠</div>
+    <div class="brand-name">GRIND</div>
+    <div class="brand-tag">Your elite JEE/NEET cognitive coach.<br/>Real talk. No fake motivation.</div>
+    <button class="btn-google" onclick="window.location='/auth/google'">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1.1-.9 2.1-1.9 2.7v2.3h3.1c1.8-1.7 2.9-4.2 2.9-7z"/><path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-3.1-2.3c-.8.6-1.9.9-3 .9-2.3 0-4.3-1.6-5-3.7H.7v2.4C2.2 16.1 5.3 18 9 18z"/><path fill="#FBBC05" d="M4 10.7c-.2-.6-.3-1.2-.3-1.7s.1-1.2.3-1.7V4.9H.7C.3 5.9 0 7 0 8.5s.3 2.6.7 3.6L4 10.7z"/><path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.5-2.5C13.4 1 11.3 0 9 0 5.3 0 2.2 1.9.7 4.9l3.2 2.4C4.7 5.2 6.7 3.6 9 3.6z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-foot">Chats saved privately · No ads · Built for aspirants</div>
   </div>
 </div>
 
+<!-- ONBOARDING -->
+<div id="onboardScreen" class="onboard-screen hidden">
+  <div class="onboard-card">
+    <div class="onboard-title">👋 Set up your profile</div>
+    <div class="onboard-sub">GRIND personalizes every response based on your situation</div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">👤 GENDER</div>
+      <div class="chip-group" data-group="gender">
+        <div class="chip" data-value="male">Male</div>
+        <div class="chip" data-value="female">Female</div>
+        <div class="chip" data-value="other">Prefer not to say</div>
+      </div>
+    </div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">🎯 EXAM</div>
+      <div class="chip-group" data-group="exam">
+        <div class="chip" data-value="JEE Main">JEE Main</div>
+        <div class="chip" data-value="JEE Advanced">JEE Advanced</div>
+        <div class="chip" data-value="NEET">NEET</div>
+        <div class="chip" data-value="Both">Both</div>
+      </div>
+    </div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">📚 CLASS / YEAR</div>
+      <div class="chip-group" data-group="class">
+        <div class="chip" data-value="Class 11">Class 11</div>
+        <div class="chip" data-value="Class 12">Class 12</div>
+        <div class="chip" data-value="Dropper">Dropper</div>
+      </div>
+    </div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">🏫 COACHING</div>
+      <div class="chip-group" data-group="coaching">
+        <div class="chip" data-value="Allen">Allen</div>
+        <div class="chip" data-value="Aakash">Aakash</div>
+        <div class="chip" data-value="PW">PW</div>
+        <div class="chip" data-value="Narayana">Narayana</div>
+        <div class="chip" data-value="Sri Chaitanya">Sri Chaitanya</div>
+        <div class="chip" data-value="Resonance">Resonance</div>
+        <div class="chip" data-value="Self-Study">Self-Study</div>
+        <div class="chip" data-value="Other">Other</div>
+      </div>
+    </div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">😤 BIGGEST STRUGGLE</div>
+      <div class="chip-group" data-group="biggestStruggle">
+        <div class="chip" data-value="Focus">Focus</div>
+        <div class="chip" data-value="Motivation">Motivation</div>
+        <div class="chip" data-value="Concepts">Concepts</div>
+        <div class="chip" data-value="Time">Time</div>
+        <div class="chip" data-value="Family pressure">Family pressure</div>
+        <div class="chip" data-value="Exam anxiety">Exam anxiety</div>
+        <div class="chip" data-value="Other">Other</div>
+      </div>
+    </div>
+
+    <div class="onboard-section">
+      <div class="onboard-label">⏰ STUDY HOURS PER DAY</div>
+      <div class="chip-group" data-group="hoursPerDay">
+        <div class="chip" data-value="&lt; 2 hrs">&lt; 2 hrs</div>
+        <div class="chip" data-value="2-4 hrs">2-4 hrs</div>
+        <div class="chip" data-value="4-6 hrs">4-6 hrs</div>
+        <div class="chip" data-value="6-8 hrs">6-8 hrs</div>
+        <div class="chip" data-value="8+ hrs">8+ hrs</div>
+      </div>
+    </div>
+
+    <button class="btn-start" onclick="submitOnboard()">Start Grinding 🔥</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" class="app hidden">
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-logo">🧠</div>
+      <div class="sidebar-brand">GRIND</div>
+    </div>
+    <button class="new-chat-btn" onclick="newChat()">
+      <span>+</span><span>New Chat</span>
+    </button>
+    <nav class="nav-list">
+      <div class="nav-group-label">Core</div>
+      <div class="nav-item active" data-view="chat"><span class="icon">💬</span>Chat</div>
+      <div class="nav-item" data-view="quiz"><span class="icon">⚡</span>Quiz Arena</div>
+      <div class="nav-item" data-view="planner"><span class="icon">📅</span>Day Planner</div>
+
+      <div class="nav-group-label">Master</div>
+      <div class="nav-item" data-view="daily"><span class="icon">🎯</span>Daily Challenge</div>
+      <div class="nav-item" data-view="story"><span class="icon">📖</span>Story Mode</div>
+      <div class="nav-item" data-view="boss"><span class="icon">⚔️</span>Boss Battles</div>
+      <div class="nav-item" data-view="formulas"><span class="icon">🏰</span>Formula Fortress<span class="badge" id="formulaBadge" style="display:none">0</span></div>
+      <div class="nav-item" data-view="mistakes"><span class="icon">📕</span>Mistake Book</div>
+
+      <div class="nav-group-label">Compete</div>
+      <div class="nav-item" data-view="multiplayer"><span class="icon">👥</span>Multiplayer</div>
+      <div class="nav-item" data-view="leaderboard"><span class="icon">🏆</span>Leaderboard</div>
+      <div class="nav-item" data-view="report"><span class="icon">📊</span>War Report</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-avatar" id="userAvatar">G</div>
+      <div class="user-info">
+        <div class="user-name" id="userName">Guest</div>
+        <div class="user-meta"><span>Lv.</span><span id="userLevel">1</span>·<span id="userXP">0</span>XP</div>
+      </div>
+      <button class="logout-btn" onclick="location='/auth/logout'" title="Logout">⏻</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="view-title" id="viewTitle">💬 Chat</div>
+      <div class="topbar-right">
+        <div class="streak-pill">🔥<span id="streakNum">0</span></div>
+        <div class="coin-pill">🪙<span id="coinNum">0</span></div>
+        <div class="level-pill" id="levelPill">Lv.1</div>
+        <div class="xp-bar"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- CHAT VIEW -->
+    <div class="view view-chat" id="view-chat">
+      <div class="chat-list">
+        <div class="chat-list-head">Recent Chats</div>
+        <div class="chat-list-items" id="chatList"></div>
+      </div>
+      <div class="chat-main">
+        <div class="chat-messages" id="chatMessages">
+          <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <div>Start a conversation. Ask anything about JEE/NEET.</div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-wrap">
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="Ask GRIND anything..."></textarea>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUIZ VIEW -->
+    <div class="view hidden" id="view-quiz">
+      <div class="quiz-view">
+        <div class="quiz-container">
+          <div class="rival-card" id="rivalCard" style="display:none">
+            <div class="rival-header">
+              <div class="rival-avatar">A</div>
+              <div>
+                <div class="rival-name">Aryan (Your Rival)</div>
+                <div class="rival-level">Level <span id="rivalLevel">1</span></div>
+              </div>
+            </div>
+            <div class="rival-taunt" id="rivalTaunt">Loading...</div>
+            <div class="rival-stats">
+              <div class="rival-stat"><div class="rival-stat-val" id="rivalXP">0</div><div class="rival-stat-lbl">XP Gap</div></div>
+              <div class="rival-stat"><div class="rival-stat-val" id="rivalStreak">0</div><div class="rival-stat-lbl">Streak Gap</div></div>
+              <div class="rival-stat"><div class="rival-stat-val" id="rivalLvl">0</div><div class="rival-stat-lbl">Lvl Gap</div></div>
+            </div>
+          </div>
+
+          <div class="quiz-hero">
+            <div class="quiz-stat"><div class="quiz-stat-val" id="quizTotalSolved">0</div><div class="quiz-stat-lbl">Solved</div></div>
+            <div class="quiz-stat"><div class="quiz-stat-val" id="quizAccuracy">0%</div><div class="quiz-stat-lbl">Accuracy</div></div>
+            <div class="quiz-stat"><div class="quiz-stat-val" id="quizStreak">0</div><div class="quiz-stat-lbl">Streak</div></div>
+            <div class="quiz-stat"><div class="quiz-stat-val" id="quizLevel">1</div><div class="quiz-stat-lbl">Level</div></div>
+            <div class="quiz-stat"><div class="quiz-stat-val" id="quizXP">0</div><div class="quiz-stat-lbl">XP</div></div>
+          </div>
+
+          <div class="quiz-controls">
+            <div class="quiz-control">
+              <label>Subject</label>
+              <select id="quizSubject">
+                <option>Physics</option><option>Chemistry</option><option>Mathematics</option><option>Biology</option>
+              </select>
+            </div>
+            <div class="quiz-control">
+              <label>Chapter (optional)</label>
+              <input id="quizChapter" placeholder="e.g., Thermodynamics"/>
+            </div>
+            <div class="quiz-control">
+              <label>Topic (optional)</label>
+              <input id="quizTopic" placeholder="Specific topic"/>
+            </div>
+            <div class="quiz-control">
+              <label>Difficulty</label>
+              <select id="quizDifficulty">
+                <option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option>
+              </select>
+            </div>
+            <div class="quiz-control">
+              <label>Mode</label>
+              <select id="quizMode">
+                <option value="practice">Practice</option><option value="pyq">PYQ (Past Papers)</option>
+              </select>
+            </div>
+            <div class="quiz-control" style="justify-content:flex-end">
+              <button class="btn-quiz primary" onclick="loadQuizQuestion()">⚡ Get Question</button>
+            </div>
+          </div>
+
+          <div id="quizContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANNER VIEW -->
+    <div class="view hidden" id="view-planner">
+      <div class="planner-view">
+        <div class="planner-container">
+          <div class="planner-head">
+            <div class="planner-tabs">
+              <button class="planner-tab active" data-view="today">Today</button>
+              <button class="planner-tab" data-view="week">This Week</button>
+              <button class="planner-tab" data-view="completed">Completed</button>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="btn-quiz secondary" onclick="openAddTask()">+ Add Task</button>
+              <button class="btn-quiz primary" onclick="generateAIPlan()">🤖 AI Generate</button>
+            </div>
+          </div>
+
+          <div class="mood-widget" id="moodWidget">
+            <div class="mood-widget-title">🧘 How are you feeling today?</div>
+            <div class="mood-buttons">
+              <button class="mood-btn" data-mood="1">😞</button>
+              <button class="mood-btn" data-mood="2">😕</button>
+              <button class="mood-btn" data-mood="3">😐</button>
+              <button class="mood-btn" data-mood="4">🙂</button>
+              <button class="mood-btn" data-mood="5">😄</button>
+            </div>
+            <div class="mood-ai" id="moodAI" style="display:none"></div>
+          </div>
+
+          <div id="plannerTasks" class="task-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORMULA VIEW -->
+    <div class="view hidden" id="view-formulas">
+      <div class="formula-view">
+        <div class="formula-container">
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-val" id="formulaTotal">0</div><div class="stat-lbl">Total</div></div>
+            <div class="stat-card"><div class="stat-val" id="formulaDue">0</div><div class="stat-lbl">Due Now</div></div>
+            <div class="stat-card"><div class="stat-val" id="formulaMastered">0</div><div class="stat-lbl">Mastered</div></div>
+          </div>
+
+          <div class="add-formula-form">
+            <div style="font-weight:700;margin-bottom:8px">+ Add Formula</div>
+            <input id="fSubject" placeholder="Subject (Physics/Chemistry/Math)"/>
+            <input id="fChapter" placeholder="Chapter"/>
+            <textarea id="fFormula" placeholder="Formula in LaTeX, e.g., $F = ma$ or \[E = mc^2\]"></textarea>
+            <input id="fContext" placeholder="Context / when to use"/>
+            <button class="btn-quiz primary" onclick="addFormula()">Add to Fortress</button>
+          </div>
+
+          <div id="formulaDeck"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STORY VIEW -->
+    <div class="view hidden" id="view-story">
+      <div class="story-view">
+        <div class="story-container">
+          <div class="story-hero">
+            <h2>📖 Story Mode</h2>
+            <p>8 questions → AI teaches you what you got wrong → Same 8 questions again. Proven 2x retention boost.</p>
+          </div>
+
+          <div class="story-step" id="storySetup">
+            <div class="story-step-title"><div class="story-step-num">1</div>Choose Your Chapter</div>
+            <div class="quiz-controls">
+              <div class="quiz-control"><label>Subject</label>
+                <select id="storySubject"><option>Physics</option><option>Chemistry</option><option>Mathematics</option></select>
+              </div>
+              <div class="quiz-control"><label>Chapter</label><input id="storyChapter" placeholder="e.g., Kinematics"/></div>
+              <div class="quiz-control"><label>Exam</label>
+                <select id="storyExam"><option>JEE Main</option><option>JEE Advanced</option><option>NEET</option></select>
+              </div>
+              <div class="quiz-control" style="justify-content:flex-end">
+                <button class="btn-quiz primary" onclick="startStory()">Begin Story</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="storyContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOSS VIEW -->
+    <div class="view hidden" id="view-boss">
+      <div class="boss-view">
+        <div class="boss-container">
+          <div class="story-hero">
+            <h2>⚔️ Boss Battles</h2>
+            <p>Chapter Bosses (12 questions) or World Bosses (20 questions, mixed chapters). Beat them to earn massive XP.</p>
+          </div>
+
+          <div class="boss-config" id="bossSetup">
+            <div class="quiz-control"><label>Subject</label>
+              <select id="bossSubject"><option>Physics</option><option>Chemistry</option><option>Mathematics</option></select>
+            </div>
+            <div class="quiz-control"><label>Chapter (for chapter boss)</label><input id="bossChapter" placeholder="Leave empty for world boss"/></div>
+            <div class="quiz-control"><label>Type</label>
+              <select id="bossType"><option value="chapter">Chapter Boss</option><option value="world">World Boss</option></select>
+            </div>
+            <div class="quiz-control" style="justify-content:flex-end">
+              <button class="btn-quiz primary" onclick="startBoss()">⚔️ Challenge Boss</button>
+            </div>
+          </div>
+
+          <div id="bossContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY CHALLENGE VIEW -->
+    <div class="view hidden" id="view-daily">
+      <div class="daily-view">
+        <div class="daily-container">
+          <div class="daily-hero">
+            <div class="daily-title">🎯 DAILY CHALLENGE</div>
+            <div style="color:var(--text2);font-size:14px">One hard question. One shot. Resets every 24h.</div>
+            <div class="daily-solvers" id="dailySolvers">—</div>
+          </div>
+          <div id="dailyContent"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MULTIPLAYER VIEW -->
+    <div class="view hidden" id="view-multiplayer">
+      <div class="mp-view">
+        <div class="mp-container">
+          <div class="story-hero">
+            <h2>👥 Multiplayer Quiz</h2>
+            <p>Challenge your friends in real-time. Create or join a room.</p>
+          </div>
+
+          <div id="mpLobby">
+            <div class="mp-lobby">
+              <div style="font-size:15px;font-weight:600;margin-bottom:12px">Your Display Name</div>
+              <input id="mpName" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:100%;max-width:300px;margin-bottom:16px" placeholder="Enter your name"/>
+              <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+                <button class="btn-quiz primary" onclick="createRoom()">🎮 Create Room</button>
+                <button class="btn-quiz secondary" onclick="showJoinRoom()">🔗 Join Room</button>
+              </div>
+              <div id="joinRoomForm" style="display:none;margin-top:16px">
+                <input id="mpCode" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:100%;max-width:200px;margin-bottom:8px" placeholder="4-digit code"/>
+                <button class="btn-quiz primary" onclick="joinRoom()">Join</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="mpGame" style="display:none">
+            <div class="mp-lobby">
+              <div style="font-size:13px;color:var(--text3)">Room Code</div>
+              <div class="mp-code" id="mpCodeDisplay">----</div>
+              <div class="mp-players" id="mpPlayers"></div>
+              <button class="btn-quiz primary" id="mpStartBtn" style="display:none" onclick="startMPGame()">Start Game</button>
+            </div>
+            <div id="mpQuestion"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD VIEW -->
+    <div class="view hidden" id="view-leaderboard">
+      <div class="lb-view">
+        <div class="lb-container">
+          <div class="lb-tabs">
+            <button class="lb-tab active" data-type="total">All Time</button>
+            <button class="lb-tab" data-type="weekly">Weekly</button>
+            <button class="lb-tab" data-type="streak">Streak</button>
+          </div>
+          <div id="lbList" class="lb-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT VIEW -->
+    <div class="view hidden" id="view-report">
+      <div class="planner-view">
+        <div class="planner-container">
+          <div class="story-hero">
+            <h2>📊 Weekly War Report</h2>
+            <p>Your personalized AI-generated battle analysis</p>
+          </div>
+          <button class="btn-quiz primary" onclick="loadReport()" style="width:100%;margin-bottom:16px">Generate My Report</button>
+          <div id="reportContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISTAKES VIEW -->
+    <div class="view hidden" id="view-mistakes">
+      <div class="planner-view">
+        <div class="planner-container">
+          <div class="planner-head">
+            <div class="planner-tabs">
+              <button class="planner-tab active" data-subj="All">All</button>
+              <button class="planner-tab" data-subj="Physics">Physics</button>
+              <button class="planner-tab" data-subj="Chemistry">Chemistry</button>
+              <button class="planner-tab" data-subj="Mathematics">Maths</button>
+              <button class="planner-tab" data-subj="Biology">Biology</button>
+            </div>
+          </div>
+          <div id="mistakesList" class="task-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- POMODORO FLOAT -->
+<button class="pomo-float hidden" id="pomoFloat" onclick="openPomodoro()" title="Focus Timer">🍅</button>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toastWrap"></div>
+
 <script>
-console.log('🧠 GRIND AI initializing...');
+// ============ STATE ============
+const state = {
+  user: null,
+  currentView: 'chat',
+  currentSessionId: 'new',
+  messages: [],
+  sessions: [],
+  plannerView: 'today',
+  lbType: 'total',
+  mistakeSubject: 'All',
+  quizSession: { total: 0, correct: 0, streak: 0 },
+  socket: null,
+  mpRoom: null,
+  mpHost: false,
+  pomodoro: { running: false, timeLeft: 0, subject: '', interval: null }
+};
 
-let currentUser = null;
-
-// ═══════════════════════════════════════════════════════════
-// AUTHENTICATION CHECK
-// ═══════════════════════════════════════════════════════════
-
-async function checkAuth() {
-  console.log('🔍 Checking authentication status...');
-  
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', async () => {
   try {
-    const response = await fetch('/api/auth/status', {
-      credentials: 'include'
-    });
-    
-    if (!response.ok) throw new Error('Auth check failed');
-    
-    const data = await response.json();
-    console.log('✅ Auth status:', data);
-
-    if (data.authenticated && data.user) {
-      currentUser = data.user;
-      console.log('✅ User logged in:', currentUser.email);
-      
-      if (currentUser.isOnboarded) {
-        showDashboard();
-      } else {
-        showOnboarding();
-      }
-    } else {
-      console.log('⚠️  User not authenticated');
-      showLogin();
-    }
-  } catch (err) {
-    console.error('❌ Auth check error:', err);
-    showLogin();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// SCREEN MANAGEMENT
-// ═══════════════════════════════════════════════════════════
-
-function hideAllScreens() {
-  document.querySelectorAll('.screen').forEach(el => {
-    el.classList.remove('active');
-  });
-}
-
-function showLogin() {
-  hideAllScreens();
-  document.getElementById('login-screen').classList.add('active');
-  console.log('📍 Showing login screen');
-}
-
-function showLoading() {
-  hideAllScreens();
-  document.getElementById('loading-screen').classList.add('active');
-  console.log('⏳ Showing loading screen');
-}
-
-function showOnboarding() {
-  hideAllScreens();
-  document.getElementById('onboarding-screen').classList.add('active');
-  console.log('📍 Showing onboarding screen');
-}
-
-function showDashboard() {
-  hideAllScreens();
-  document.getElementById('dashboard-screen').classList.add('active');
-  updateDashboard();
-  console.log('📍 Showing dashboard');
-}
-
-// ═══════════════════════════════════════════════════════════
-// ONBOARDING LOGIC
-// ═══════════════════════════════════════════════════════════
-
-document.querySelectorAll('[id$="-opts"]').forEach(group => {
-  group.querySelectorAll('.ob-opt').forEach(opt => {
-    opt.addEventListener('click', () => {
-      group.querySelectorAll('.ob-opt').forEach(o => o.classList.remove('selected'));
-      opt.classList.add('selected');
-    });
-  });
-});
-
-async function submitOnboarding() {
-  try {
-    const exam = document.querySelector('#exam-opts .ob-opt.selected')?.dataset.val;
-    const cls = document.querySelector('#class-opts .ob-opt.selected')?.dataset.val;
-    const struggle = document.querySelector('#struggle-opts .ob-opt.selected')?.dataset.val;
-
-    if (!exam || !cls) {
-      showError('onboarding-error', 'Please select exam and class');
+    const res = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.authenticated) {
+      document.getElementById('authScreen').classList.remove('hidden');
       return;
     }
+    const me = await fetch('/api/me', { credentials: 'include' });
+    const meData = await me.json();
+    state.user = meData.user;
+    if (!state.user.isOnboarded) {
+      document.getElementById('onboardScreen').classList.remove('hidden');
+    } else {
+      document.getElementById('appScreen').classList.remove('hidden');
+      document.getElementById('pomoFloat').classList.remove('hidden');
+      initApp();
+    }
+  } catch (e) {
+    document.getElementById('authScreen').classList.remove('hidden');
+  }
+});
 
-    console.log('📤 Submitting onboarding:', { exam, cls, struggle });
+function initApp() {
+  updateUserUI();
+  loadSessions();
+  loadRival();
+  checkMoodToday();
+  setupEventListeners();
+  checkDailyReward();
+  initSocket();
+}
 
-    const response = await fetch('/api/user/onboard', {
-      method: 'POST',
+function setupEventListeners() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => switchView(el.dataset.view));
+  });
+  document.querySelectorAll('.planner-tab[data-view]').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.planner-tab[data-view]').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      state.plannerView = el.dataset.view;
+      loadTasks();
+    });
+  });
+  document.querySelectorAll('.lb-tab').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      state.lbType = el.dataset.type;
+      loadLeaderboard();
+    });
+  });
+  document.querySelectorAll('.planner-tab[data-subj]').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.planner-tab[data-subj]').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      state.mistakeSubject = el.dataset.subj;
+      loadMistakes();
+    });
+  });
+  document.querySelectorAll('.mood-btn').forEach(el => {
+    el.addEventListener('click', () => submitMood(parseInt(el.dataset.mood)));
+  });
+  const chatInput = document.getElementById('chatInput');
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 180) + 'px';
+  });
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
+
+function switchView(view) {
+  state.currentView = view;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  const titles = {
+    chat: '💬 Chat', quiz: '⚡ Quiz Arena', planner: '📅 Day Planner',
+    formulas: '🏰 Formula Fortress', story: '📖 Story Mode', boss: '⚔️ Boss Battles',
+    daily: '🎯 Daily Challenge', multiplayer: '👥 Multiplayer',
+    leaderboard: '🏆 Leaderboard', report: '📊 War Report', mistakes: '📕 Mistake Book'
+  };
+  document.getElementById('viewTitle').textContent = titles[view] || view;
+  if (view === 'planner') loadTasks();
+  if (view === 'formulas') loadFormulas();
+  if (view === 'leaderboard') loadLeaderboard();
+  if (view === 'mistakes') loadMistakes();
+  if (view === 'daily') loadDaily();
+  if (window.innerWidth <= 900) toggleSidebar(false);
+}
+
+function toggleSidebar(force) {
+  const sb = document.getElementById('sidebar');
+  const ov = document.querySelector('.sidebar-overlay');
+  const open = force !== undefined ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  ov.classList.toggle('open', open);
+}
+
+function updateUserUI() {
+  const u = state.user;
+  document.getElementById('userName').textContent = u.name;
+  document.getElementById('userLevel').textContent = u.quizLevel;
+  document.getElementById('userXP').textContent = u.quizXP;
+  document.getElementById('levelPill').textContent = 'Lv.' + u.quizLevel;
+  document.getElementById('streakNum').textContent = u.loginStreak || u.streak || 0;
+  document.getElementById('coinNum').textContent = u.coins || 0;
+  const avatar = document.getElementById('userAvatar');
+  if (u.photo) {
+    avatar.innerHTML = `<img src="${u.photo}" alt=""/>`;
+  } else {
+    avatar.textContent = (u.name || 'G').charAt(0).toUpperCase();
+  }
+  const xpForLevel = Math.pow(u.quizLevel - 1, 2) * 100;
+  const xpForNext = Math.pow(u.quizLevel, 2) * 100;
+  const progress = ((u.quizXP - xpForLevel) / (xpForNext - xpForLevel)) * 100;
+  document.getElementById('xpFill').style.width = Math.min(100, Math.max(0, progress)) + '%';
+  document.getElementById('quizTotalSolved').textContent = u.totalQSolved || 0;
+  document.getElementById('quizLevel').textContent = u.quizLevel || 1;
+  document.getElementById('quizXP').textContent = u.quizXP || 0;
+  const acc = u.totalQSolved > 0 ? Math.round((u.totalQCorrect / u.totalQSolved) * 100) : 0;
+  document.getElementById('quizAccuracy').textContent = acc + '%';
+}
+
+// ============ ONBOARDING ============
+document.querySelectorAll('.chip-group').forEach(group => {
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+});
+
+async function submitOnboard() {
+  const data = {};
+  ['gender', 'exam', 'class', 'coaching', 'biggestStruggle', 'hoursPerDay'].forEach(key => {
+    const active = document.querySelector(`.chip-group[data-group="${key}"] .chip.active`);
+    if (active) data[key] = active.dataset.value;
+  });
+  try {
+    await fetch('/api/user/onboard', {
+      method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+    toast('Profile saved! Welcome to the Grind 🔥', 'success');
+    location.reload();
+  } catch (e) {
+    toast('Could not save profile', 'error');
+  }
+}
+
+// ============ CHAT ============
+async function loadSessions() {
+  try {
+    const res = await fetch('/api/sessions', { credentials: 'include' });
+    const data = await res.json();
+    state.sessions = data.sessions || [];
+    renderSessions();
+  } catch {}
+}
+
+function renderSessions() {
+  const list = document.getElementById('chatList');
+  if (!state.sessions.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No chats yet</div>';
+    return;
+  }
+  list.innerHTML = state.sessions.map(s => `
+    <div class="chat-list-item ${s._id === state.currentSessionId ? 'active' : ''}" onclick="openSession('${s._id}')">
+      <div class="chat-list-title">${escapeHtml(s.title || 'New Conversation')}</div>
+      <button class="chat-list-del" onclick="event.stopPropagation();deleteSession('${s._id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function newChat() {
+  state.currentSessionId = 'new';
+  state.messages = [];
+  document.getElementById('chatMessages').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">💬</div>
+      <div>Start a conversation. Ask anything about JEE/NEET.</div>
+    </div>`;
+  renderSessions();
+  switchView('chat');
+}
+
+async function openSession(id) {
+  try {
+    const res = await fetch('/api/sessions/' + id, { credentials: 'include' });
+    const data = await res.json();
+    state.currentSessionId = id;
+    state.messages = (data.session.messages || []).map(m => ({ role: m.role, content: m.content }));
+    renderMessages();
+    renderSessions();
+  } catch {}
+}
+
+async function deleteSession(id) {
+  if (!confirm('Delete this chat?')) return;
+  try {
+    await fetch('/api/sessions/' + id, { method: 'DELETE', credentials: 'include' });
+    state.sessions = state.sessions.filter(s => s._id !== id);
+    if (state.currentSessionId === id) newChat();
+    else renderSessions();
+  } catch {}
+}
+
+function renderMessages() {
+  const el = document.getElementById('chatMessages');
+  if (!state.messages.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div>Start a conversation.</div></div>';
+    return;
+  }
+  el.innerHTML = state.messages.map((m, i) => renderMessage(m, i)).join('');
+  el.scrollTop = el.scrollHeight;
+  renderAllLatex();
+}
+
+function renderMessage(m, idx) {
+  const avatar = m.role === 'user' ? '👤' : '🧠';
+  const content = m.role === 'assistant' ? renderMarkdown(m.content) : escapeHtml(m.content).replace(/\n/g, '<br/>');
+  return `
+    <div class="msg ${m.role}">
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-body">
+        ${content}
+        ${m.role === 'assistant' ? `
+          <div class="msg-actions">
+            <button class="msg-action" onclick="copyMsg(${idx})">📋 Copy</button>
+          </div>
+        ` : ''}
+      </div>
+    </div>`;
+}
+
+function renderMarkdown(text) {
+  if (!text) return '';
+  // Protect LaTeX from markdown mangling
+  const blocks = [];
+  let protectedText = text.replace(/\\\[([\s\S]*?)\\\]/g, (m) => {
+    blocks.push(m);
+    return `@@BLOCK${blocks.length - 1}@@`;
+  });
+  protectedText = protectedText.replace(/\$([^\$\s][^\$]*?[^\$\s]|[^\$\s])\$/g, (m) => {
+    blocks.push(m);
+    return `@@BLOCK${blocks.length - 1}@@`;
+  });
+  let html = marked.parse(protectedText);
+  html = html.replace(/@@BLOCK(\d+)@@/g, (_, i) => blocks[parseInt(i)]);
+  return html;
+}
+
+function renderAllLatex() {
+  document.querySelectorAll('.msg-body, .quiz-question, .quiz-explain, .formula-text, .teaching-content').forEach(el => {
+    if (el.dataset.latexed) return;
+    el.dataset.latexed = '1';
+    try {
+      if (window.renderMathInElement) {
+        renderMathInElement(el, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+    } catch {}
+  });
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+
+  state.messages.push({ role: 'user', content: text });
+  if (state.messages.length === 1 && state.currentSessionId === 'new') {
+    try {
+      const res = await fetch('/api/sessions/new', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      state.currentSessionId = data.sessionId;
+    } catch {}
+  }
+  renderMessages();
+
+  const msgEl = document.getElementById('chatMessages');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'msg assistant';
+  typingEl.id = 'typingIndicator';
+  typingEl.innerHTML = '<div class="msg-avatar">🧠</div><div class="msg-body"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  msgEl.appendChild(typingEl);
+  msgEl.scrollTop = msgEl.scrollHeight;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: state.messages, sessionId: state.currentSessionId })
+    });
+    const data = await res.json();
+    document.getElementById('typingIndicator')?.remove();
+    if (data.reply) {
+      state.messages.push({ role: 'assistant', content: data.reply });
+      renderMessages();
+      loadSessions();
+      if (data.autoMistakes > 0) toast(`${data.autoMistakes} mistake(s) logged to Mistake Book`, 'success');
+    } else {
+      toast(data.error || 'AI failed', 'error');
+    }
+  } catch (e) {
+    document.getElementById('typingIndicator')?.remove();
+    toast('Network error', 'error');
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function copyMsg(idx) {
+  const text = state.messages[idx]?.content || '';
+  navigator.clipboard.writeText(text);
+  toast('Copied!', 'success');
+}
+
+// ============ QUIZ ============
+async function loadQuizQuestion() {
+  const el = document.getElementById('quizContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/quiz/question', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        exam,
-        class: cls,
-        biggestStruggle: struggle,
-        coaching: 'Self-Study',
-        hoursPerDay: '4-6',
-        gender: 'Not specified'
+        subject: document.getElementById('quizSubject').value,
+        chapter: document.getElementById('quizChapter').value,
+        topic: document.getElementById('quizTopic').value,
+        difficulty: document.getElementById('quizDifficulty').value,
+        pyqMode: document.getElementById('quizMode').value === 'pyq'
       })
     });
+    const data = await res.json();
+    if (data.question) renderQuizQuestion(data.question);
+    else el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div>${escapeHtml(data.error || 'Failed to load question')}</div></div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Network error</div></div>';
+  }
+}
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error);
+function renderQuizQuestion(q) {
+  const el = document.getElementById('quizContent');
+  const isPYQ = q.verified || q.year;
+  el.innerHTML = `
+    <div class="quiz-card">
+      <div class="quiz-qnum">
+        <span>Question</span>
+        ${isPYQ ? `<span class="quiz-badge pyq">PYQ ${escapeHtml(q.year || '')} ${escapeHtml(q.exam || '')}</span>` : '<span class="quiz-badge">Practice</span>'}
+        ${q.chapter ? `<span style="color:var(--text3)">${escapeHtml(q.chapter)}</span>` : ''}
+      </div>
+      <div class="quiz-question">${renderMarkdown(q.question || '')}</div>
+      <div class="quiz-options" id="quizOptions">
+        ${(q.options || []).map((opt, i) => `
+          <button class="quiz-opt" data-idx="${i}" data-ans="${opt.charAt(0)}" onclick="selectQuizOpt(this)">
+            <div class="quiz-opt-letter">${opt.charAt(0)}</div>
+            <div>${escapeHtml(opt.substring(2))}</div>
+          </button>
+        `).join('')}
+      </div>
+      <button class="btn-quiz primary" id="submitQuizBtn" onclick="submitQuizAnswer()" disabled>Submit Answer</button>
+      <div id="quizResult"></div>
+    </div>
+  `;
+  renderAllLatex();
+  window._currentQ = q;
+  window._selectedOpt = null;
+  window._quizSubmitted = false;
+}
+
+function selectQuizOpt(btn) {
+  if (window._quizSubmitted) return;
+  document.querySelectorAll('#quizOptions .quiz-opt').forEach(o => o.classList.remove('selected'));
+  btn.classList.add('selected');
+  window._selectedOpt = btn.dataset.ans;
+  document.getElementById('submitQuizBtn').disabled = false;
+}
+
+async function submitQuizAnswer() {
+  if (!window._selectedOpt || window._quizSubmitted) return;
+  window._quizSubmitted = true;
+  const q = window._currentQ;
+  const correct = window._selectedOpt === q.answer;
+  state.quizSession.total++;
+  if (correct) { state.quizSession.correct++; state.quizSession.streak++; }
+  else state.quizSession.streak = 0;
+
+  document.querySelectorAll('#quizOptions .quiz-opt').forEach(o => {
+    if (o.dataset.ans === q.answer) o.classList.add('correct');
+    else if (o.classList.contains('selected')) o.classList.add('wrong');
+    o.style.pointerEvents = 'none';
+  });
+
+  const user = state.user;
+  const newTotal = (user.totalQSolved || 0) + 1;
+  const newCorrect = (user.totalQCorrect || 0) + (correct ? 1 : 0);
+  const xp = correct ? 15 + Math.min(state.quizSession.streak * 2, 20) : 3;
+
+  try {
+    const res = await fetch('/api/quiz/award-xp', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correct, streak: state.quizSession.streak, totalSolved: newTotal, totalCorrect: newCorrect, xpEarned: xp })
+    });
+    const data = await res.json();
+    if (data.newAchievements?.length) showAchievement(data.newAchievements[0]);
+    if (data.levelUp) toast(`🎉 Level Up! You're now Level ${data.newLevel}`, 'success');
+    Object.assign(state.user, { totalQSolved: newTotal, totalQCorrect: newCorrect, quizXP: data.totalXP, quizLevel: data.newLevel, coins: data.coins });
+    updateUserUI();
+  } catch {}
+
+  if (!correct) {
+    try {
+      await fetch('/api/quiz/log-wrong', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: q.topic || q.chapter, subject: document.getElementById('quizSubject').value,
+          chapter: q.chapter, question: q.question,
+          userAnswer: window._selectedOpt, correctAnswer: q.answer,
+          explanation: q.explanation, cheatSheet: q.cheatSheet, trapAlert: q.trapAlert,
+          isPYQ: q.verified, pyqYear: q.year, pyqExam: q.exam
+        })
+      });
+    } catch {}
+  }
+
+  document.getElementById('quizResult').innerHTML = `
+    <div class="quiz-explain">
+      <div class="quiz-explain-title">${correct ? '✅ Correct!' : '❌ Incorrect'} ${correct ? `+${xp} XP` : ''}</div>
+      ${renderMarkdown(q.explanation || 'No explanation provided.')}
+      ${q.cheatSheet ? `<div class="cheat-sheet"><div class="cheat-sheet-title">⚡ CHEAT SHEET</div>${renderMarkdown(q.cheatSheet)}</div>` : ''}
+      ${q.trapAlert ? `<div class="trap-alert"><div class="trap-alert-title">⚠️ TRAP ALERT</div>${escapeHtml(q.trapAlert)}</div>` : ''}
+    </div>
+    <button class="btn-quiz primary" onclick="loadQuizQuestion()" style="width:100%;margin-top:12px">Next Question →</button>
+  `;
+  renderAllLatex();
+  document.getElementById('submitQuizBtn').style.display = 'none';
+}
+
+// ============ RIVAL ============
+async function loadRival() {
+  try {
+    const res = await fetch('/api/rival', { credentials: 'include' });
+    const d = await res.json();
+    document.getElementById('rivalCard').style.display = 'block';
+    document.getElementById('rivalLevel').textContent = d.aryanLevel;
+    document.getElementById('rivalTaunt').textContent = '"' + d.taunt + '"';
+    document.getElementById('rivalXP').textContent = d.gap.xp;
+    document.getElementById('rivalStreak').textContent = d.gap.streak;
+    document.getElementById('rivalLvl').textContent = d.gap.level;
+  } catch {}
+}
+
+// ============ PLANNER ============
+async function loadTasks() {
+  const el = document.getElementById('plannerTasks');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/planner/tasks?view=' + state.plannerView, { credentials: 'include' });
+    const data = await res.json();
+    renderTasks(data.tasks || []);
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Could not load</div></div>'; }
+}
+
+function renderTasks(tasks) {
+  const el = document.getElementById('plannerTasks');
+  if (!tasks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>No tasks yet. Add one or generate with AI.</div></div>';
+    return;
+  }
+  el.innerHTML = tasks.map(t => `
+    <div class="task-item ${t.status === 'completed' ? 'done' : ''}">
+      <div class="task-check ${t.status === 'completed' ? 'done' : ''}" onclick="toggleTask('${t._id}', ${t.status !== 'completed'})"></div>
+      <div class="task-content">
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-meta">
+          ${t.subject ? `<span>📚 ${escapeHtml(t.subject)}</span>` : ''}
+          <span class="task-priority ${t.priority}">${t.priority}</span>
+          <span>⏱ ${t.estimatedMins || 60}m</span>
+          ${t.notes ? `<span>📝 ${escapeHtml(t.notes)}</span>` : ''}
+        </div>
+      </div>
+      <button class="task-del" onclick="deleteTask('${t._id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+async function toggleTask(id, markDone) {
+  try {
+    await fetch('/api/planner/tasks/' + id, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: markDone ? 'completed' : 'pending' })
+    });
+    if (markDone) toast('+5 coins 🪙', 'success');
+    loadTasks();
+  } catch {}
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete task?')) return;
+  try {
+    await fetch('/api/planner/tasks/' + id, { method: 'DELETE', credentials: 'include' });
+    loadTasks();
+  } catch {}
+}
+
+function openAddTask() {
+  showModal(`
+    <div class="modal-title">+ Add Task <button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input id="ntTitle" placeholder="Task title" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px"/>
+      <input id="ntSubject" placeholder="Subject" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px"/>
+      <select id="ntPriority" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
+        <option value="high">High Priority</option><option value="medium" selected>Medium</option><option value="low">Low</option>
+      </select>
+      <input id="ntMins" type="number" value="60" placeholder="Minutes" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px"/>
+      <textarea id="ntNotes" placeholder="Notes" rows="2" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px"></textarea>
+      <button class="btn-quiz primary" onclick="saveTask()">Save Task</button>
+    </div>
+  `);
+}
+
+async function saveTask() {
+  const data = {
+    title: document.getElementById('ntTitle').value.trim(),
+    subject: document.getElementById('ntSubject').value,
+    priority: document.getElementById('ntPriority').value,
+    estimatedMins: parseInt(document.getElementById('ntMins').value) || 60,
+    notes: document.getElementById('ntNotes').value,
+    scheduledDate: new Date().toISOString()
+  };
+  if (!data.title) return toast('Title required', 'error');
+  try {
+    await fetch('/api/planner/tasks', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    closeModal();
+    loadTasks();
+    toast('Task added!', 'success');
+  } catch { toast('Failed', 'error'); }
+}
+
+async function generateAIPlan() {
+  toast('Generating AI plan...', 'success');
+  try {
+    const res = await fetch('/api/planner/generate', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ energyLevel: 'medium' })
+    });
+    const data = await res.json();
+    if (data.tasks) {
+      toast(`Generated ${data.tasks.length} tasks!`, 'success');
+      loadTasks();
     }
-
-    const data = await response.json();
-    console.log('✅ Onboarding successful:', data);
-
-    currentUser.isOnboarded = true;
-    showDashboard();
-  } catch (err) {
-    console.error('❌ Onboarding error:', err);
-    showError('onboarding-error', err.message);
-  }
+  } catch { toast('Generation failed', 'error'); }
 }
 
-// ═══════════════════════════════════════════════════════════
-// DASHBOARD LOGIC
-// ═══════════════════════════════════════════════════════════
-
-async function updateDashboard() {
+// ============ MOOD ============
+async function checkMoodToday() {
   try {
-    if (!currentUser) return;
-
-    console.log('📊 Updating dashboard...');
-
-    // Get user data
-    const response = await fetch('/api/me', {
-      credentials: 'include'
-    });
-
-    if (!response.ok) throw new Error('Failed to fetch user data');
-
-    const data = await response.json();
-    const user = data.user;
-
-    // Update display
-    document.getElementById('user-name').textContent = (user.name || 'Student').split(' ')[0];
-    document.getElementById('stat-level').textContent = user.quizLevel || 1;
-    document.getElementById('stat-xp').textContent = user.quizXP || 0;
-    document.getElementById('stat-streak').textContent = user.streak || 0;
-    document.getElementById('stat-solved').textContent = user.totalQSolved || 0;
-
-    console.log('✅ Dashboard updated');
-  } catch (err) {
-    console.error('❌ Dashboard update error:', err);
-    showError('dashboard-error', 'Failed to load dashboard');
-  }
+    const res = await fetch('/api/mood/history', { credentials: 'include' });
+    const data = await res.json();
+    if (data.checkedToday) {
+      document.getElementById('moodWidget').style.display = 'none';
+    }
+  } catch {}
 }
 
-// ═══════════════════════════════════════════════════════════
-// QUICK ACTIONS
-// ═══════════════════════════════════════════════════════════
-
-async function startChat() {
-  showSuccess('dashboard-success', '💬 Opening chat... (Feature coming soon)');
-}
-
-async function viewNotes() {
+async function submitMood(mood) {
   try {
-    const response = await fetch('/api/notes', {
-      credentials: 'include'
+    const res = await fetch('/api/mood', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mood })
     });
-    const data = await response.json();
-    console.log('📝 Notes:', data.notes);
-    showSuccess('dashboard-success', `📝 You have ${data.notes.length} notes`);
-  } catch (err) {
-    showError('dashboard-error', 'Failed to load notes');
-  }
+    const data = await res.json();
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.mood) === mood));
+    const aiEl = document.getElementById('moodAI');
+    aiEl.textContent = data.aiMsg;
+    aiEl.style.display = 'block';
+    toast('Mood logged 🧘', 'success');
+  } catch { toast('Failed', 'error'); }
 }
 
-async function viewSessions() {
+// ============ FORMULAS ============
+async function loadFormulas() {
+  const el = document.getElementById('formulaDeck');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const response = await fetch('/api/sessions', {
-      credentials: 'include'
-    });
-    const data = await response.json();
-    console.log('📚 Sessions:', data.sessions);
-    showSuccess('dashboard-success', `📚 You have ${data.sessions.length} conversations`);
-  } catch (err) {
-    showError('dashboard-error', 'Failed to load sessions');
-  }
+    const res = await fetch('/api/formulas', { credentials: 'include' });
+    const data = await res.json();
+    document.getElementById('formulaTotal').textContent = data.total || 0;
+    document.getElementById('formulaDue').textContent = data.dueCount || 0;
+    document.getElementById('formulaMastered').textContent = data.mastered || 0;
+    document.getElementById('formulaBadge').textContent = data.dueCount || 0;
+    document.getElementById('formulaBadge').style.display = data.dueCount > 0 ? 'inline-block' : 'none';
+    window._formulas = data.formulas || [];
+    window._fIdx = 0;
+    renderFormulaCard();
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
 }
 
-async function viewAnalytics() {
+function renderFormulaCard() {
+  const el = document.getElementById('formulaDeck');
+  if (!window._formulas.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏰</div><div>No formulas due for review. Add some!</div></div>';
+    return;
+  }
+  if (window._fIdx >= window._formulas.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><div>All caught up! Come back tomorrow.</div></div>';
+    return;
+  }
+  const f = window._formulas[window._fIdx];
+  el.innerHTML = `
+    <div class="formula-card">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">
+        ${escapeHtml(f.subject || 'Subject')} · ${escapeHtml(f.chapter || 'Chapter')}
+      </div>
+      <div class="formula-text">${renderMarkdown(f.formula)}</div>
+      ${f.context ? `<div class="formula-context">${escapeHtml(f.context)}</div>` : ''}
+      <div class="formula-buttons">
+        <button class="formula-btn again" onclick="reviewFormula('${f._id}', 1)">Again</button>
+        <button class="formula-btn hard" onclick="reviewFormula('${f._id}', 3)">Hard</button>
+        <button class="formula-btn good" onclick="reviewFormula('${f._id}', 4)">Good</button>
+        <button class="formula-btn easy" onclick="reviewFormula('${f._id}', 5)">Easy</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:12px">
+        Repetitions: ${f.repetitions || 0} · Interval: ${f.interval || 1}d · ${window._fIdx + 1}/${window._formulas.length}
+      </div>
+    </div>
+  `;
+  renderAllLatex();
+}
+
+async function addFormula() {
+  const data = {
+    subject: document.getElementById('fSubject').value.trim(),
+    chapter: document.getElementById('fChapter').value.trim(),
+    formula: document.getElementById('fFormula').value.trim(),
+    context: document.getElementById('fContext').value.trim()
+  };
+  if (!data.formula) return toast('Formula required', 'error');
   try {
-    const response = await fetch('/api/analytics/dashboard', {
-      credentials: 'include'
+    await fetch('/api/formulas', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
-    const data = await response.json();
-    console.log('📊 Analytics:', data);
-    showSuccess('dashboard-success', '📊 Your level: ' + data.summary.level + ', XP this week: ' + data.summary.xpThisWeek);
-  } catch (err) {
-    showError('dashboard-error', 'Failed to load analytics');
+    document.getElementById('fSubject').value = '';
+    document.getElementById('fChapter').value = '';
+    document.getElementById('fFormula').value = '';
+    document.getElementById('fContext').value = '';
+    toast('Added to Fortress!', 'success');
+    loadFormulas();
+  } catch { toast('Failed', 'error'); }
+}
+
+async function reviewFormula(id, quality) {
+  try {
+    const res = await fetch('/api/formulas/' + id + '/review', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quality })
+    });
+    const data = await res.json();
+    if (data.mastered) toast('🎉 Formula mastered!', 'success');
+    window._fIdx++;
+    renderFormulaCard();
+  } catch {}
+}
+
+// ============ STORY MODE ============
+async function startStory() {
+  const subject = document.getElementById('storySubject').value;
+  const chapter = document.getElementById('storyChapter').value.trim();
+  const exam = document.getElementById('storyExam').value;
+  if (!chapter) return toast('Enter a chapter name', 'error');
+  const el = document.getElementById('storyContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('storySetup').style.display = 'none';
+  try {
+    const res = await fetch('/api/story/questions', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, chapter, exam })
+    });
+    const data = await res.json();
+    window._story = { subject, chapter, exam, questions: data.questions, answers1: [], answers2: [], round: 1 };
+    renderStoryQuestion();
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed to load</div></div>'; }
+}
+
+function renderStoryQuestion() {
+  const el = document.getElementById('storyContent');
+  const s = window._story;
+  const idx = s.round === 1 ? s.answers1.length : s.answers2.length;
+  if (idx >= s.questions.length) {
+    if (s.round === 1) finishStoryRound1();
+    else finishStoryRound2();
+    return;
+  }
+  const q = s.questions[idx];
+  el.innerHTML = `
+    <div class="story-step">
+      <div class="story-step-title">
+        <div class="story-step-num">${idx + 1}</div>
+        Round ${s.round} · Question ${idx + 1}/${s.questions.length}
+      </div>
+      <div class="quiz-card" style="border:none;padding:0;background:none">
+        <div class="quiz-question">${renderMarkdown(q.question || '')}</div>
+        <div class="quiz-options" id="storyOptions">
+          ${(q.options || []).map((opt, i) => `
+            <button class="quiz-opt" data-ans="${opt.charAt(0)}" onclick="selectStoryOpt(this)">
+              <div class="quiz-opt-letter">${opt.charAt(0)}</div>
+              <div>${escapeHtml(opt.substring(2))}</div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  renderAllLatex();
+}
+
+function selectStoryOpt(btn) {
+  const ans = btn.dataset.ans;
+  const s = window._story;
+  if (s.round === 1) s.answers1.push(ans);
+  else s.answers2.push(ans);
+  renderStoryQuestion();
+}
+
+async function finishStoryRound1() {
+  const s = window._story;
+  const score = s.questions.filter((q, i) => s.answers1[i] === q.answer).length;
+  s.round1Score = score;
+  const el = document.getElementById('storyContent');
+  el.innerHTML = `
+    <div class="story-step">
+      <div class="story-step-title">📊 Round 1 Complete</div>
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:48px;font-weight:900;color:var(--accent)">${score}/8</div>
+        <div style="color:var(--text2);margin-bottom:20px">Now GRIND will teach you everything you got wrong.</div>
+        <div id="teachingContent"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  `;
+  try {
+    const res = await fetch('/api/story/teach', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: s.subject, chapter: s.chapter, questions: s.questions, round1Answers: s.answers1, score })
+    });
+    const data = await res.json();
+    document.getElementById('teachingContent').innerHTML = `
+      <div class="teaching-content" style="text-align:left">${renderMarkdown(data.teaching || '')}</div>
+      <button class="btn-quiz primary" onclick="startStoryRound2()" style="margin-top:20px">Start Round 2 →</button>
+    `;
+    renderAllLatex();
+  } catch {
+    document.getElementById('teachingContent').innerHTML = '<div>Failed to load teaching. Try again.</div>';
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// LOGOUT
-// ═══════════════════════════════════════════════════════════
+function startStoryRound2() {
+  window._story.round = 2;
+  renderStoryQuestion();
+}
 
-async function handleLogout() {
-  if (confirm('Are you sure you want to logout?')) {
-    window.location.href = '/auth/logout';
+async function finishStoryRound2() {
+  const s = window._story;
+  const score = s.questions.filter((q, i) => s.answers2[i] === q.answer).length;
+  s.round2Score = score;
+  const el = document.getElementById('storyContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/story/complete', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: s.subject, chapter: s.chapter, exam: s.exam,
+        questions: s.questions, round1Score: s.round1Score,
+        round2Score: s.round2Score, round2Answers: s.answers2
+      })
+    });
+    const data = await res.json();
+    if (data.newAchievements?.length) showAchievement(data.newAchievements[0]);
+    el.innerHTML = `
+      <div class="story-step">
+        <div class="story-step-title">🎉 Story Complete!</div>
+        <div style="text-align:center;padding:24px">
+          <div style="display:flex;gap:24px;justify-content:center;margin-bottom:16px">
+            <div><div style="font-size:12px;color:var(--text3)">ROUND 1</div><div style="font-size:32px;font-weight:900">${s.round1Score}/8</div></div>
+            <div style="font-size:32px;color:var(--text3)">→</div>
+            <div><div style="font-size:12px;color:var(--text3)">ROUND 2</div><div style="font-size:32px;font-weight:900;color:var(--green)">${s.round2Score}/8</div></div>
+          </div>
+          <div style="font-size:14px;color:var(--text2);margin-bottom:16px">${escapeHtml(data.message || '')}</div>
+          <div style="color:var(--accent);font-weight:700">+${data.xpEarned} XP earned</div>
+          <button class="btn-quiz primary" onclick="location.reload()" style="margin-top:20px">New Story</button>
+        </div>
+      </div>
+    `;
+  } catch {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed to save</div></div>';
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════
+// ============ BOSS BATTLES ============
+async function startBoss() {
+  const subject = document.getElementById('bossSubject').value;
+  const chapter = document.getElementById('bossChapter').value.trim();
+  const type = document.getElementById('bossType').value;
+  const el = document.getElementById('bossContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('bossSetup').style.display = 'none';
+  try {
+    const res = await fetch('/api/boss/start', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, chapter, type })
+    });
+    const data = await res.json();
+    window._boss = { ...data, answers: [], qIdx: 0, score: 0, subject, chapter, type };
+    renderBossIntro();
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
 
-function showError(elementId, message) {
-  const el = document.getElementById(elementId);
-  if (el) {
-    el.textContent = '❌ ' + message;
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 5000);
+function renderBossIntro() {
+  const b = window._boss;
+  document.getElementById('bossContent').innerHTML = `
+    <div class="boss-hero">
+      <div class="boss-name">${escapeHtml(b.bossName || 'Boss')}</div>
+      <div class="boss-intro">${escapeHtml(b.intro || 'Prepare for battle!')}</div>
+      <div style="margin-top:12px;color:var(--text3);font-size:13px">${b.total} questions</div>
+      <button class="btn-quiz primary" onclick="renderBossQuestion()" style="margin-top:16px">⚔️ Fight!</button>
+    </div>
+  `;
+}
+
+function renderBossQuestion() {
+  const b = window._boss;
+  const el = document.getElementById('bossContent');
+  if (b.qIdx >= b.questions.length) return finishBoss();
+  const q = b.questions[b.qIdx];
+  const hp = Math.round(((b.questions.length - b.qIdx) / b.questions.length) * 100);
+  el.innerHTML = `
+    <div class="boss-hero" style="padding:16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>${escapeHtml(b.bossName)}</strong></div>
+        <div>Q ${b.qIdx + 1}/${b.questions.length}</div>
+      </div>
+      <div class="boss-hp"><div class="boss-hp-bar"><div class="boss-hp-fill" style="width:${hp}%"></div></div></div>
+    </div>
+    <div class="quiz-card">
+      <div class="quiz-question">${renderMarkdown(q.question || '')}</div>
+      <div class="quiz-options" id="bossOptions">
+        ${(q.options || []).map((opt, i) => `
+          <button class="quiz-opt" data-ans="${opt.charAt(0)}" onclick="selectBossOpt(this)">
+            <div class="quiz-opt-letter">${opt.charAt(0)}</div>
+            <div>${escapeHtml(opt.substring(2))}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  renderAllLatex();
+}
+
+function selectBossOpt(btn) {
+  const b = window._boss;
+  const ans = btn.dataset.ans;
+  const q = b.questions[b.qIdx];
+  const correct = ans === q.answer;
+  if (correct) b.score++;
+  b.answers.push(ans);
+  document.querySelectorAll('#bossOptions .quiz-opt').forEach(o => {
+    if (o.dataset.ans === q.answer) o.classList.add('correct');
+    else if (o === btn && !correct) o.classList.add('wrong');
+    o.style.pointerEvents = 'none';
+  });
+  setTimeout(() => {
+    b.qIdx++;
+    renderBossQuestion();
+  }, 1200);
+}
+
+async function finishBoss() {
+  const b = window._boss;
+  const el = document.getElementById('bossContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/boss/complete', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: b.subject, chapter: b.chapter, type: b.type,
+        score: b.score, total: b.total
+      })
+    });
+    const data = await res.json();
+    if (data.newAchievements?.length) showAchievement(data.newAchievements[0]);
+    el.innerHTML = `
+      <div class="boss-hero">
+        <div class="boss-name">${data.beaten ? '🏆 VICTORY!' : '💀 DEFEATED'}</div>
+        <div style="font-size:36px;font-weight:900;margin:16px 0">${b.score}/${b.total}</div>
+        <div style="color:var(--accent);font-weight:700">+${data.xpEarned} XP</div>
+        <button class="btn-quiz primary" onclick="location.reload()" style="margin-top:20px">New Battle</button>
+      </div>
+    `;
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
+
+// ============ DAILY ============
+async function loadDaily() {
+  const el = document.getElementById('dailyContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/daily-challenge', { credentials: 'include' });
+    const data = await res.json();
+    document.getElementById('dailySolvers').textContent = `${data.challenge.solversCount || 0} aspirants solved today`;
+    if (data.alreadySolved) {
+      el.innerHTML = `
+        <div class="quiz-card">
+          <div style="text-align:center;padding:20px">
+            <div style="font-size:48px">✅</div>
+            <div style="font-size:20px;font-weight:700;margin-bottom:8px">Challenge Completed!</div>
+            <div style="color:var(--text2);font-size:14px">Come back tomorrow for a new challenge.</div>
+          </div>
+          <div class="quiz-explain">
+            <div class="quiz-explain-title">Solution</div>
+            ${renderMarkdown(data.challenge.explanation || '')}
+          </div>
+        </div>
+      `;
+      renderAllLatex();
+      return;
+    }
+    window._daily = data.challenge;
+    el.innerHTML = `
+      <div class="quiz-card">
+        <div class="quiz-qnum">
+          <span>${escapeHtml(data.challenge.subject)}</span>
+          <span class="quiz-badge">${escapeHtml(data.challenge.chapter)}</span>
+          <span style="margin-left:auto;color:var(--gold);font-weight:700">+${data.challenge.xpReward} XP · +${data.challenge.coinsReward} 🪙</span>
+        </div>
+        <div class="quiz-question">${renderMarkdown(data.challenge.question || '')}</div>
+        <div class="quiz-options" id="dailyOptions">
+          ${(data.challenge.options || []).map((opt, i) => `
+            <button class="quiz-opt" data-ans="${opt.charAt(0)}" onclick="selectDailyOpt(this)">
+              <div class="quiz-opt-letter">${opt.charAt(0)}</div>
+              <div>${escapeHtml(opt.substring(2))}</div>
+            </button>
+          `).join('')}
+        </div>
+        <button class="btn-quiz primary" id="submitDailyBtn" onclick="submitDaily()" disabled>Submit</button>
+        <div id="dailyResult"></div>
+      </div>
+    `;
+    renderAllLatex();
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
+
+function selectDailyOpt(btn) {
+  document.querySelectorAll('#dailyOptions .quiz-opt').forEach(o => o.classList.remove('selected'));
+  btn.classList.add('selected');
+  window._dailyAns = btn.dataset.ans;
+  document.getElementById('submitDailyBtn').disabled = false;
+}
+
+async function submitDaily() {
+  if (!window._dailyAns) return;
+  document.getElementById('submitDailyBtn').disabled = true;
+  try {
+    const res = await fetch('/api/daily-challenge/submit', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId: window._daily.id, answer: window._dailyAns })
+    });
+    const data = await res.json();
+    document.querySelectorAll('#dailyOptions .quiz-opt').forEach(o => {
+      if (o.dataset.ans === data.correctAnswer) o.classList.add('correct');
+      else if (o.classList.contains('selected') && !data.correct) o.classList.add('wrong');
+      o.style.pointerEvents = 'none';
+    });
+    document.getElementById('submitDailyBtn').style.display = 'none';
+    document.getElementById('dailyResult').innerHTML = `
+      <div class="quiz-explain">
+        <div class="quiz-explain-title">${data.correct ? `✅ Correct! +${data.xpEarned} XP +${data.coinsEarned}🪙` : '❌ Wrong'}</div>
+        ${renderMarkdown(data.explanation || '')}
+      </div>
+    `;
+    renderAllLatex();
+    if (data.correct) toast('Daily challenge crushed! 🔥', 'success');
+    state.user.coins = (state.user.coins || 0) + (data.coinsEarned || 0);
+    updateUserUI();
+  } catch {}
+}
+
+// ============ MULTIPLAYER ============
+function initSocket() {
+  try {
+    state.socket = io();
+    state.socket.on('room-created', ({ code }) => {
+      state.mpRoom = code;
+      state.mpHost = true;
+      showMPGame(code);
+    });
+    state.socket.on('room-joined', ({ code }) => {
+      state.mpRoom = code;
+      showMPGame(code);
+    });
+    state.socket.on('players-update', players => {
+      window._mpPlayers = players;
+      renderMPPlayers();
+    });
+    state.socket.on('game-started', ({ totalQ }) => {
+      window._mpTotal = totalQ;
+      document.getElementById('mpStartBtn').style.display = 'none';
+    });
+    state.socket.on('new-question', q => {
+      renderMPQuestion(q);
+    });
+    state.socket.on('answer-result', ({ correct, correctAnswer }) => {
+      toast(correct ? '✅ Correct!' : `❌ Answer: ${correctAnswer}`, correct ? 'success' : 'error');
+    });
+    state.socket.on('question-ended', () => {});
+    state.socket.on('game-over', ({ players }) => {
+      const sorted = [...players].sort((a, b) => b.score - a.score);
+      document.getElementById('mpQuestion').innerHTML = `
+        <div class="boss-hero">
+          <div class="boss-name">🏆 Game Over!</div>
+          <div style="margin-top:16px">${sorted.map((p, i) => `
+            <div style="padding:12px;background:var(--bg3);border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between">
+              <span>#${i + 1} ${escapeHtml(p.name)}</span>
+              <span style="font-weight:700;color:var(--accent)">${p.score} pts</span>
+            </div>
+          `).join('')}</div>
+        </div>
+      `;
+    });
+    state.socket.on('room-error', msg => toast(msg, 'error'));
+  } catch {}
+}
+
+function createRoom() {
+  const name = document.getElementById('mpName').value.trim() || 'Player';
+  if (!state.socket) return toast('Connection failed', 'error');
+  state.socket.emit('create-room', { name, config: { questionCount: 5, subjects: ['Physics'] } });
+}
+
+function showJoinRoom() {
+  document.getElementById('joinRoomForm').style.display = 'block';
+}
+
+function joinRoom() {
+  const name = document.getElementById('mpName').value.trim() || 'Player';
+  const code = document.getElementById('mpCode').value.trim();
+  if (!code || !state.socket) return toast('Enter code', 'error');
+  state.socket.emit('join-room', { code, name });
+}
+
+function showMPGame(code) {
+  document.getElementById('mpLobby').style.display = 'none';
+  document.getElementById('mpGame').style.display = 'block';
+  document.getElementById('mpCodeDisplay').textContent = code;
+  if (state.mpHost) document.getElementById('mpStartBtn').style.display = 'inline-block';
+}
+
+function renderMPPlayers() {
+  const el = document.getElementById('mpPlayers');
+  el.innerHTML = (window._mpPlayers || []).map(p => `
+    <div class="mp-player">
+      <div class="mp-player-avatar">${(p.name || '?').charAt(0).toUpperCase()}</div>
+      <div class="mp-player-info">
+        <div class="mp-player-name">${escapeHtml(p.name)}</div>
+        <div class="mp-player-score">${p.score} pts · ${p.correct || 0} correct</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function startMPGame() {
+  if (state.socket && state.mpRoom) state.socket.emit('start-game', { code: state.mpRoom });
+}
+
+function renderMPQuestion(q) {
+  const el = document.getElementById('mpQuestion');
+  el.innerHTML = `
+    <div class="quiz-card">
+      <div class="quiz-qnum">Q ${q.questionNumber}/${q.totalQuestions}</div>
+      <div class="quiz-question">${renderMarkdown(q.question || '')}</div>
+      <div class="quiz-options" id="mpOpts">
+        ${(q.options || []).map(opt => `
+          <button class="quiz-opt" data-ans="${opt.charAt(0)}" onclick="submitMPAns(this)">
+            <div class="quiz-opt-letter">${opt.charAt(0)}</div>
+            <div>${escapeHtml(opt.substring(2))}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  renderAllLatex();
+  window._mpTimeLeft = q.timeLimit;
+}
+
+function submitMPAns(btn) {
+  document.querySelectorAll('#mpOpts .quiz-opt').forEach(o => o.style.pointerEvents = 'none');
+  btn.classList.add('selected');
+  if (state.socket && state.mpRoom) {
+    state.socket.emit('submit-answer', { code: state.mpRoom, answer: btn.dataset.ans, timeLeft: window._mpTimeLeft });
   }
 }
 
-function showSuccess(elementId, message) {
-  const el = document.getElementById(elementId);
-  if (el) {
-    el.textContent = '✅ ' + message;
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 5000);
+// ============ LEADERBOARD ============
+async function loadLeaderboard() {
+  const el = document.getElementById('lbList');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/leaderboard?type=' + state.lbType, { credentials: 'include' });
+    const data = await res.json();
+    if (!data.board?.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><div>No data yet</div></div>';
+      return;
+    }
+    el.innerHTML = data.board.map(u => `
+      <div class="lb-item ${u.isMe ? 'me' : ''}">
+        <div class="lb-rank ${u.rank === 1 ? 'gold' : u.rank === 2 ? 'silver' : u.rank === 3 ? 'bronze' : ''}">${u.rank}</div>
+        <div class="lb-avatar">${u.photo ? `<img src="${u.photo}"/>` : (u.name || '?').charAt(0)}</div>
+        <div class="lb-name">${escapeHtml(u.name)}${u.isMe ? ' (You)' : ''}</div>
+        <div style="font-size:11px;color:var(--text3)">Lv.${u.level}</div>
+        <div class="lb-xp">${u.xp.toLocaleString()} ${state.lbType === 'streak' ? 'days' : 'XP'}</div>
+      </div>
+    `).join('');
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
+
+// ============ MISTAKES ============
+async function loadMistakes() {
+  const el = document.getElementById('mistakesList');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const url = state.mistakeSubject === 'All' ? '/api/mistakes' : '/api/mistakes?subject=' + encodeURIComponent(state.mistakeSubject);
+    const res = await fetch(url, { credentials: 'include' });
+    const data = await res.json();
+    if (!data.mistakes?.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><div>No mistakes logged yet. Keep grinding!</div></div>';
+      return;
+    }
+    el.innerHTML = data.mistakes.map(m => `
+      <div class="task-item">
+        <div class="task-content">
+          <div class="task-title" style="font-weight:600">${escapeHtml(m.topic || 'General')}</div>
+          <div style="font-size:13px;color:var(--text2);margin:6px 0">${escapeHtml((m.question || m.explanation || '').slice(0, 200))}</div>
+          <div class="task-meta">
+            <span>📚 ${escapeHtml(m.subject || 'General')}</span>
+            ${m.chapter ? `<span>📖 ${escapeHtml(m.chapter)}</span>` : ''}
+            ${m.isPYQ ? `<span class="quiz-badge pyq">PYQ ${escapeHtml(m.pyqYear || '')}</span>` : ''}
+            <span>${new Date(m.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <button class="task-del" onclick="deleteMistake('${m._id}')" style="opacity:1">🗑</button>
+      </div>
+    `).join('');
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
+
+async function deleteMistake(id) {
+  if (!confirm('Delete mistake?')) return;
+  try {
+    await fetch('/api/mistakes/' + id, { method: 'DELETE', credentials: 'include' });
+    loadMistakes();
+  } catch {}
+}
+
+// ============ REPORT ============
+async function loadReport() {
+  const el = document.getElementById('reportContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch('/api/report/weekly', { credentials: 'include' });
+    const data = await res.json();
+    el.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val">${data.weeklyXP}</div><div class="stat-lbl">Weekly XP</div></div>
+        <div class="stat-card"><div class="stat-val">${data.level}</div><div class="stat-lbl">Level</div></div>
+        <div class="stat-card"><div class="stat-val">${data.streak}</div><div class="stat-lbl">Streak</div></div>
+        <div class="stat-card"><div class="stat-val">${data.storySessions}</div><div class="stat-lbl">Stories</div></div>
+        <div class="stat-card"><div class="stat-val">${data.mistakesLogged}</div><div class="stat-lbl">Mistakes</div></div>
+        <div class="stat-card"><div class="stat-val">${data.tasksCompleted}/${data.totalTasks}</div><div class="stat-lbl">Tasks</div></div>
+      </div>
+      <div class="report-card">
+        <div class="report-title">📜 Your War Report</div>
+        <div style="white-space:pre-wrap">${escapeHtml(data.reportText || 'Report could not be generated.')}</div>
+      </div>
+      ${data.weakTopics?.length ? `
+        <div class="story-step">
+          <div class="story-step-title">⚠️ Weak Topics This Week</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${data.weakTopics.map(t => `<span class="chip active">${escapeHtml(t)}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
+  } catch { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Failed</div></div>'; }
+}
+
+// ============ POMODORO ============
+function openPomodoro() {
+  showModal(`
+    <div class="modal-title">🍅 Focus Timer <button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div style="text-align:center">
+      <div style="font-size:64px;font-weight:900;font-family:'JetBrains Mono',monospace;margin:20px 0" id="pomoTime">${formatTime(state.pomodoro.timeLeft || 1500)}</div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
+        <button class="btn-quiz secondary" onclick="setPomoTime(1500)">25m</button>
+        <button class="btn-quiz secondary" onclick="setPomoTime(3000)">50m</button>
+        <button class="btn-quiz secondary" onclick="setPomoTime(300)">5m break</button>
+      </div>
+      <input id="pomoSubject" placeholder="Subject (optional)" style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:100%;margin-bottom:12px" value="${escapeHtml(state.pomodoro.subject || '')}"/>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn-quiz primary" onclick="togglePomo()">${state.pomodoro.running ? 'Pause' : 'Start'}</button>
+        <button class="btn-quiz secondary" onclick="resetPomo()">Reset</button>
+      </div>
+    </div>
+  `);
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+
+function setPomoTime(t) {
+  if (!state.pomodoro.running) {
+    state.pomodoro.timeLeft = t;
+    document.getElementById('pomoTime').textContent = formatTime(t);
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// INIT ON LOAD
-// ═══════════════════════════════════════════════════════════
+function togglePomo() {
+  if (state.pomodoro.running) {
+    clearInterval(state.pomodoro.interval);
+    state.pomodoro.running = false;
+    document.getElementById('pomoFloat').classList.remove('active');
+  } else {
+    if (!state.pomodoro.timeLeft) state.pomodoro.timeLeft = 1500;
+    state.pomodoro.subject = document.getElementById('pomoSubject').value;
+    state.pomodoro.running = true;
+    document.getElementById('pomoFloat').classList.add('active');
+    state.pomodoro.interval = setInterval(pomoTick, 1000);
+  }
+  openPomodoro();
+}
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 Page loaded, checking authentication...');
-  checkAuth();
-});
+function pomoTick() {
+  state.pomodoro.timeLeft--;
+  const el = document.getElementById('pomoTime');
+  if (el) el.textContent = formatTime(state.pomodoro.timeLeft);
+  document.getElementById('pomoFloat').textContent = '⏱' + formatTime(state.pomodoro.timeLeft);
+  if (state.pomodoro.timeLeft <= 0) {
+    clearInterval(state.pomodoro.interval);
+    state.pomodoro.running = false;
+    document.getElementById('pomoFloat').classList.remove('active');
+    document.getElementById('pomoFloat').textContent = '🍅';
+    completePomodoro();
+  }
+}
 
-// Check auth on focus (in case user logged in elsewhere)
-window.addEventListener('focus', () => {
-  console.log('👁️  Window focused, checking auth...');
-  checkAuth();
-});
+async function completePomodoro() {
+  try {
+    const res = await fetch('/api/pomodoro/complete', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: state.pomodoro.subject, duration: 25 })
+    });
+    const data = await res.json();
+    toast(`🍅 Focus complete! +${data.xp}XP +${data.coins}🪙`, 'success');
+    state.user.coins = (state.user.coins || 0) + data.coins;
+    updateUserUI();
+    state.pomodoro.timeLeft = 0;
+  } catch {}
+}
 
-console.log('✅ Script loaded');
+function resetPomo() {
+  clearInterval(state.pomodoro.interval);
+  state.pomodoro.running = false;
+  state.pomodoro.timeLeft = 0;
+  document.getElementById('pomoFloat').classList.remove('active');
+  document.getElementById('pomoFloat').textContent = '🍅';
+  openPomodoro();
+}
+
+// ============ DAILY LOGIN REWARDS ============
+async function checkDailyReward() {
+  try {
+    const res = await fetch('/api/user/claim-daily', { method: 'POST', credentials: 'include' });
+    const data = await res.json();
+    if (data.success) {
+      showModal(`
+        <div style="text-align:center;padding:20px">
+          <div style="font-size:64px">🎁</div>
+          <div style="font-size:22px;font-weight:800;margin:16px 0">Day ${data.streak} Reward!</div>
+          <div style="display:flex;gap:24px;justify-content:center;margin:16px 0">
+            <div><div style="font-size:32px;font-weight:900;color:var(--gold)">+${data.coinsEarned}</div><div style="font-size:12px;color:var(--text3)">COINS</div></div>
+            ${data.gemsEarned > 0 ? `<div><div style="font-size:32px;font-weight:900;color:var(--cyan)">+${data.gemsEarned}</div><div style="font-size:12px;color:var(--text3)">GEMS</div></div>` : ''}
+          </div>
+          <div style="color:var(--text2);font-size:13px;margin-bottom:20px">Come back tomorrow for bigger rewards!</div>
+          <button class="btn-quiz primary" onclick="closeModal()">Continue</button>
+        </div>
+      `);
+      state.user.coins = (state.user.coins || 0) + data.coinsEarned;
+      state.user.gems = (state.user.gems || 0) + (data.gemsEarned || 0);
+      state.user.loginStreak = data.streak;
+      updateUserUI();
+    }
+  } catch {}
+}
+
+// ============ UTILS ============
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function toast(msg, type = 'success') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  const icons = { success: '✅', error: '❌', achievement: '🏆' };
+  t.innerHTML = `<span class="toast-icon">${icons[type] || '💬'}</span><span>${escapeHtml(msg)}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+function showModal(html) {
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.id = 'currentModal';
+  m.innerHTML = `<div class="modal-card">${html}</div>`;
+  m.addEventListener('click', e => { if (e.target === m) closeModal(); });
+  document.body.appendChild(m);
+}
+
+function closeModal() {
+  document.getElementById('currentModal')?.remove();
+}
+
+function showAchievement(ach) {
+  const p = document.createElement('div');
+  p.className = 'ach-popup';
+  p.innerHTML = `
+    <div class="ach-card">
+      <div class="ach-label">Achievement Unlocked</div>
+      <div class="ach-icon">${ach.icon}</div>
+      <div class="ach-name">${escapeHtml(ach.name)}</div>
+      <button class="ach-close" onclick="this.parentElement.parentElement.remove()">Nice! 🎉</button>
+    </div>
+  `;
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 6000);
+}
 </script>
-
 </body>
 </html>
+
