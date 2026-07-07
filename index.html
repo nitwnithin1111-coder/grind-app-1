@@ -3,682 +3,722 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GRIND AI — JEE/NEET Companion PRO</title>
+<title>GRIND AI PRO — JEE/NEET Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-
 <style>
 :root {
-  --bg:        #0A0E17;
-  --surface:   #161F30;
-  --card:      #1C2840;
-  --border:    #1E2D45;
-  --border2:   #243652;
-  --fg:        #F1F5F9;
-  --text:      #F1F5F9;
-  --muted:     #3A4E6B;
-  --muted2:    #6B82A0;
-  --streak:    #FF5A00;
-  --live:      #00FF66;
-  --xp:        #00D2FF;
-  --gold:      #FFD700;
-  --purple:    #7C4DFF;
-  --red:       #FF3B5C;
-  --green:     #00C853;
-  --grad-xp:   linear-gradient(90deg, #00D2FF, #00FF66);
-  --grad-fire: linear-gradient(135deg, #FF5A00, #FFD700);
-  --grad-purple: linear-gradient(135deg, #7C4DFF, #00D2FF);
+  --bg: #0A0E17;
+  --surface: #161F30;
+  --card: #1C2840;
+  --border: #1E2D45;
+  --fg: #F1F5F9;
+  --xp: #00D2FF;
+  --green: #00C853;
+  --red: #FF3B5C;
+  --grad-xp: linear-gradient(90deg, #00D2FF, #00FF66);
 }
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-html, body { height:100%; overflow:hidden; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   background: var(--bg);
   color: var(--fg);
   font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
+.screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.screen.active { display: flex; }
+
+/* LOGIN SCREEN */
+.login-card {
+  background: rgba(22, 31, 48, 0.95);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: 20px;
+  padding: 40px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.login-logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: var(--grad-xp);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+
+.login-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  background: var(--grad-xp);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-sub {
+  font-size: 13px;
+  color: #6B82A0;
+  margin-bottom: 30px;
   line-height: 1.6;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-/* DASHBOARD GRID */
-#app { display: none; height: 100dvh; flex-direction: column; }
-#app.active { display: flex; }
-
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; background: rgba(10,14,23,.95); backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 10;
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.topbar-left { display: flex; align-items: center; gap: 20px; }
-.logo { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 3px; background: var(--grad-xp); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.topbar-nav { display: flex; gap: 4px; }
-.nav-btn { padding: 8px 14px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; color: var(--muted2); }
-.nav-btn:hover, .nav-btn.active { background: rgba(0,210,255,.1); border-color: var(--xp); color: var(--xp); }
-
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.stat-badge { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(0,210,255,.08); border: 1px solid rgba(0,210,255,.15); border-radius: 8px; font-size: 12px; color: var(--xp); }
-.profile-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--grad-purple); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border: 1px solid rgba(0,210,255,.2); }
-
-.main-content { flex: 1; overflow-y: auto; padding: 20px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-
-.card {
-  background: rgba(22,31,48,.7); border: 1px solid rgba(0,210,255,.1); border-radius: 16px;
-  padding: 20px; position: relative; overflow: hidden; transition: all .3s;
-  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+.google-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-1px);
 }
-.card:hover { border-color: rgba(0,210,255,.3); }
-.card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--grad-xp); opacity: 0; transition: opacity .3s; }
-.card:hover::before { opacity: 1; }
 
-.card-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
-.card-value { font-size: 28px; font-weight: 800; background: var(--grad-xp); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.card-label { font-size: 11px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; margin-top: 8px; }
-
-.progress-bar { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 12px 0; }
-.progress-fill { height: 100%; background: var(--grad-xp); border-radius: 3px; transition: width .6s; }
-
-.chart-container { position: relative; height: 250px; margin: 20px 0; }
-
-.btn-primary { padding: 10px 16px; border-radius: 10px; border: none; background: var(--grad-xp); color: #000; font-weight: 700; cursor: pointer; transition: all .2s; }
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,210,255,.3); }
-
-.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.stat-item { background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2); }
-.stat-item-label { font-size: 10px; color: var(--muted2); margin-bottom: 4px; }
-.stat-item-value { font-size: 18px; font-weight: 700; color: var(--xp); }
-
-/* MODAL STYLES */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 200; }
-.modal.open { display: flex; }
-.modal-content { background: rgba(22,31,48,.98); border: 1px solid rgba(0,210,255,.2); border-radius: 16px; padding: 28px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
-
-.modal-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 16px; }
-.modal-close { position: absolute; top: 16px; right: 16px; cursor: pointer; font-size: 24px; color: var(--muted2); }
-
-/* MOCK TEST UI */
-.mock-question { background: rgba(255,255,255,.03); border: 1px solid var(--border2); border-radius: 12px; padding: 20px; margin: 16px 0; }
-.question-text { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
-.option { padding: 12px 14px; background: rgba(255,255,255,.02); border: 1px solid var(--border2); border-radius: 8px; margin: 8px 0; cursor: pointer; transition: all .2s; }
-.option:hover { background: rgba(0,210,255,.08); border-color: var(--xp); }
-.option.selected { background: rgba(0,210,255,.15); border-color: var(--xp); }
-
-/* ANALYTICS */
-.analytics-header { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-.metric-card { background: rgba(22,31,48,.8); border: 1px solid rgba(0,210,255,.1); border-radius: 12px; padding: 16px; text-align: center; }
-.metric-value { font-size: 24px; font-weight: 800; color: var(--xp); }
-.metric-label { font-size: 11px; color: var(--muted2); margin-top: 4px; }
-
-.tab-content { display: none; animation: fadeIn .3s; }
-.tab-content.active { display: block; }
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-/* RESPONSIVE */
-@media (max-width: 1024px) {
-  .main-content { grid-template-columns: repeat(2, 1fr); }
+.login-note {
+  font-size: 11px;
+  color: #3A4E6B;
+  margin-top: 16px;
+  font-family: 'JetBrains Mono', monospace;
 }
+
+/* LOADING SCREEN */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 210, 255, 0.2);
+  border-top: 4px solid var(--xp);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #6B82A0;
+}
+
+/* ONBOARDING SCREEN */
+.onboard-card {
+  background: rgba(22, 31, 48, 0.95);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: 18px;
+  padding: 32px;
+  width: 90%;
+  max-width: 480px;
+}
+
+.ob-section {
+  margin-bottom: 24px;
+}
+
+.ob-label {
+  font-size: 11px;
+  color: #6B82A0;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 10px;
+  display: block;
+  font-weight: 600;
+}
+
+.ob-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ob-opt {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: #6B82A0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ob-opt:hover,
+.ob-opt.selected {
+  border-color: var(--xp);
+  color: var(--xp);
+  background: rgba(0, 210, 255, 0.08);
+}
+
+.ob-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--fg);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  margin-bottom: 16px;
+}
+
+.ob-submit {
+  width: 100%;
+  padding: 12px;
+  background: var(--grad-xp);
+  border: none;
+  border-radius: 12px;
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ob-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(0, 210, 255, 0.3);
+}
+
+.ob-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* DASHBOARD */
+.dashboard {
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.dash-header {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  background: var(--grad-xp);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: rgba(22, 31, 48, 0.8);
+  border: 1px solid rgba(0, 210, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6B82A0;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--xp);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.btn {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--grad-xp);
+  color: #000;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: rgba(0, 210, 255, 0.1);
+  color: var(--xp);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 210, 255, 0.15);
+}
+
+.btn-danger {
+  background: rgba(255, 59, 92, 0.1);
+  color: var(--red);
+  border: 1px solid rgba(255, 59, 92, 0.2);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 59, 92, 0.15);
+}
+
+/* ERROR MESSAGE */
+.error-box {
+  background: rgba(255, 59, 92, 0.1);
+  border: 1px solid rgba(255, 59, 92, 0.3);
+  border-radius: 10px;
+  padding: 16px;
+  color: var(--red);
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.success-box {
+  background: rgba(0, 200, 83, 0.1);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  border-radius: 10px;
+  padding: 16px;
+  color: var(--green);
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.hidden { display: none !important; }
 
 @media (max-width: 768px) {
-  .main-content { grid-template-columns: 1fr; }
-  .analytics-header { grid-template-columns: repeat(2, 1fr); }
-  .topbar-nav { flex-wrap: wrap; }
-}
-
-/* LOGIN SCREEN */
-.screen { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: var(--bg); }
-.screen.active { display: flex; }
-
-.login-card {
-  background: rgba(22,31,48,.95); backdrop-filter: blur(40px);
-  border: 1px solid rgba(0,210,255,.15); border-radius: 20px;
-  padding: 44px 38px; width: 90%; max-width: 420px;
-  position: relative; overflow: hidden; text-align: center;
-}
-
-.login-logo { width: 68px; height: 68px; margin: 0 auto 20px; background: var(--grad-purple); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
-
-.login-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 2px; margin-bottom: 8px; background: var(--grad-xp); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-.login-sub { font-size: 13px; color: var(--muted2); margin-bottom: 24px; }
-
-.google-btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 14px; background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
-  color: var(--fg); font-size: 14px; font-weight: 600;
-  cursor: pointer; text-decoration: none; transition: all .2s;
-}
-
-.google-btn:hover { background: rgba(255,255,255,.09); transform: translateY(-1px); }
-
-/* TOAST */
-.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,210,255,.9); padding: 12px 20px; border-radius: 20px; font-size: 13px; color: #000; font-weight: 600; z-index: 9999; animation: slideUp .3s; }
-
-@keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-
-/* DASHBOARD WIDGETS */
-.widget { background: rgba(22,31,48,.7); border: 1px solid rgba(0,210,255,.1); border-radius: 16px; padding: 20px; }
-
-.widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.widget-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
-.widget-action { font-size: 12px; color: var(--xp); cursor: pointer; }
-
-.recommendation-item { padding: 12px; background: rgba(0,210,255,.05); border-left: 3px solid var(--xp); margin: 8px 0; border-radius: 6px; font-size: 12px; }
-
-/* ACHIEVEMENT BADGES */
-.achievement-badge { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 12px; background: rgba(255,215,0,.1); border: 1px solid rgba(255,215,0,.3); margin: 8px; font-size: 24px; text-align: center; }
-.achievement-badge.locked { opacity: 0.4; }
-
-.sheet-modal {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
-  display: none; align-items: flex-end;
-  z-index: 200;
-}
-.sheet-modal.open { display: flex; }
-.sheet-content {
-  background: rgba(22,31,48,.98); width: 100%;
-  border-radius: 20px 20px 0 0; padding: 24px;
-  max-height: 80vh; overflow-y: auto;
+  .login-card,
+  .onboard-card {
+    width: 95%;
+    padding: 24px;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="login-screen" class="screen active">
-  <div class="login-card">
-    <div class="login-logo">🧠</div>
-    <div class="login-title">GRIND PRO</div>
-    <div class="login-sub">Elite JEE/NEET AI mentor with advanced analytics & adaptive learning</div>
-    <a href="/auth/google" class="google-btn">
-      <span>🔐</span> Continue with Google
-    </a>
-  </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app">
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="logo">GRIND PRO</div>
-      <div class="topbar-nav">
-        <button class="nav-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-        <button class="nav-btn" onclick="switchTab('analytics')">📈 Analytics</button>
-        <button class="nav-btn" onclick="switchTab('mock')">📝 Mock Tests</button>
-        <button class="nav-btn" onclick="switchTab('adaptive')">🎯 Adaptive</button>
-        <button class="nav-btn" onclick="switchTab('chat')">💬 Chat</button>
-        <button class="nav-btn" onclick="switchTab('notes')">📚 Notes</button>
+<div class="container">
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="screen active">
+    <div class="login-card">
+      <div class="login-logo">🧠</div>
+      <div class="login-title">GRIND AI</div>
+      <div class="login-sub">
+        Elite JEE/NEET AI mentor.<br>
+        Real talk. No fluff.
       </div>
-    </div>
-    <div class="topbar-right">
-      <div class="stat-badge" id="xp-badge">
-        <span>⭐</span> <span id="xp-value">1200 XP</span>
-      </div>
-      <div class="stat-badge" id="streak-badge">
-        <span>🔥</span> <span id="streak-value">7 day</span>
-      </div>
-      <div class="profile-btn" onclick="toggleProfile()" id="profile-btn">👤</div>
+      <a href="/auth/google" class="google-btn">
+        <span>🔐</span> Continue with Google
+      </a>
+      <div class="login-note">✓ Secure • ✓ Private • ✓ No ads</div>
     </div>
   </div>
 
-  <!-- MAIN CONTENT AREA -->
-  <div class="main-content" id="main-content">
-    
-    <!-- DASHBOARD TAB -->
-    <div id="dashboard-tab" class="tab-content active" style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-      
-      <!-- Quick Stats -->
-      <div class="card">
-        <div class="card-title">Current Level</div>
-        <div class="card-value" id="level-value">12</div>
-        <div class="progress-bar"><div class="progress-fill" id="xp-progress" style="width: 45%;"></div></div>
-        <div class="card-label">480/1000 XP to Level 13</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Weekly XP</div>
-        <div class="card-value" id="weekly-xp">2340</div>
-        <div class="card-label">⬆️ 12% from last week</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Accuracy</div>
-        <div class="card-value" id="accuracy-value">78%</div>
-        <div class="card-label">Average this week</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Study Streak</div>
-        <div class="card-value" id="streak-display">7</div>
-        <div class="card-label">Days of consistent study</div>
-      </div>
-
-      <!-- Performance Chart -->
-      <div class="card" style="grid-column: span 2;">
-        <div class="card-title">Weekly Performance</div>
-        <div class="chart-container">
-          <canvas id="performanceChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Recommendations -->
-      <div class="card">
-        <div class="card-title">📍 AI Recommendations</div>
-        <div id="recommendations-list">
-          <div class="recommendation-item">Focus on Thermodynamics — 5 mistakes</div>
-          <div class="recommendation-item">Solve 3 more mock tests this week</div>
-          <div class="recommendation-item">Review Integral Calculus — weak area</div>
-        </div>
-      </div>
-
-      <!-- Subject Mastery -->
-      <div class="card">
-        <div class="card-title">Subject Mastery</div>
-        <div class="stat-grid">
-          <div class="stat-item">
-            <div class="stat-item-label">Physics</div>
-            <div class="stat-item-value">84%</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-item-label">Chemistry</div>
-            <div class="stat-item-value">79%</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-item-label">Math</div>
-            <div class="stat-item-value">71%</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-item-label">Bio</div>
-            <div class="stat-item-value">88%</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="card">
-        <div class="card-title">⚡ Quick Actions</div>
-        <button class="btn-primary" style="width: 100%; margin: 8px 0;" onclick="startMockTest()">Start Mock Test</button>
-        <button class="btn-primary" style="width: 100%; margin: 8px 0;" onclick="generateStudyPlan()">Generate Plan</button>
-        <button class="btn-primary" style="width: 100%; margin: 8px 0; background: rgba(0,210,255,.1); color: var(--xp); border: 1px solid var(--xp);" onclick="openWeakTopics()">Review Weak Topics</button>
-      </div>
-
-      <!-- Achievements -->
-      <div class="card" style="grid-column: 1 / -1;">
-        <div class="card-title">🏆 Recent Achievements</div>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <div class="achievement-badge">🔥</div>
-          <div class="achievement-badge">💯</div>
-          <div class="achievement-badge">⭐</div>
-          <div class="achievement-badge">🚀</div>
-          <div class="achievement-badge locked">🎖️</div>
-        </div>
-      </div>
-
+  <!-- LOADING SCREEN -->
+  <div id="loading-screen" class="screen">
+    <div class="loading-screen">
+      <div class="spinner"></div>
+      <div class="loading-text">Authenticating...</div>
     </div>
+  </div>
 
-    <!-- ANALYTICS TAB -->
-    <div id="analytics-tab" class="tab-content">
-      <div style="grid-column: 1 / -1;">
-        <div class="analytics-header">
-          <div class="metric-card">
-            <div class="metric-value" id="total-questions">847</div>
-            <div class="metric-label">Questions Solved</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value" id="accuracy-metric">76%</div>
-            <div class="metric-label">Overall Accuracy</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value" id="study-hours">142</div>
-            <div class="metric-label">Study Hours</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value" id="mock-tests">12</div>
-            <div class="metric-label">Mock Tests</div>
-          </div>
-        </div>
+  <!-- ONBOARDING SCREEN -->
+  <div id="onboarding-screen" class="screen">
+    <div class="onboard-card">
+      <div style="font-size: 28px; margin-bottom: 16px;">👋</div>
+      <h1 style="font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px;">Setup Your Profile</h1>
+      <p style="font-size: 13px; color: #6B82A0; margin-bottom: 24px;">Help us personalize your experience</p>
 
-        <div class="card" style="grid-column: 1 / -1;">
-          <div class="card-title">Performance Trend</div>
-          <div class="chart-container">
-            <canvas id="trendChart"></canvas>
-          </div>
-        </div>
+      <div id="onboarding-error" class="error-box hidden"></div>
 
-        <div class="card">
-          <div class="card-title">Subject Performance</div>
-          <div class="chart-container">
-            <canvas id="subjectChart"></canvas>
-          </div>
+      <div class="ob-section">
+        <label class="ob-label">EXAM</label>
+        <div class="ob-opts" id="exam-opts">
+          <div class="ob-opt" data-val="JEE Main">JEE Main</div>
+          <div class="ob-opt" data-val="JEE Advanced">JEE Advanced</div>
+          <div class="ob-opt" data-val="NEET">NEET</div>
+          <div class="ob-opt" data-val="Both">Both JEE & NEET</div>
         </div>
+      </div>
 
-        <div class="card">
-          <div class="card-title">Top Weak Topics</div>
-          <div id="weak-topics-list">
-            <div class="recommendation-item">Thermodynamics: 68% accuracy</div>
-            <div class="recommendation-item">Organic Chemistry: 71% accuracy</div>
-            <div class="recommendation-item">Integration: 65% accuracy</div>
-          </div>
+      <div class="ob-section">
+        <label class="ob-label">CLASS / YEAR</label>
+        <div class="ob-opts" id="class-opts">
+          <div class="ob-opt" data-val="Class 11">Class 11</div>
+          <div class="ob-opt" data-val="Class 12">Class 12</div>
+          <div class="ob-opt" data-val="Dropper">Dropper</div>
         </div>
+      </div>
 
-        <div class="card">
-          <div class="card-title">Improvement Areas</div>
-          <div style="font-size: 12px; line-height: 2;">
-            <div>✓ +8% accuracy in Physics (last 7 days)</div>
-            <div>→ Chemistry needs focus (declining)</div>
-            <div>✓ +120 study minutes this week</div>
-          </div>
+      <div class="ob-section">
+        <label class="ob-label">BIGGEST STRUGGLE</label>
+        <div class="ob-opts" id="struggle-opts">
+          <div class="ob-opt" data-val="Focus">Focus & Concentration</div>
+          <div class="ob-opt" data-val="Motivation">Motivation & Burnout</div>
+          <div class="ob-opt" data-val="Concepts">Concepts Not Clicking</div>
+          <div class="ob-opt" data-val="Time">Time Management</div>
+          <div class="ob-opt" data-val="Anxiety">Exam Anxiety</div>
         </div>
+      </div>
+
+      <button class="ob-submit" onclick="submitOnboarding()">
+        Start Grinding 🔥
+      </button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD SCREEN -->
+  <div id="dashboard-screen" class="screen">
+    <div class="dashboard">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div class="dash-header">Welcome, <span id="user-name">Student</span>!</div>
+        <button class="btn btn-danger" onclick="handleLogout()">Logout</button>
+      </div>
+
+      <div id="dashboard-error" class="error-box hidden"></div>
+      <div id="dashboard-success" class="success-box hidden"></div>
+
+      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0;">Your Progress</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Current Level</div>
+          <div class="stat-value" id="stat-level">1</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total XP</div>
+          <div class="stat-value" id="stat-xp">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Study Streak</div>
+          <div class="stat-value" id="stat-streak">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Questions Solved</div>
+          <div class="stat-value" id="stat-solved">0</div>
+        </div>
+      </div>
+
+      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0;">Quick Actions</h2>
+      <div class="quick-actions">
+        <button class="btn btn-primary" onclick="startChat()">💬 Chat with AI</button>
+        <button class="btn btn-primary" onclick="viewNotes()">📝 My Notes</button>
+        <button class="btn btn-primary" onclick="viewSessions()">📚 History</button>
+        <button class="btn btn-secondary" onclick="viewAnalytics()">📊 Analytics</button>
+      </div>
+
+      <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 16px 0; color: #6B82A0;">Features Coming Soon</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; color: #6B82A0; font-size: 13px;">
+        <div>✓ Mock Tests</div>
+        <div>✓ Mistake Book</div>
+        <div>✓ Study Planner</div>
+        <div>✓ Leaderboards</div>
       </div>
     </div>
-
-    <!-- MOCK TESTS TAB -->
-    <div id="mock-tab" class="tab-content">
-      <div style="grid-column: 1 / -1;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2 style="font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;">Mock Test Arena</h2>
-          <button class="btn-primary" onclick="startMockTest()">+ Start New Mock</button>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Select Mock Test Type</div>
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px;">
-            <div style="padding: 16px; background: rgba(0,210,255,.08); border: 1px solid rgba(0,210,255,.2); border-radius: 10px; cursor: pointer;" onclick="selectMockType('full')">
-              <div style="font-weight: 600;">Full Length Test</div>
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">3 hours • 90 questions</div>
-            </div>
-            <div style="padding: 16px; background: rgba(0,210,255,.08); border: 1px solid rgba(0,210,255,.2); border-radius: 10px; cursor: pointer;" onclick="selectMockType('chapter')">
-              <div style="font-weight: 600;">Chapter Test</div>
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">30 mins • 20 questions</div>
-            </div>
-            <div style="padding: 16px; background: rgba(0,210,255,.08); border: 1px solid rgba(0,210,255,.2); border-radius: 10px; cursor: pointer;" onclick="selectMockType('subject')">
-              <div style="font-weight: 600;">Subject Test</div>
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">1 hour • 30 questions</div>
-            </div>
-            <div style="padding: 16px; background: rgba(0,210,255,.08); border: 1px solid rgba(0,210,255,.2); border-radius: 10px; cursor: pointer;" onclick="selectMockType('pyq')">
-              <div style="font-weight: 600;">PYQ Series</div>
-              <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Mixed • Real exam questions</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" id="mock-list" style="grid-column: 1 / -1;">
-          <div class="card-title">Recent Mock Tests</div>
-          <div id="recent-mocks">
-            <div style="padding: 16px; background: rgba(0,210,255,.05); border-radius: 10px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-weight: 600;">Full Length Mock #5</div>
-                <div style="font-size: 11px; color: var(--muted2); margin-top: 4px;">Score: 156/180 | 86.7% | Dec 15, 2024</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="color: var(--green); font-weight: 700;">✓</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ADAPTIVE TAB -->
-    <div id="adaptive-tab" class="tab-content">
-      <div style="grid-column: 1 / -1;">
-        <div class="card">
-          <div class="card-title">🎯 Adaptive Learning Path</div>
-          <div style="margin-top: 16px;">
-            <div style="margin-bottom: 20px;">
-              <div style="font-weight: 600; margin-bottom: 8px;">Urgent (Revisit Today)</div>
-              <div class="recommendation-item">Thermodynamics - 8 mistakes in last 7 days</div>
-              <div class="recommendation-item">Organic Synthesis - 65% accuracy</div>
-            </div>
-            <div style="margin-bottom: 20px;">
-              <div style="font-weight: 600; margin-bottom: 8px;">Reinforce (This Week)</div>
-              <div class="recommendation-item">Optics - Strong concept (85%) - solve advanced problems</div>
-              <div class="recommendation-item">Stoichiometry - Solid (79%) - attempt PYQs</div>
-            </div>
-            <div>
-              <div style="font-weight: 600; margin-bottom: 8px;">Next Challenge</div>
-              <div class="recommendation-item">Advanced problem solving - Physics</div>
-              <button class="btn-primary" style="width: 100%; margin-top: 12px;">Start Learning Path</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">📊 Learning Style Analysis</div>
-          <div class="stat-grid">
-            <div class="stat-item">
-              <div class="stat-item-label">Visual</div>
-              <div class="stat-item-value">85%</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-item-label">Practice</div>
-              <div class="stat-item-value">92%</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-item-label">Theory</div>
-              <div class="stat-item-value">71%</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-item-label">Speed</div>
-              <div class="stat-item-value">78%</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">⏰ Optimal Study Hours</div>
-          <div style="padding: 12px; background: rgba(0,210,255,.05); border-radius: 8px; margin-top: 12px;">
-            <div style="font-size: 12px; line-height: 1.8;">
-              <div>🌅 Morning (6-9 AM): High focus - New concepts</div>
-              <div>☀️ Afternoon (2-4 PM): Low focus - Review & rest</div>
-              <div>🌙 Evening (6-10 PM): Good focus - Practice & PYQs</div>
-              <div>🌃 Night (10 PM+): Peak focus - Hard problems</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CHAT TAB -->
-    <div id="chat-tab" class="tab-content">
-      <div style="grid-column: 1 / -1; height: 600px; display: flex; flex-direction: column;">
-        <div id="chat-area" style="flex: 1; overflow-y: auto; margin-bottom: 12px; padding: 16px; background: rgba(22,31,48,.5); border-radius: 12px; border: 1px solid var(--border2);"></div>
-        <div style="display: flex; gap: 8px;">
-          <textarea id="chat-input" placeholder="Ask anything..." style="flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,.03); color: var(--fg); font-family: 'DM Sans', sans-serif; resize: none; min-height: 44px;"></textarea>
-          <button class="btn-primary" onclick="sendChatMessage()" style="width: 50px;">Send</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- NOTES TAB -->
-    <div id="notes-tab" class="tab-content">
-      <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 240px 1fr; gap: 16px; height: 600px;">
-        <div style="background: rgba(22,31,48,.7); border: 1px solid var(--border2); border-radius: 12px; padding: 12px; display: flex; flex-direction: column;">
-          <button class="btn-primary" style="width: 100%; margin-bottom: 12px; font-size: 12px;" onclick="createNote()">+ New Note</button>
-          <div id="notes-list" style="flex: 1; overflow-y: auto;"></div>
-        </div>
-        <div id="note-editor" style="background: rgba(22,31,48,.7); border: 1px solid var(--border2); border-radius: 12px; padding: 16px;">
-          <input id="note-title" placeholder="Note title..." style="width: 100%; padding: 8px; margin-bottom: 12px; border: none; background: transparent; color: var(--fg); font-weight: 600; border-bottom: 1px solid var(--border2); outline: none;">
-          <textarea id="note-content" placeholder="Start writing..." style="width: 100%; height: 400px; padding: 8px; border: none; background: transparent; color: var(--fg); resize: none; outline: none; font-family: 'DM Sans', sans-serif;"></textarea>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
 <script>
+console.log('🧠 GRIND AI initializing...');
+
 let currentUser = null;
-let performanceChart, trendChart, subjectChart;
 
-async function init() {
-  try {
-    const res = await fetch('/api/me', { credentials: 'include' });
-    if (!res.ok) {
-      document.getElementById('login-screen').classList.add('active');
-      return;
-    }
-    const data = await res.json();
-    currentUser = data.user;
-    document.getElementById('login-screen').classList.remove('active');
-    document.getElementById('app').classList.add('active');
-    updateDashboard();
-    loadAnalytics();
-  } catch (err) {
-    console.error('Init error:', err);
-    document.getElementById('login-screen').classList.add('active');
-  }
-}
+// ═══════════════════════════════════════════════════════════
+// AUTHENTICATION CHECK
+// ═══════════════════════════════════════════════════════════
 
-function switchTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.getElementById(tab + '-tab').classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-  event.target.classList.add('active');
+async function checkAuth() {
+  console.log('🔍 Checking authentication status...');
   
-  if (tab === 'analytics') loadAnalytics();
-}
-
-function updateDashboard() {
-  if (!currentUser) return;
-  document.getElementById('level-value').textContent = currentUser.quizLevel || 1;
-  document.getElementById('xp-value').textContent = (currentUser.quizXP || 0) + ' XP';
-  document.getElementById('weekly-xp').textContent = (currentUser.weeklyXP || 0).toLocaleString();
-  document.getElementById('streak-display').textContent = currentUser.streak || 0;
-  document.getElementById('accuracy-value').textContent = '78%';
-  const xpForNext = (currentUser.quizLevel * 200);
-  const xpCurrent = currentUser.quizXP % xpForNext;
-  document.getElementById('xp-progress').style.width = ((xpCurrent / xpForNext) * 100) + '%';
-}
-
-async function loadAnalytics() {
   try {
-    const res = await fetch('/api/analytics/dashboard', { credentials: 'include' });
-    const data = await res.json();
+    const response = await fetch('/api/auth/status', {
+      credentials: 'include'
+    });
     
-    document.getElementById('accuracy-metric').textContent = data.summary.avgAccuracy + '%';
-    document.getElementById('total-questions').textContent = (currentUser.totalQSolved || 0).toLocaleString();
-    document.getElementById('study-hours').textContent = Math.round(data.summary.totalStudyHours);
-    document.getElementById('mock-tests').textContent = data.summary.mockTestsAttempted;
-
-    // Update charts
-    if (data.charts.dailyXP && data.charts.dailyXP.length > 0) {
-      renderChart('performanceChart', data.charts.dailyXP.map(d => d.xp), 'line');
-      renderChart('trendChart', data.charts.accuracy.map(d => d.accuracy), 'line');
-    }
+    if (!response.ok) throw new Error('Auth check failed');
     
-    if (data.charts.subjectMastery) {
-      const subjects = Object.keys(data.charts.subjectMastery);
-      const scores = subjects.map(s => data.charts.subjectMastery[s]);
-      renderChart('subjectChart', scores, 'bar', subjects);
-    }
+    const data = await response.json();
+    console.log('✅ Auth status:', data);
 
-    document.getElementById('recommendations-list').innerHTML = data.recommendations.map(r => 
-      `<div class="recommendation-item">${r}</div>`
-    ).join('');
+    if (data.authenticated && data.user) {
+      currentUser = data.user;
+      console.log('✅ User logged in:', currentUser.email);
+      
+      if (currentUser.isOnboarded) {
+        showDashboard();
+      } else {
+        showOnboarding();
+      }
+    } else {
+      console.log('⚠️  User not authenticated');
+      showLogin();
+    }
   } catch (err) {
-    console.error('Analytics error:', err);
+    console.error('❌ Auth check error:', err);
+    showLogin();
   }
 }
 
-function renderChart(canvasId, data, type = 'line', labels = null) {
-  const ctx = document.getElementById(canvasId)?.getContext('2d');
-  if (!ctx) return;
+// ═══════════════════════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════════════════════
 
-  new Chart(ctx, {
-    type,
-    data: {
-      labels: labels || data.map((, i) => `Day ${i+1}`),
-      datasets: [{
-        label: type === 'bar' ? 'Score' : 'Performance',
-        data,
-        borderColor: '#00D2FF',
-        backgroundColor: type === 'bar' ? 'rgba(0,210,255,.2)' : 'rgba(0,210,255,.1)',
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,210,255,.05)' } },
-        x: { grid: { display: false } }
-      }
-    }
+function hideAllScreens() {
+  document.querySelectorAll('.screen').forEach(el => {
+    el.classList.remove('active');
   });
 }
 
-function startMockTest() {
-  showToast('Starting mock test...');
-  setTimeout(() => {
-    document.getElementById('mock-tab').classList.add('active');
-    switchTab('mock');
-  }, 500);
+function showLogin() {
+  hideAllScreens();
+  document.getElementById('login-screen').classList.add('active');
+  console.log('📍 Showing login screen');
 }
 
-function generateStudyPlan() {
-  showToast('Generating personalized study plan...');
+function showLoading() {
+  hideAllScreens();
+  document.getElementById('loading-screen').classList.add('active');
+  console.log('⏳ Showing loading screen');
 }
 
-function openWeakTopics() {
-  showToast('Loading weak topics analysis...');
+function showOnboarding() {
+  hideAllScreens();
+  document.getElementById('onboarding-screen').classList.add('active');
+  console.log('📍 Showing onboarding screen');
 }
 
-function selectMockType(type) {
-  showToast(`Starting ${type} mock test...`);
+function showDashboard() {
+  hideAllScreens();
+  document.getElementById('dashboard-screen').classList.add('active');
+  updateDashboard();
+  console.log('📍 Showing dashboard');
 }
 
-function createNote() {
-  showToast('Creating new note...');
+// ═══════════════════════════════════════════════════════════
+// ONBOARDING LOGIC
+// ═══════════════════════════════════════════════════════════
+
+document.querySelectorAll('[id$="-opts"]').forEach(group => {
+  group.querySelectorAll('.ob-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      group.querySelectorAll('.ob-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+    });
+  });
+});
+
+async function submitOnboarding() {
+  try {
+    const exam = document.querySelector('#exam-opts .ob-opt.selected')?.dataset.val;
+    const cls = document.querySelector('#class-opts .ob-opt.selected')?.dataset.val;
+    const struggle = document.querySelector('#struggle-opts .ob-opt.selected')?.dataset.val;
+
+    if (!exam || !cls) {
+      showError('onboarding-error', 'Please select exam and class');
+      return;
+    }
+
+    console.log('📤 Submitting onboarding:', { exam, cls, struggle });
+
+    const response = await fetch('/api/user/onboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        exam,
+        class: cls,
+        biggestStruggle: struggle,
+        coaching: 'Self-Study',
+        hoursPerDay: '4-6',
+        gender: 'Not specified'
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+
+    const data = await response.json();
+    console.log('✅ Onboarding successful:', data);
+
+    currentUser.isOnboarded = true;
+    showDashboard();
+  } catch (err) {
+    console.error('❌ Onboarding error:', err);
+    showError('onboarding-error', err.message);
+  }
 }
 
-function sendChatMessage() {
-  const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
-  if (!msg) return;
-  
-  const area = document.getElementById('chat-area');
-  const bubble = document.createElement('div');
-  bubble.style.cssText = 'margin: 8px 0; padding: 10px 12px; background: rgba(0,210,255,.15); border-radius: 8px; color: var(--fg);';
-  bubble.textContent = msg;
-  area.appendChild(bubble);
-  area.scrollTop = area.scrollHeight;
-  input.value = '';
-  
-  showToast('Message sent...');
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD LOGIC
+// ═══════════════════════════════════════════════════════════
+
+async function updateDashboard() {
+  try {
+    if (!currentUser) return;
+
+    console.log('📊 Updating dashboard...');
+
+    // Get user data
+    const response = await fetch('/api/me', {
+      credentials: 'include'
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch user data');
+
+    const data = await response.json();
+    const user = data.user;
+
+    // Update display
+    document.getElementById('user-name').textContent = (user.name || 'Student').split(' ')[0];
+    document.getElementById('stat-level').textContent = user.quizLevel || 1;
+    document.getElementById('stat-xp').textContent = user.quizXP || 0;
+    document.getElementById('stat-streak').textContent = user.streak || 0;
+    document.getElementById('stat-solved').textContent = user.totalQSolved || 0;
+
+    console.log('✅ Dashboard updated');
+  } catch (err) {
+    console.error('❌ Dashboard update error:', err);
+    showError('dashboard-error', 'Failed to load dashboard');
+  }
 }
 
-function toggleProfile() {
-  showToast('Profile menu coming soon');
+// ═══════════════════════════════════════════════════════════
+// QUICK ACTIONS
+// ═══════════════════════════════════════════════════════════
+
+async function startChat() {
+  showSuccess('dashboard-success', '💬 Opening chat... (Feature coming soon)');
 }
 
-function showToast(msg) {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+async function viewNotes() {
+  try {
+    const response = await fetch('/api/notes', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    console.log('📝 Notes:', data.notes);
+    showSuccess('dashboard-success', `📝 You have ${data.notes.length} notes`);
+  } catch (err) {
+    showError('dashboard-error', 'Failed to load notes');
+  }
 }
 
-// Initialize
-init();
+async function viewSessions() {
+  try {
+    const response = await fetch('/api/sessions', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    console.log('📚 Sessions:', data.sessions);
+    showSuccess('dashboard-success', `📚 You have ${data.sessions.length} conversations`);
+  } catch (err) {
+    showError('dashboard-error', 'Failed to load sessions');
+  }
+}
+
+async function viewAnalytics() {
+  try {
+    const response = await fetch('/api/analytics/dashboard', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    console.log('📊 Analytics:', data);
+    showSuccess('dashboard-success', '📊 Your level: ' + data.summary.level + ', XP this week: ' + data.summary.xpThisWeek);
+  } catch (err) {
+    showError('dashboard-error', 'Failed to load analytics');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOGOUT
+// ═══════════════════════════════════════════════════════════
+
+async function handleLogout() {
+  if (confirm('Are you sure you want to logout?')) {
+    window.location.href = '/auth/logout';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function showError(elementId, message) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.textContent = '❌ ' + message;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+  }
+}
+
+function showSuccess(elementId, message) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.textContent = '✅ ' + message;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT ON LOAD
+// ═══════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('🚀 Page loaded, checking authentication...');
+  checkAuth();
+});
+
+// Check auth on focus (in case user logged in elsewhere)
+window.addEventListener('focus', () => {
+  console.log('👁️  Window focused, checking auth...');
+  checkAuth();
+});
+
+console.log('✅ Script loaded');
 </script>
+
 </body>
 </html>
