@@ -10,43 +10,55 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const http = require('http');
 const { Server } = require('socket.io');
 
+console.log('🚀 Starting GRIND AI PRO v11...');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-  cors: { origin: '*', credentials: true } 
+  cors: { 
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true 
+  } 
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // MIDDLEWARE SETUP
-// ═══════════════════════════════════════════════════════════════
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ limit: '20mb', extended: true }));
+// ═══════════════════════════════════════════════════════════
+app.use(cors({ 
+  origin: true, 
+  credentials: true 
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
-console.log('✅ Middleware configured');
+// ═══════════════════════════════════════════════════════════
+// MONGODB CONNECTION
+// ═══════════════════════════════════════════════════════════
+console.log('📦 Connecting to MongoDB...');
 
-// ═══════════════════════════════════════════════════════════════
-// DATABASE CONNECTION
-// ═══════════════════════════════════════════════════════════════
+if (!process.env.MONGODB_URI) {
+  console.error('❌ ERROR: MONGODB_URI not set in environment variables');
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
 })
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.log('⚠️  Continuing anyway... (will fail on data access)');
+    console.error('❌ MongoDB connection failed:', err.message);
+    process.exit(1);
   });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // DATABASE SCHEMAS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+
 const userSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true },
-  email: { type: String, unique: true, sparse: true },
+  email: { type: String, required: true },
   name: { type: String, required: true },
   photo: { type: String, default: '' },
   gender: { type: String, default: '' },
@@ -60,15 +72,12 @@ const userSchema = new mongoose.Schema({
   lastActive: { type: Date, default: Date.now },
   quizXP: { type: Number, default: 0 },
   quizLevel: { type: Number, default: 1 },
+  totalQSolved: { type: Number, default: 0 },
+  totalQCorrect: { type: Number, default: 0 },
   weeklyXP: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-}, { collection: 'users' });
-
-userSchema.index({ googleId: 1 });
-userSchema.index({ email: 1 });
-
-const User = mongoose.model('User', userSchema);
+  weeklyXPReset: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
+});
 
 const sessionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -80,59 +89,74 @@ const sessionSchema = new mongoose.Schema({
   }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-}, { collection: 'chat_sessions' });
-
-const ChatSession = mongoose.model('ChatSession', sessionSchema);
+});
 
 const noteSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   title: { type: String, default: 'Untitled' },
   content: { type: String, default: '' },
+  pinned: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-}, { collection: 'notes' });
+});
 
+const User = mongoose.model('User', userSchema);
+const ChatSession = mongoose.model('ChatSession', sessionSchema);
 const Note = mongoose.model('Note', noteSchema);
 
-console.log('✅ Database schemas created');
+console.log('✅ Database schemas initialized');
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // SESSION CONFIGURATION
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+
+if (!process.env.SESSION_SECRET) {
+  console.error('❌ ERROR: SESSION_SECRET not set');
+  process.exit(1);
+}
+
 const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'grind-secret-2025-dev',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600
+  }),
+  cookie: { 
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' // HTTPS only in production
-  },
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/grind',
-    touchAfter: 24 * 3600 // lazy session update
-  })
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
 };
 
 app.use(session(sessionConfig));
+app.use(passport.initialize());
+app.use(passport.session());
+
 console.log('✅ Session configured');
 
-// ═══════════════════════════════════════════════════════════════
-// PASSPORT AUTHENTICATION
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// PASSPORT GOOGLE OAUTH SETUP
+// ═══════════════════════════════════════════════════════════
+
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  console.error('❌ ERROR: Google OAuth credentials not set');
+  process.exit(1);
+}
+
+console.log('🔐 Setting up Google OAuth...');
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log('🔐 Google OAuth callback - User:', profile.emails[0].value);
-
     let user = await User.findOne({ googleId: profile.id });
     
     if (!user) {
-      console.log('👤 Creating new user:', profile.displayName);
       user = new User({
         googleId: profile.id,
         email: profile.emails[0].value,
@@ -140,13 +164,11 @@ passport.use(new GoogleStrategy({
         photo: profile.photos[0]?.value || ''
       });
       await user.save();
-      console.log('✅ User created:', user._id);
+      console.log('✅ New user created:', user.email);
     } else {
-      console.log('✅ User found:', user._id);
-      user.lastActive = new Date();
-      await user.save();
+      console.log('✅ Existing user login:', user.email);
     }
-
+    
     return done(null, user);
   } catch (err) {
     console.error('❌ OAuth error:', err);
@@ -155,112 +177,101 @@ passport.use(new GoogleStrategy({
 }));
 
 passport.serializeUser((user, done) => {
-  console.log('📦 Serializing user:', user._id);
   done(null, user._id);
 });
 
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
-    console.log('📦 Deserializing user:', id);
     done(null, user);
   } catch (err) {
-    console.error('❌ Deserialization error:', err);
     done(err, null);
   }
 });
 
-app.use(passport.initialize());
-app.use(passport.session());
-console.log('✅ Passport configured');
+console.log('✅ Google OAuth configured');
 
-// ═══════════════════════════════════════════════════════════════
-// MIDDLEWARE
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// MIDDLEWARE HELPERS
+// ═══════════════════════════════════════════════════════════
+
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
-    console.log('✅ Auth check passed for:', req.user.email);
     return next();
   }
-  console.log('❌ Auth check failed - User not authenticated');
-  res.status(401).json({ error: 'Not authenticated', loginUrl: '/auth/google' });
+  console.log('⚠️  Unauthenticated access attempt');
+  return res.status(401).json({ error: 'Login required' });
 };
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // ROUTES - HEALTH CHECK
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+
 app.get('/ping', (req, res) => {
   res.json({ 
     status: 'alive', 
-    version: 'v11', 
-    timestamp: new Date(),
-    authenticated: req.isAuthenticated()
+    version: 'v11',
+    timestamp: new Date().toISOString()
   });
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // ROUTES - AUTHENTICATION
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
-// Google OAuth Login
-app.get('/auth/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    prompt: 'consent'
-  })
-);
+app.get('/auth/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'],
+  prompt: 'consent'
+}));
 
-// Google OAuth Callback
-app.get('/auth/google/callback',
-  passport.authenticate('google', {
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { 
     failureRedirect: '/?error=auth_failed',
     failureMessage: true
-  }),
+  }), 
   (req, res) => {
-    console.log('🎉 OAuth callback successful for:', req.user.email);
-    const redirectUrl = req.user.isOnboarded ? '/?loggedin=true' : '/?onboarding=true';
-    console.log('📍 Redirecting to:', redirectUrl);
-    res.redirect(redirectUrl);
+    console.log('✅ Google OAuth callback successful');
+    console.log('User:', req.user.email, 'Onboarded:', req.user.isOnboarded);
+    
+    if (req.user.isOnboarded) {
+      res.redirect('/?loggedin=true');
+    } else {
+      res.redirect('/?onboarding=true');
+    }
   }
 );
 
-// Logout
 app.get('/auth/logout', (req, res) => {
   req.logout((err) => {
     if (err) {
-      console.error('❌ Logout error:', err);
       return res.status(500).json({ error: 'Logout failed' });
     }
-    console.log('✅ User logged out');
     res.redirect('/');
   });
 });
 
-// Check Auth Status
 app.get('/api/auth/status', (req, res) => {
-  console.log('🔍 Checking auth status:', req.isAuthenticated());
-  res.json({
-    authenticated: req.isAuthenticated(),
-    user: req.user ? {
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email,
-      photo: req.user.photo
-    } : null
-  });
+  if (req.isAuthenticated()) {
+    return res.json({ 
+      authenticated: true, 
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        isOnboarded: req.user.isOnboarded
+      }
+    });
+  }
+  res.json({ authenticated: false, user: null });
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // ROUTES - USER
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
 app.get('/api/me', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
+    const user = req.user;
     res.json({
       user: {
         id: user._id,
@@ -272,151 +283,151 @@ app.get('/api/me', requireAuth, async (req, res) => {
         class: user.class,
         coaching: user.coaching,
         gender: user.gender,
-        biggestStruggle: user.biggestStruggle,
-        hoursPerDay: user.hoursPerDay,
         quizXP: user.quizXP,
         quizLevel: user.quizLevel,
+        streak: user.streak,
         weeklyXP: user.weeklyXP,
-        streak: user.streak
+        totalQSolved: user.totalQSolved,
+        totalQCorrect: user.totalQCorrect
       }
     });
   } catch (err) {
-    console.error('❌ Error fetching user:', err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle, hoursPerDay, gender } = req.body;
-
+    
     if (!exam || !cls) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Exam and class are required' });
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, {
       exam,
       class: cls,
-      coaching: coaching || '',
-      biggestStruggle: biggestStruggle || '',
-      hoursPerDay: hoursPerDay || '',
-      gender: gender || '',
-      isOnboarded: true,
-      updatedAt: new Date()
+      coaching,
+      biggestStruggle,
+      hoursPerDay,
+      gender,
+      isOnboarded: true
     }, { new: true });
 
     console.log('✅ User onboarded:', user.email);
 
-    res.json({
+    res.json({ 
       success: true,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
-        isOnboarded: user.isOnboarded,
-        exam: user.exam
+        isOnboarded: user.isOnboarded
       }
     });
   } catch (err) {
-    console.error('❌ Onboarding error:', err);
-    res.status(500).json({ error: 'Onboarding failed' });
+    console.error('Onboard error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // ROUTES - CHAT
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
 app.post('/api/chat/stream', requireAuth, async (req, res) => {
   try {
     const { messages, sessionId } = req.body;
+    const user = req.user;
 
     if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Invalid messages format' });
+      return res.status(400).json({ error: 'Invalid messages' });
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
 
     const send = (event, data) => {
       res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
     };
 
-    // Simulate AI response
-    const userMessage = messages[messages.length - 1]?.content || '';
-    console.log('💬 Chat message:', userMessage.substring(0, 50));
-
-    // Generate response
-    const response = generateAIResponse(userMessage, req.user);
+    // Simulate AI response (replace with real LLM call)
+    let reply = generateMockResponse(messages[messages.length - 1]?.content || '');
 
     // Stream response word by word
-    const words = response.split(' ');
+    const words = reply.split(' ');
     for (const word of words) {
+      await new Promise(r => setTimeout(r, 50));
       send('chunk', { text: word + ' ' });
-      await new Promise(resolve => setTimeout(resolve, 50)); // Simulate streaming
     }
 
-    send('done', { reply: response });
+    send('done', { reply });
 
     // Save to session
-    if (sessionId && sessionId.length === 24) {
+    if (sessionId && sessionId !== 'new' && sessionId.length === 24) {
       try {
         await ChatSession.findByIdAndUpdate(sessionId, {
-          $push: {
+          $push: { 
             messages: [
-              { role: 'user', content: userMessage },
-              { role: 'assistant', content: response }
+              { role: 'user', content: messages[messages.length - 1].content },
+              { role: 'assistant', content: reply }
             ]
           },
-          updatedAt: new Date()
+          $set: { updatedAt: new Date() }
         }, { upsert: true });
       } catch (e) {
-        console.error('⚠️  Session save error:', e.message);
+        console.error('Session save error:', e);
       }
     }
 
     res.end();
   } catch (err) {
-    console.error('❌ Chat error:', err);
-    res.write(`data: ${JSON.stringify({ event: 'error', error: 'Chat failed' })}\n\n`);
-    res.end();
+    console.error('Chat error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
+function generateMockResponse(userMessage) {
+  const responses = {
+    'hi': 'Hey there! 👋 Welcome to GRIND AI. How can I help you with your studies today?',
+    'help': 'I can help you with:\n- Concept explanations\n- Problem solving\n- Mock tests\n- Study planning\n\nWhat would you like to work on?',
+    'default': 'That\'s a great question! 🤔\n\nBased on your exam goals, I\'d recommend:\n1. Start with fundamentals\n2. Solve at least 10 practice problems\n3. Review mistakes daily\n\nLet me know if you need more specific help!'
+  };
+
+  const key = userMessage.toLowerCase().includes('hi') ? 'hi' 
+           : userMessage.toLowerCase().includes('help') ? 'help'
+           : 'default';
+  
+  return responses[key];
+}
+
+// ═══════════════════════════════════════════════════════════
 // ROUTES - SESSIONS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
     const sessions = await ChatSession.find({ userId: req.user._id })
       .select('title createdAt updatedAt')
       .sort({ updatedAt: -1 })
-      .limit(30)
-      .lean();
-
+      .limit(30);
     res.json({ sessions });
   } catch (err) {
-    console.error('❌ Sessions fetch error:', err);
-    res.status(500).json({ error: 'Failed to load sessions' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/sessions/new', requireAuth, async (req, res) => {
   try {
-    const session = new ChatSession({
+    const session = await ChatSession.create({
       userId: req.user._id,
       title: 'New Chat',
       messages: []
     });
-    await session.save();
-
-    console.log('✅ New session created:', session._id);
     res.json({ sessionId: session._id });
   } catch (err) {
-    console.error('❌ Session creation error:', err);
-    res.status(500).json({ error: 'Failed to create session' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -426,15 +437,10 @@ app.get('/api/sessions/:id', requireAuth, async (req, res) => {
       _id: req.params.id,
       userId: req.user._id
     });
-
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
+    if (!session) return res.status(404).json({ error: 'Not found' });
     res.json({ session });
   } catch (err) {
-    console.error('❌ Session fetch error:', err);
-    res.status(500).json({ error: 'Failed to load session' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -444,208 +450,141 @@ app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
       _id: req.params.id,
       userId: req.user._id
     });
-
-    console.log('✅ Session deleted:', req.params.id);
     res.json({ success: true });
   } catch (err) {
-    console.error('❌ Session delete error:', err);
-    res.status(500).json({ error: 'Failed to delete session' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // ROUTES - NOTES
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
 app.get('/api/notes', requireAuth, async (req, res) => {
   try {
     const notes = await Note.find({ userId: req.user._id })
-      .sort({ updatedAt: -1 })
-      .lean();
-
+      .sort({ pinned: -1, updatedAt: -1 });
     res.json({ notes });
   } catch (err) {
-    console.error('❌ Notes fetch error:', err);
-    res.status(500).json({ error: 'Failed to load notes' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/notes', requireAuth, async (req, res) => {
   try {
-    const { title, content } = req.body;
-
-    const note = new Note({
+    const note = await Note.create({
       userId: req.user._id,
-      title: title || 'Untitled',
-      content: content || ''
+      title: req.body.title || 'Untitled',
+      content: req.body.content || ''
     });
-    await note.save();
-
-    console.log('✅ Note created:', note._id);
     res.json({ note });
   } catch (err) {
-    console.error('❌ Note creation error:', err);
-    res.status(500).json({ error: 'Failed to create note' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.patch('/api/notes/:id', requireAuth, async (req, res) => {
   try {
-    const { title, content } = req.body;
-
     const note = await Note.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
-      { title, content, updatedAt: new Date() },
+      { ...req.body, updatedAt: new Date() },
       { new: true }
     );
-
-    if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
-    }
-
+    if (!note) return res.status(404).json({ error: 'Not found' });
     res.json({ note });
   } catch (err) {
-    console.error('❌ Note update error:', err);
-    res.status(500).json({ error: 'Failed to update note' });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.delete('/api/notes/:id', requireAuth, async (req, res) => {
   try {
     await Note.deleteOne({ _id: req.params.id, userId: req.user._id });
-
-    console.log('✅ Note deleted:', req.params.id);
     res.json({ success: true });
   } catch (err) {
-    console.error('❌ Note delete error:', err);
-    res.status(500).json({ error: 'Failed to delete note' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// ROUTES - ANALYTICS (DUMMY)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// ROUTES - ANALYTICS (MOCK)
+// ═══════════════════════════════════════════════════════════
 
 app.get('/api/analytics/dashboard', requireAuth, async (req, res) => {
   try {
+    const user = req.user;
     res.json({
       summary: {
-        level: req.user.quizLevel || 1,
-        xpThisWeek: req.user.weeklyXP || 0,
-        streak: req.user.streak || 0,
-        totalStudyHours: 145,
+        level: user.quizLevel || 1,
+        xpThisWeek: user.weeklyXP || 0,
+        streak: user.streak || 0,
+        totalStudyHours: 142,
         avgAccuracy: 78,
         mockTestsAttempted: 5
       },
       charts: {
-        dailyXP: Array(7).fill(0).map((_, i) => ({
-          date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          xp: Math.random() * 300
-        })),
-        accuracy: Array(7).fill(0).map(() => ({ accuracy: Math.random() * 30 + 60 })),
-        subjectMastery: {
-          Physics: 84,
-          Chemistry: 79,
-          Mathematics: 71,
-          Biology: 88
-        },
-        topMistakes: [
-          { topic: 'Thermodynamics', count: 8 },
-          { topic: 'Organic Chemistry', count: 6 },
-          { topic: 'Integration', count: 5 }
-        ]
+        dailyXP: [
+          { date: '2024-12-15', xp: 240 },
+          { date: '2024-12-16', xp: 180 },
+          { date: '2024-12-17', xp: 320 }
+        ],
+        accuracy: [
+          { date: '2024-12-15', accuracy: 82 },
+          { date: '2024-12-16', accuracy: 78 },
+          { date: '2024-12-17', accuracy: 85 }
+        ],
+        subjectMastery: { Physics: 84, Chemistry: 79, Math: 71 }
       },
       recommendations: [
-        'Focus on Thermodynamics — 8 mistakes',
-        'Keep your 7-day streak alive 🔥',
-        'Review Integral Calculus'
+        'Focus on Thermodynamics',
+        'Keep your streak alive! 🔥'
       ]
     });
   } catch (err) {
-    console.error('❌ Analytics error:', err);
-    res.status(500).json({ error: 'Failed to load analytics' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// HELPER FUNCTION - AI RESPONSE GENERATOR
-// ═══════════════════════════════════════════════════════════════
-
-function generateAIResponse(userMessage, user) {
-  const name = user?.name?.split(' ')[0] || 'there';
-  
-  const responses = {
-    'thermodynamics': `Hey ${name}! Thermodynamics can be tricky. Let me break it down:\n\n**First Law**: Energy can't be created or destroyed, only converted.\n\n**Second Law**: Entropy always increases in isolated systems.\n\n**Key Formula**: Q = ΔU + W\n\nWhat specific concept is confusing you?`,
-    
-    'doubt': `I'm here to help with your doubts, ${name}! Tell me:\n\n1. Which subject?\n2. What topic?\n3. What specifically are you stuck on?\n\nI'll explain step-by-step.`,
-    
-    'mock': `Great idea! Mock tests are crucial for:\n- Identifying weak areas\n- Building exam stamina\n- Managing time better\n\nLet's start a mock test? What subject?`,
-    
-    'motivation': `${name}, you've got this! 💪\n\nRemember:\n- Consistency > Intensity\n- Small progress > No progress\n- You're closer than yesterday\n\nWhat are you working on?`,
-    
-    'default': `Hello ${name}! 👋\n\nI'm GRIND AI, your JEE/NEET mentor.\n\nI can help you with:\n- Concept doubts (any subject)\n- Problem solving\n- Strategy & planning\n- Motivation & mental health\n\nWhat's on your mind?`
-  };
-
-  const lower = userMessage.toLowerCase();
-  
-  for (const [key, response] of Object.entries(responses)) {
-    if (lower.includes(key)) {
-      return response;
-    }
-  }
-  
-  return responses.default;
-}
-
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // SPA FALLBACK
-// ═══════════════════════════════════════════════════════════════
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// ═══════════════════════════════════════════════════════════
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ═══════════════════════════════════════════════════════════════
-// ERROR HANDLING
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// ERROR HANDLER
+// ═══════════════════════════════════════════════════════════
 
 app.use((err, req, res, next) => {
-  console.error('❌ Global error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  console.error('❌ Error:', err);
+  res.status(500).json({ 
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message 
   });
 });
 
-// ═══════════════════════════════════════════════════════════════
-// SERVER START
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// START SERVER
+// ═══════════════════════════════════════════════════════════
 
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
-  console.log(`\n`);
-  console.log(`╔═══════════════════════════════════════╗`);
-  console.log(`║  🧠 GRIND AI PRO v11 - STARTED      ║`);
-  console.log(`║  Port: ${PORT}                           ║`);
-  console.log(`║  Environment: ${process.env.NODE_ENV || 'development'}       ║`);
-  console.log(`╚═══════════════════════════════════════╝`);
-  console.log(`\n✅ Ready to accept connections!\n`);
-  console.log(`📍 Visit: http://localhost:${PORT}`);
-  console.log(`🔐 Google OAuth: Configured`);
-  console.log(`💾 MongoDB: Connected`);
-  console.log(`\n`);
+  console.log(`
+╔════════════════════════════════════════════╗
+║  🧠 GRIND AI PRO v11 STARTED SUCCESSFULLY  ║
+╚════════════════════════════════════════════╝
+
+🌐 Server running on port: ${PORT}
+📍 Environment: ${process.env.NODE_ENV || 'development'}
+🔗 MongoDB: Connected
+🔐 OAuth: Configured
+🚀 Ready for users!
+
+Access at: http://localhost:${PORT}
+  `);
 });
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n\n⚠️  Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
+module.exports = server;
