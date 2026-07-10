@@ -16,6 +16,32 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// ── TRUST PROXY (CRITICAL FIX) ───────────────────────────
+// Render/Railway/Heroku/etc terminate HTTPS at a load balancer and forward
+// plain HTTP to your app. Without this, Express thinks every request is
+// insecure, so a `secure` cookie is silently never set/sent back — the
+// browser looks "logged in" for one request (right after the OAuth
+// redirect) then immediately loses the session on the very next request,
+// which is exactly what causes a login → home → login loop.
+app.set('trust proxy', 1);
+
+const isProd = process.env.NODE_ENV === 'production';
+
+// ── STARTUP ENV VALIDATION ────────────────────────────────
+// Fail loud, not silent. A missing/mismatched GOOGLE_CALLBACK_URL is the
+// #2 cause of login loops (Google Console redirect URI must match this
+// EXACTLY — same protocol, host, and path, no trailing slash difference).
+(function validateEnv() {
+  const required = ['MONGODB_URI', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_CALLBACK_URL'];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length) {
+    console.warn('⚠️  Missing env vars:', missing.join(', '));
+  }
+  if (process.env.GOOGLE_CALLBACK_URL && !process.env.GOOGLE_CALLBACK_URL.startsWith('https://') && isProd) {
+    console.warn('⚠️  GOOGLE_CALLBACK_URL is not https:// while NODE_ENV=production — this will break OAuth/session cookies.');
+  }
+})();
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
@@ -195,12 +221,30 @@ const BossBattle = mongoose.model('BossBattle', bossSchema);
 const DailyChallenge = mongoose.model('DailyChallenge', dailyChallengeSchema);
 
 // ── SESSION & PASSPORT ────────────────────────────────────
+const sessionStore = MongoStore.create({
+  mongoUrl: process.env.MONGODB_URI,
+  touchAfter: 24 * 3600 // only re-save session once per 24h unless data changed
+});
+sessionStore.on('error', (err) => console.error('❌ Session store error:', err.message));
+
 app.use(session({
+  name: 'grind.sid',
   secret: process.env.SESSION_SECRET || 'grindai-secret-2025',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }
+  store: sessionStore,
+  proxy: true, // trust the X-Forwarded-Proto header from the platform's proxy
+  cookie: {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    // 'auto' checks req.secure (which correctly reflects X-Forwarded-Proto
+    // because of app.set('trust proxy', 1) above) instead of trusting
+    // NODE_ENV, which some hosts (Railway, etc.) don't set to 'production'.
+    // This is the single most common reason this exact symptom happens.
+    secure: 'auto',
+    sameSite: 'lax'       // 'lax' allows the cookie to be sent on the top-level
+                           // redirect Google sends back after login
+  }
 }));
 
 passport.use(new GoogleStrategy({
@@ -222,6 +266,7 @@ passport.use(new GoogleStrategy({
         coins: 100,
         gems: 5
       });
+      console.log('👤 New user created:', user._id.toString());
     } else {
       const diff = Math.floor((new Date() - new Date(user.lastActive)) / 86400000);
       if (diff === 1) user.streak += 1;
@@ -238,14 +283,28 @@ passport.use(new GoogleStrategy({
       const weekAgo = new Date(Date.now() - 7 * 86400000);
       if (new Date(user.weeklyXPReset) < weekAgo) { user.weeklyXP = 0; user.weeklyXPReset = new Date(); }
       await user.save();
+      console.log('👤 Existing user logged in:', user._id.toString());
     }
     return done(null, user);
-  } catch (err) { return done(err, null); }
+  } catch (err) {
+    console.error('❌ Google strategy error:', err.message);
+    return done(err, null);
+  }
 }));
 
-passport.serializeUser((u, done) => done(null, u._id));
+passport.serializeUser((u, done) => done(null, u._id.toString()));
 passport.deserializeUser(async (id, done) => {
-  try { done(null, await User.findById(id)); } catch (e) { done(e, null); }
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      console.warn('⚠️  deserializeUser: no user found for id', id, '— session cookie is stale/orphaned.');
+      return done(null, false);
+    }
+    done(null, user);
+  } catch (e) {
+    console.error('❌ deserializeUser error:', e.message);
+    done(e, null);
+  }
 });
 app.use(passport.initialize());
 app.use(passport.session());
@@ -593,11 +652,24 @@ app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
-  (req, res) => res.redirect('/')
+  (req, res) => {
+    console.log('✅ OAuth callback success. session id:', req.sessionID, 'user:', req.user?._id?.toString());
+    res.redirect('/');
+  }
 );
-app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
+app.get('/auth/logout', (req, res) => {
+  req.logout(() => {
+    req.session.destroy(() => {
+      res.clearCookie('grind.sid');
+      res.redirect('/');
+    });
+  });
+});
 app.get('/api/auth/status', (req, res) => {
-  res.json({ authenticated: req.isAuthenticated() });
+  res.json({
+    authenticated: req.isAuthenticated(),
+    userId: req.isAuthenticated() ? req.user._id.toString() : null
+  });
 });
 
 // USER
@@ -1286,4 +1358,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🧠 GRIND AI running on port ${PORT}`);
   console.log(`🔑 DeepSeek=${DEEPSEEK_KEY ? 1 : 0} OpenRouter=${OPENROUTER_KEYS.length} Gemini=${GEMINI_KEYS.length} Groq=${GROQ_KEYS.length}`);
+  console.log(`🍪 Cookie secure=auto (matches request protocol) | NODE_ENV=${process.env.NODE_ENV || '(unset)'}`);
 });
