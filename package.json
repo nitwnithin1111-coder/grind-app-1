@@ -1,11 +1,10 @@
 {
   "name": "grind-jee-neet",
-  "version": "10.0.0",
-  "description": "GRIND AI v10 — Addictive JEE/NEET companion with DeepSeek, quests, pomodoro, flashcards, shop & more",
+  "version": "11.0.0",
+  "description": "GRIND — a focused AI mentor for JEE and NEET aspirants",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -15,14 +14,9 @@
     "passport-google-oauth20": "^2.0.0",
     "express-session": "^1.17.3",
     "connect-mongo": "^5.1.0",
-    "dotenv": "^16.0.0",
-    "socket.io": "^4.7.0",
-    "multer": "^1.4.5-lts.1"
+    "dotenv": "^16.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "keywords": ["jee", "neet", "ai", "study", "grind", "deepseek"],
-  "author": "GRIND AI",
-  "license": "ISC"
+  }
 }
