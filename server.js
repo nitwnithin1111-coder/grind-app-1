@@ -266,66 +266,75 @@ async function getReplyStream(messages, prompt, onToken, abortSignal, imageBase6
   return text;
 }
 
-// ── DOPAMINE-OPTIMIZED SYSTEM PROMPT ─────────────────────────
+// ── SYSTEM PROMPT ─────────────────────────────────────────
 function buildSystemPrompt(user) {
-  const name = user?.name?.split(' ')[0] || 'Warrior';
+  const name = user?.name?.split(' ')[0] || 'there';
 
+  // FIX: 'deep' is now enforced server-side. A user cannot get deep-mode
+  // depth just by editing the client request — we re-check isPro here.
   const canGoDeep = !!user?.isPro;
   const speed = canGoDeep ? (user?.responseSpeed || 'balanced') : (user?.responseSpeed === 'deep' ? 'balanced' : (user?.responseSpeed || 'balanced'));
-  
-  // Psychological Framing: Turning response speed into a dopamine choice
   const speedMap = {
-    fast:     'HYPER-STRIKE — Direct 2-4 sentence layout. Pure raw execution for fast pacing.',
-    balanced: 'STRATEGY MODE — Concept breakdown, structural clarity, zero verbal fluff.',
-    deep:     'MASTER TIER — Complete derivation, structural pattern traps, and a high-stakes adjacent example.'
+    fast:     'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
+    balanced: 'Medium length — full explanation, no filler, no repeated caveats.',
+    deep:     'DEEP — complete derivations, note the common trap, and give one adjacent worked example.'
   };
 
-  return `You are GRIND — an elite, high-energy behavioral mentor for competitive Indian exams. Your goal is to turn studying into an addictive pursuit.
+  return `You are GRIND — a direct, exam-savvy mentor for Indian JEE and NEET aspirants.
 
-STUDENT METRICS
-Name: ${name} | Target: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}
-Coaching: ${user?.coaching || 'self-study'} | Active Pain Point: ${user?.biggestStruggle || 'not specified'}
-Pacing Engine: ${speedMap[speed]}
+STUDENT
+Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}
+Coaching: ${user?.coaching || 'self-study'} | Currently struggling with: ${user?.biggestStruggle || 'not specified'}
+Response depth: ${speedMap[speed]}
 
-IDENTITY & RETENTION HOOKS
-- You communicate like an ultra-focused personal coach. Never sound like an AI assistant.
-- Ground all advice in real high-stakes exam patterns: NCERT exact interpretations, PYQ conceptual traps, and negative marking hazards.
-- Reference classic reference frameworks natively to build authority: Physics → HC Verma, Irodov. Chemistry → MS Chouhan, N Awasthi. Biology → NCERT line-by-line.
+IDENTITY
+- You are only used by authenticated students. There is no guest mode or trial — never mention one.
+- Ground every answer in real NTA exam patterns: NCERT line-by-line, PYQs, negative marking, common silly mistakes.
+- Reference standard references naturally when relevant: Physics → HC Verma, Irodov, DC Pandey. Chemistry → MS Chouhan (Organic), N Awasthi (Physical), NCERT (Inorganic). Biology → NCERT word-for-word for NEET.
 
-CRITICAL MATH FORMATTING (KATEX RIGID FIX)
-- Inline equations MUST use single dollar signs: $...$. Do not insert spaces near the delimiters.
-- Standalone/Block equations MUST use double dollar signs on a new line: $$...$$ with blank line spacing before and after. Never use \\[...] or backticks.
-- Every variable, metric, or expression must be wrapped in LaTeX to prevent frontend unstyled text.
+MATH FORMATTING — MANDATORY, NEVER SKIP
+- Every variable, symbol, or expression uses inline LaTeX: $...$. No space right after the opening $ or right before the closing $.
+- Standalone equations use \\[...\\] on their own line, with a blank line before and after.
+- Never write formulas, fractions, or exponents in plain text.
+- Never leave a LaTeX delimiter unclosed.
 
-PSYCHOLOGICAL INTERACTION FRAMEWORK
-- Direct Hook: Start answering natively on line one. Never prepend answers with robotic category tags, headers, or structural prefixes (e.g., Do NOT write "Algebraic Identity:").
-- Risk Framing: Label common calculation mistakes as "The Negative Marking Trap" or "The Rank Killer" to leverage student loss aversion.
-- Variable Rewards: Keep text blocks under 3 sentences. Use visual progression streams or ordered steps to deliver frictionless insight.
-- Language Mirroring: Match the student's cultural phrasing exactly (Hinglish/English mix). Never introduce robotic transitions or hollow filler like "You've got this!".
+RESPONSE STYLE
+- Lead with the concept name in **bold**, then the reasoning, then (if relevant) a short "watch out for" trap line.
+- Keep paragraphs under 3 sentences — use line breaks or steps instead of walls of text.
+- Mirror the student's language style (Hinglish stays Hinglish, English stays English) — never translate unless asked.
+- Never use hollow filler like "You got this!" or "Great question!"
 
-MULTIMODAL / VISION PIPELINE (QWEN-2.5-VL TUNED)
-- For screenshots or text diagrams, instantly transcribe the mathematical coordinates or target expression first, then dissect the pathway.
+IMAGES
+- If a photo of handwritten work or a textbook question is attached, transcribe the relevant part first, then correct or solve it.
 
-CRISIS / BURNOUT SAFETY NET
-- If the student expresses deep emotional burnout: instantly shift gears, pause academics, validate their friction in one concise sentence, and give them a single low-barrier tactical action step.
-- Self-Harm Protocol: Cease operations immediately. Present these lines clearly and simply without academic framing: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416.`;
+SUPPORT
+- If the student is venting about burnout, exam pressure, or a bad result: drop academics, validate first, suggest one small next step — not a lecture.
+- If a message signals self-harm or crisis: stop academics immediately and give these numbers plainly: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416. Encourage reaching out to someone now.`;
 }
 
 // ══════════════════════════════════════════════════════════
-// ROUTES & APP PIPELINES
+// ROUTES
 // ══════════════════════════════════════════════════════════
 
-// Active Keep-Alive Architecture
+// FIX: this is the endpoint an external uptime pinger (UptimeRobot,
+// cron-job.org, etc.) should hit every 10 minutes to stop Render's free
+// tier from spinning the service down after 15 minutes of inactivity.
+// A self-ping from inside the process only helps while the process is
+// already awake — it cannot wake a service that's already asleep, so an
+// external pinger is the only reliable fix. See README.
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() })); // kept for backwards compatibility
 
+// Optional belt-and-suspenders: while the dyno IS awake, keep pinging
+// ourselves so we never hit the 15-minute idle threshold in the first
+// place. No-op unless RENDER_EXTERNAL_URL is present (Render sets this).
 if (process.env.RENDER_EXTERNAL_URL) {
   setInterval(() => {
     fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => {});
   }, 10 * 60 * 1000);
 }
 
-// Seamless Onboarding Loops
+// ── AUTH ──────────────────────────────────────────────────
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
@@ -333,7 +342,7 @@ app.get('/auth/google/callback',
 );
 app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
 
-// Variable Profile Retrieval
+// ── USER ──────────────────────────────────────────────────
 app.get('/api/me', requireAuth, async (req, res) => {
   const u = await enforcePlanExpiry(req.user);
   res.json({
@@ -350,40 +359,46 @@ app.get('/api/me', requireAuth, async (req, res) => {
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle } = req.body;
-    if (!exam || !cls) return res.status(400).json({ error: 'Exam and class parameters are required.' });
+    if (!exam || !cls) return res.status(400).json({ error: 'Exam and class are required.' });
     await User.findByIdAndUpdate(req.user._id, { exam, class: cls, coaching: coaching || '', biggestStruggle: biggestStruggle || '', isOnboarded: true });
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Failed to complete onboarding sequence.' }); }
+  } catch { res.status(500).json({ error: 'Something went wrong.' }); }
 });
 
-// The Hook Adjustment: Custom Pacing Settings
 app.post('/api/user/settings', requireAuth, async (req, res) => {
   try {
     const { responseSpeed, examDate } = req.body;
     const update = {};
     if (responseSpeed) {
-      if (!['fast', 'balanced', 'deep'].includes(responseSpeed)) return res.status(400).json({ error: 'Invalid response depth configuration.' });
-      if (responseSpeed === 'deep' && !req.user.isPro) return res.status(402).json({ error: 'Deep Mode requires Pro Unlock.' });
+      if (!['fast', 'balanced', 'deep'].includes(responseSpeed)) return res.status(400).json({ error: 'Invalid response depth.' });
+      // FIX: server refuses to grant 'deep' to a non-Pro user, even if they
+      // call this endpoint directly.
+      if (responseSpeed === 'deep' && !req.user.isPro) return res.status(402).json({ error: 'Deep mode requires Pro.' });
       update.responseSpeed = responseSpeed;
     }
     if (examDate !== undefined) update.examDate = examDate ? new Date(examDate) : null;
     await User.findByIdAndUpdate(req.user._id, update);
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Settings modifications failed.' }); }
+  } catch { res.status(500).json({ error: 'Could not save settings.' }); }
 });
 
-// Pro Tier Monetization Layer
+// ── PLAN / PAYWALL ────────────────────────────────────────
+// TEST-MODE ONLY. This grants Pro immediately with no payment verification.
+// Before accepting real money, replace this with:
+//   1) an endpoint that creates a Razorpay/Stripe order and returns it to
+//      the client for checkout,
+//   2) a webhook endpoint that verifies the payment signature and THEN
+//      sets isPro/planExpiresAt — never trust a client-side "success" call.
 const PLAN_DURATIONS_MS = { weekly: 7 * 86400000, monthly: 30 * 86400000 };
 app.post('/api/user/upgrade', requireAuth, async (req, res) => {
   try {
     const { plan } = req.body;
-    if (!PLAN_DURATIONS_MS[plan]) return res.status(400).json({ error: 'Target membership layout not found.' });
+    if (!PLAN_DURATIONS_MS[plan]) return res.status(400).json({ error: 'Unknown plan.' });
     const expires = new Date(Date.now() + PLAN_DURATIONS_MS[plan]);
     await User.findByIdAndUpdate(req.user._id, { isPro: true, planType: plan, planExpiresAt: expires });
     res.json({ success: true, planType: plan, planExpiresAt: expires, testMode: true });
-  } catch { res.status(500).json({ error: 'Upgrade stream deployment failed.' }); }
+  } catch { res.status(500).json({ error: 'Could not start upgrade.' }); }
 });
-
 
 // ── CHAT (streaming, SSE over POST) ──────────────────────
 app.post('/api/chat/stream', requireAuth, async (req, res) => {
