@@ -147,8 +147,7 @@ const OPENROUTER_KEYS = [process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KE
 const OPENROUTER_MODELS = [
   'deepseek/deepseek-v4-flash:free',
   'openai/gpt-oss-120b:free',
-  'meta-llama/llama-3.3-70b:free',
- ' qwen-2.5-vl'
+  'meta-llama/llama-3.3-70b:free'
 ];
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
 
