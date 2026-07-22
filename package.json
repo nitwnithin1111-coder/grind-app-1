@@ -1,6 +1,6 @@
 {
   "name": "grind-jee-neet",
-  "version": "11.0.0",
+  "version": "1.0",
   "description": "GRIND — a focused AI mentor for JEE and NEET aspirants",
   "main": "server.js",
   "scripts": {
