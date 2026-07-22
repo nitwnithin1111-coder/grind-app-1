@@ -1,28 +1,28 @@
+// /public/manifest.json
 {
-  "name": "grind-jee-neet",
-  "version": "10.0.0",
-  "description": "GRIND AI v10 — Addictive JEE/NEET companion with DeepSeek, quests, pomodoro, flashcards, shop & more",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "mongoose": "^8.0.0",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "express-session": "^1.17.3",
-    "connect-mongo": "^5.1.0",
-    "dotenv": "^16.0.0",
-    "socket.io": "^4.7.0",
-    "multer": "^1.4.5-lts.1"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": ["jee", "neet", "ai", "study", "grind", "deepseek"],
-  "author": "GRIND AI",
-  "license": "ISC"
+  "short_name": "GRIND",
+  "name": "GRIND — JEE/NEET AI Prep",
+  "description": "AI mentor for JEE and NEET aspirants. Real answers, step-by-step derivations, and a memory that keeps up with you.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2ecc71",
+  "background_color": "#121212",
+  "categories": ["education", "productivity"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
