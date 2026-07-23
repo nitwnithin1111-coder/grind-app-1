@@ -5,15 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>GRIND — AI Mentor for JEE & NEET</title>
 <meta name="description" content="GRIND is a focused AI study mentor for JEE and NEET aspirants. Real answers, step-by-step derivations, and a memory that keeps up with you.">
-<link rel="icon" href="/icons/icon-32.png" sizes="32x32">
-<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0E1116">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="GRIND">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230E1116'/%3E%3Ccircle cx='32' cy='32' r='16' fill='%2334D399'/%3E%3Cpath d='M24 33l6 6 12-14' stroke='%230E1116' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -441,18 +433,10 @@ a { color: var(--link); }
       </div>
     </div>
     <ul class="plan-features">
-      <li>Deep response mode — DeepSeek R1 reasoning on every hard question</li>
+      <li>Deep response mode on every chat</li>
       <li>Full step-by-step derivations, no steps skipped</li>
       <li>Priority answer generation</li>
     </ul>
-    <div class="settings-section" style="margin-top:18px;margin-bottom:0">
-      <label class="settings-label">Have a promo code?</label>
-      <div style="display:flex;gap:8px">
-        <input class="settings-input" id="promo-code-inp" placeholder="e.g. FIRST100" style="text-transform:uppercase" maxlength="24"/>
-        <button class="upgrade-link-btn" style="white-space:nowrap" onclick="redeemPromo()">Redeem</button>
-      </div>
-      <div id="promo-status" style="font-size:11.5px;margin-top:8px"></div>
-    </div>
     <div class="paywall-test-note">Test-mode checkout — wire in Razorpay/Stripe before going live. See README.</div>
   </div>
 </div>
@@ -485,10 +469,6 @@ a { color: var(--link); }
       <div class="nav-item" id="nav-notes" onclick="switchTab('notes')">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         Notes
-      </div>
-      <div class="nav-item" id="nav-install" onclick="handleInstallClick()" style="display:none">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-        Install app
       </div>
     </div>
     <div class="sidebar-history">
@@ -575,36 +555,6 @@ const LOGO_SVG = `<svg width="100%" height="100%" viewBox="0 0 64 64" xmlns="htt
   <defs><linearGradient id="gLogoGrad" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#1B2029"/><stop offset="1" stop-color="#10131A"/></linearGradient></defs>
 </svg>`;
 document.querySelectorAll('.logomark').forEach(el => el.innerHTML = LOGO_SVG);
-
-// ════════════════════════════════════════════
-//  PWA — installable app
-// ════════════════════════════════════════════
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW registration failed', e)));
-}
-let deferredInstallPrompt = null;
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  if (!isStandalone) document.getElementById('nav-install').style.display = 'flex';
-});
-window.addEventListener('appinstalled', () => { document.getElementById('nav-install').style.display = 'none'; showToast('GRIND installed', 'success'); });
-async function handleInstallClick() {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    document.getElementById('nav-install').style.display = 'none';
-    return;
-  }
-  if (isIOS) { showToast('Tap the Share icon, then "Add to Home Screen"', ); return; }
-  showToast("Your browser doesn't support one-tap install — use its menu to Add to Home Screen.");
-}
-// iOS never fires beforeinstallprompt — show the manual-instructions entry
-// point on first load if we're on iOS Safari and not already installed.
-if (isIOS && !isStandalone) document.addEventListener('DOMContentLoaded', () => { document.getElementById('nav-install').style.display = 'flex'; });
 
 // ════════════════════════════════════════════
 //  GLOBALS
