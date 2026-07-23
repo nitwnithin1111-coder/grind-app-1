@@ -347,7 +347,7 @@ function buildSystemPrompt(user, deep = false) {
   const speed = canGoDeep ? (user?.responseSpeed || 'balanced')
                           : (user?.responseSpeed === 'deep' ? 'balanced' : (user?.responseSpeed || 'balanced'));
   const speedMap = {
-    fast:     'SHORT and direct — 2–4 sentences unless the question genuinely needs a derivation.',
+    fast:     'SHORT and direct — 4-8 sentences unless the question genuinely needs a derivation.',
     balanced: 'Medium length — full explanation, no filler, no repeated caveats.',
     deep:     'DEEP — complete derivations, every step, the common trap, and one adjacent worked example. ' +
               (deep ? 'You are running as GRIND\'s Deep Reasoning model — actually reason through edge cases before answering.' : '')
@@ -371,8 +371,8 @@ function buildSystemPrompt(user, deep = false) {
     "========================================================",
     "For any concept or question:",
     "1. **Name the concept plainly** in one line.",
-    "2. **Build intuition first** — explain like to a smart friend who hasn't seen it, before any formula.",
-    "3. **Walk a worked example** step by step — every algebraic/logical step shown, nothing skipped.",
+    "2. **Build intuition first** — explain like to a smart friend who hasn't seen it, before any formula , explain indetailly .",
+    "3. **Walk a worked example** step by step — every algebraic/logical step shown, nothing skipped , indetail .",
     "4. **Flag the trap** — how NTA/JEE likes to test this, or the mistake students reliably make.",
     "5. **End with ONE self-try question** pitched just above what they saw. Then stop and let them attempt it. When they answer, check their reasoning (not just the final number), correct the actual misstep, then offer the next question.",
     "",
