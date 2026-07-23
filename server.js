@@ -1,26 +1,41 @@
+'use strict';
 require('dotenv').config();
+
 const express        = require('express');
 const cors           = require('cors');
 const path           = require('path');
+const helmet         = require('helmet');
+const compression    = require('compression');
 const mongoose       = require('mongoose');
 const session        = require('express-session');
 const MongoStore     = require('connect-mongo');
 const passport       = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { retrieveContext, formatContextForPrompt } = require('./lib/rag');
+const Anthropic      = require('@anthropic-ai/sdk');
 
 const app = express();
 
+/* ────────────────────────────────────────────────────────────
+   SECURITY + MIDDLEWARE
+──────────────────────────────────────────────────────────── */
+app.use(helmet({
+  contentSecurityPolicy: false,        // we serve an inline SPA + CDN assets
+  crossOriginEmbedderPolicy: false
+}));
+app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '15mb' }));
-app.use(express.static(__dirname));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.static(__dirname, { maxAge: '1h' }));
 
-// ── MONGODB ───────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   DATABASE
+──────────────────────────────────────────────────────────── */
+mongoose.set('strictQuery', true);
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB:', err.message));
 
-// ── SCHEMAS ───────────────────────────────────────────────
+/* ── SCHEMAS ── */
 const userSchema = new mongoose.Schema({
   googleId:        { type: String, unique: true, sparse: true },
   email:           String,
@@ -31,13 +46,13 @@ const userSchema = new mongoose.Schema({
   coaching:        { type: String, default: '' },
   biggestStruggle: { type: String, default: '' },
   isOnboarded:     { type: Boolean, default: false },
-  lastActive:      { type: Date, default: Date.now },
   responseSpeed:   { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
   examDate:        { type: Date, default: null },
   isPro:           { type: Boolean, default: false },
   planType:        { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
   planExpiresAt:   { type: Date, default: null },
   promoRedeemed:   { type: [String], default: [] },
+  lastActive:      { type: Date, default: Date.now },
   createdAt:       { type: Date, default: Date.now }
 });
 
@@ -47,6 +62,8 @@ const sessionSchema = new mongoose.Schema({
   messages: [{
     role:      { type: String, enum: ['user', 'assistant'], required: true },
     content:   { type: String, default: '' },
+    model:     { type: String, default: '' },
+    grounding: { type: [String], default: [] },
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -62,35 +79,51 @@ const noteSchema = new mongoose.Schema({
 });
 
 const promoCodeSchema = new mongoose.Schema({
-  code:            { type: String, required: true, unique: true, uppercase: true, trim: true },
-  bonusDays:       { type: Number, required: true, min: 1 },
-  maxRedemptions:  { type: Number, default: 0 },
-  redeemedCount:   { type: Number, default: 0 },
-  expiresAt:       { type: Date, default: null },
-  active:          { type: Boolean, default: true },
-  note:            { type: String, default: '' },
-  createdAt:       { type: Date, default: Date.now }
+  code:           { type: String, required: true, unique: true, uppercase: true, trim: true },
+  bonusDays:      { type: Number, required: true, min: 1 },
+  maxRedemptions: { type: Number, default: 0 },
+  redeemedCount:  { type: Number, default: 0 },
+  expiresAt:      { type: Date, default: null },
+  active:         { type: Boolean, default: true },
+  note:           { type: String, default: '' },
+  createdAt:      { type: Date, default: Date.now }
 });
 
-const User        = mongoose.model('User', userSchema);
-const ChatSession = mongoose.model('ChatSession', sessionSchema);
-const Note        = mongoose.model('Note', noteSchema);
-const PromoCode   = mongoose.model('PromoCode', promoCodeSchema);
+// knowledge_chunks — matches your Atlas collection + vector_index
+const knowledgeChunkSchema = new mongoose.Schema({
+  text:       { type: String, required: true },
+  subject:    { type: String, default: '' },     // Physics | Chemistry | Biology
+  examTag:    { type: String, default: '' },      // JEE | NEET | Both
+  sourceType: { type: String, default: '' },      // NCERT | HCVerma | ...
+  sourceRef:  { type: String, default: '' },      // e.g. "NCERT Physics XI Ch.7"
+  embedding:  { type: [Number], default: undefined }
+}, { collection: 'knowledge_chunks' });
 
-// ── SESSION ───────────────────────────────────────────────
+const User          = mongoose.model('User', userSchema);
+const ChatSession   = mongoose.model('ChatSession', sessionSchema);
+const Note          = mongoose.model('Note', noteSchema);
+const PromoCode     = mongoose.model('PromoCode', promoCodeSchema);
+const KnowledgeChunk= mongoose.model('KnowledgeChunk', knowledgeChunkSchema);
+
+/* ────────────────────────────────────────────────────────────
+   SESSION + PASSPORT
+──────────────────────────────────────────────────────────── */
 if (!process.env.SESSION_SECRET) {
-  console.warn('⚠️  SESSION_SECRET is not set. Using an insecure default — set this before deploying.');
+  console.warn('⚠️  SESSION_SECRET not set — using an insecure default. Set it before deploying.');
 }
 app.set('trust proxy', 1);
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'grindai-dev-secret-change-me',
+  secret: process.env.SESSION_SECRET || 'grind-pro-dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' }
+  cookie: {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
 }));
 
-// ── PASSPORT ──────────────────────────────────────────────
 passport.use(new GoogleStrategy({
   clientID:     process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -102,7 +135,7 @@ passport.use(new GoogleStrategy({
       user = await User.create({
         googleId: profile.id,
         email:    profile.emails?.[0]?.value || '',
-        name:     profile.displayName,
+        name:     profile.displayName || 'Student',
         photo:    profile.photos?.[0]?.value || ''
       });
     }
@@ -133,7 +166,9 @@ async function enforcePlanExpiry(user) {
   return user;
 }
 
-// ── LIGHTWEIGHT RATE LIMITING ─────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   RATE LIMITING
+──────────────────────────────────────────────────────────── */
 const rateBuckets = new Map();
 function rateLimit(maxRequests, windowMs) {
   return (req, res, next) => {
@@ -141,7 +176,7 @@ function rateLimit(maxRequests, windowMs) {
     const now = Date.now();
     const bucket = (rateBuckets.get(key) || []).filter(t => now - t < windowMs);
     if (bucket.length >= maxRequests) {
-      return res.status(429).json({ error: 'You are sending messages faster than GRIND can keep up — wait a few seconds and try again.' });
+      return res.status(429).json({ error: 'You are sending messages faster than GRIND can keep up — wait a few seconds.' });
     }
     bucket.push(now);
     rateBuckets.set(key, bucket);
@@ -150,253 +185,211 @@ function rateLimit(maxRequests, windowMs) {
 }
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of rateBuckets) { if (!v.some(t => now - t < 5 * 60000)) rateBuckets.delete(k); }
+  for (const [k, v] of rateBuckets) if (!v.some(t => now - t < 5 * 60000)) rateBuckets.delete(k);
 }, 5 * 60000);
 
-// ── AI PROVIDER KEYS ──────────────────────────────────────
-const GROQ_KEYS = [process.env.GROQ_KEY_1, process.env.GROQ_KEY_2, process.env.GROQ_KEY_3].filter(Boolean);
-const GEMINI_KEYS = [process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2, process.env.GEMINI_KEY_3].filter(Boolean);
-const OPENROUTER_KEYS = [process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2, process.env.OPENROUTER_KEY_3].filter(Boolean);
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
-const OPENROUTER_MODELS = ['deepseek/deepseek-v4-flash:free', 'openai/gpt-oss-120b:free', 'meta-llama/llama-3.3-70b:free'];
-let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
+/* ────────────────────��───────────────────────────────────────
+   AI: ANTHROPIC HYBRID ROUTER
+   - claude-opus-4-8  → Deep dives / derivations
+   - claude-sonnet-5  → fast conceptual doubts
+──────────────────────────────────────────────────────────── */
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
-async function fetchWithTimeout(url, options, ms = 30000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
+const MODEL_DEEP = process.env.MODEL_DEEP || 'claude-opus-4-8';
+const MODEL_FAST = process.env.MODEL_FAST || 'claude-sonnet-5';
+
+// Route: which model + token budget for a given user/depth.
+function routeModel(user) {
+  const speed = user.isPro ? (user.responseSpeed || 'balanced')
+                           : (user.responseSpeed === 'deep' ? 'balanced' : (user.responseSpeed || 'balanced'));
+  if (speed === 'deep')     return { model: MODEL_DEEP, maxTokens: 8000, speed };
+  if (speed === 'fast')     return { model: MODEL_FAST, maxTokens: 1500, speed };
+  return { model: MODEL_FAST, maxTokens: 4000, speed: 'balanced' };
+}
+
+/* ── RAG: Voyage embeddings + Atlas $vectorSearch (with keyword fallback) ── */
+const VOYAGE_KEY = process.env.VOYAGE_API_KEY || '';
+const EMBED_MODEL = process.env.VOYAGE_MODEL || 'voyage-3-large';
+
+async function embedQuery(text) {
+  if (!VOYAGE_KEY) return null;
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeout);
-    if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-    return response;
-  } catch (err) { clearTimeout(timeout); throw err; }
+    const r = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${VOYAGE_KEY}` },
+      body: JSON.stringify({ model: EMBED_MODEL, input: text, input_type: 'query' })
+    });
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    const d = await r.json();
+    return d.data?.[0]?.embedding || null;
+  } catch (e) {
+    console.log('❌ embedQuery failed:', e.message);
+    return null;
+  }
 }
 
-async function callDeepSeek(messages, prompt) {
-  if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured yet');
-  const response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
-    body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4000, messages: [{ role: 'system', content: prompt }, ...messages] })
-  }, 60000);
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.choices[0].message.content;
-}
+// Returns { chunks:[{text,sourceRef,subject}], mode:'vector'|'keyword'|'none' }
+async function retrieveContext(query, { userExam = '', k = 5 } = {}) {
+  if (!query) return { chunks: [], mode: 'none' };
 
-async function callDeepSeekStream(messages, prompt, onToken, abortSignal) {
-  if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured yet');
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
-    signal: abortSignal,
-    body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4000, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '', buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n'); buffer = lines.pop();
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) { full += delta; onToken(delta); }
-      } catch (e) { /* ignore partial chunk */ }
+  const examFilter = userExam && /JEE|NEET/i.test(userExam)
+    ? { examTag: { $in: [userExam.includes('NEET') ? 'NEET' : 'JEE', 'Both'] } }
+    : {};
+
+  // 1) Semantic vector search
+  const vec = await embedQuery(query);
+  if (vec) {
+    try {
+      const pipeline = [{
+        $vectorSearch: {
+          index: 'vector_index',
+          path: 'embedding',
+          queryVector: vec,
+          numCandidates: 100,
+          limit: k,
+          ...(Object.keys(examFilter).length ? { filter: examFilter } : {})
+        }
+      }, {
+        $project: { _id: 0, text: 1, sourceRef: 1, subject: 1, score: { $meta: 'vectorSearchScore' } }
+      }];
+      const chunks = await KnowledgeChunk.aggregate(pipeline);
+      if (chunks.length) return { chunks, mode: 'vector' };
+    } catch (e) {
+      console.log('⚠️  vectorSearch unavailable, falling back to keyword:', e.message);
     }
   }
-  if (!full) throw new Error('Empty stream response');
-  return full;
+
+  // 2) Keyword fallback ($search text index if present, else regex)
+  try {
+    const chunks = await KnowledgeChunk.aggregate([
+      { $search: { index: 'default', text: { query, path: ['text', 'sourceRef'] } } },
+      { $limit: k },
+      { $project: { _id: 0, text: 1, sourceRef: 1, subject: 1 } }
+    ]);
+    if (chunks.length) return { chunks, mode: 'keyword' };
+  } catch (_) { /* no text index — try regex */ }
+
+  try {
+    const rx = new RegExp(query.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const chunks = await KnowledgeChunk.find({ ...examFilter, text: rx })
+      .limit(k).select('text sourceRef subject -_id').lean();
+    if (chunks.length) return { chunks, mode: 'keyword' };
+  } catch (_) {}
+
+  return { chunks: [], mode: 'none' };
 }
 
-async function callOR(messages, prompt) {
-  if (!OPENROUTER_KEYS.length) throw new Error('No OpenRouter keys configured');
-  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
-  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
-    body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.4, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.choices[0].message.content;
+function formatContextForPrompt(chunks) {
+  if (!chunks || !chunks.length) return '';
+  const body = chunks.map((c, i) =>
+    `[${i + 1}] (${c.sourceRef || c.subject || 'source'})\n${c.text}`).join('\n\n');
+  return [
+    '========================================================',
+    'RETRIEVED KNOWLEDGE (ground your answer in this; cite as [n])',
+    '========================================================',
+    body,
+    ''
+  ].join('\n');
 }
 
-async function callORStream(messages, prompt, onToken, abortSignal) {
-  if (!OPENROUTER_KEYS.length) throw new Error('No OpenRouter keys configured');
-  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
-  const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
-    signal: abortSignal,
-    body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.4, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '', buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n'); buffer = lines.pop();
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) { full += delta; onToken(delta); }
-      } catch (e) { /* ignore partial chunk */ }
-    }
-  }
-  if (!full) throw new Error('Empty stream response');
-  return full;
-}
-
-async function callGemini(messages, prompt, imageBase64 = null) {
-  if (!GEMINI_KEYS.length) throw new Error('No Gemini keys configured');
-  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
-  const contents = messages.map(msg => ({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text: msg.content }] }));
-  if (imageBase64 && contents.length > 0) {
-    const last = contents[contents.length - 1];
-    if (last.role === 'user') last.parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
-  }
-  const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: prompt }] }, contents, generationConfig: { temperature: 0.4, maxOutputTokens: 4000 } }) }
-  );
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.candidates[0].content.parts[0].text;
-}
-
-async function callGroq(messages, prompt) {
-  if (!GROQ_KEYS.length) throw new Error('No Groq keys configured');
-  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
-  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 4000, temperature: 0.4, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.choices[0].message.content;
-}
-
-async function getReply(messages, prompt, imageBase64 = null, useDeepSeek = false) {
-  const attempts = [];
-  if (useDeepSeek && DEEPSEEK_KEY) attempts.push(() => callDeepSeek(messages, prompt));
-  attempts.push(() => callOR(messages, prompt), () => callGemini(messages, prompt, imageBase64), () => callGroq(messages, prompt));
-  let lastErr;
-  for (const attempt of attempts) {
-    try { return await attempt(); } catch (e) { lastErr = e; console.log('❌ provider failed:', e.message); }
-  }
-  throw lastErr || new Error('ALL_PROVIDERS_EXHAUSTED');
-}
-
-async function getReplyStream(messages, prompt, onToken, abortSignal, imageBase64 = null, useDeepSeek = false) {
-  if (useDeepSeek && DEEPSEEK_KEY) {
-    try { return await callDeepSeekStream(messages, prompt, onToken, abortSignal); }
-    catch (e) { if (e.name === 'AbortError') throw e; console.log('❌ DeepSeek stream failed, falling back:', e.message); }
-  }
-  try { return await callORStream(messages, prompt, onToken, abortSignal); }
-  catch (e) {
-    if (e.name === 'AbortError') throw e;
-    console.log('❌ OR-stream failed, falling back to non-streaming:', e.message);
-  }
-  const text = await getReply(messages, prompt, imageBase64, false);
-  onToken(text);
-  return text;
-}
-
-// Array joined by \n prevents ANY backtick/backslash parsing errors
-function buildSystemPrompt(user, ragContextBlock = '', usingDeepSeek = false) {
+/* ── SYSTEM PROMPT ── */
+function buildSystemPrompt(user, ragBlock = '', model = MODEL_FAST) {
   const name = user?.name?.split(' ')[0] || 'there';
-  const canGoDeep = !!user?.isPro;
-  const speed = canGoDeep ? (user?.responseSpeed || 'balanced') : (user?.responseSpeed === 'deep' ? 'balanced' : (user?.responseSpeed || 'balanced'));
-  const speedMap = {
-    fast:     'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
-    balanced: 'Medium length — full explanation, no filler, no repeated caveats.',
-    deep:     'DEEP — complete derivations, the common trap, and one adjacent worked example. ' + (usingDeepSeek ? "You are running as GRIND's Deep Reasoning model — take the space to actually reason through edge cases before answering." : '')
-  };
-
+  const isDeep = model === MODEL_DEEP;
   const lines = [
-    "You are GRIND — an AI mentor for Indian JEE and NEET aspirants. You were built to do two things at once, neither one optional: teach concepts well enough that a student can actually clear their exam, and be a genuinely steady, caring presence during what is one of the most stressful stretches of their life so far.",
+    "You are GRIND — internally codenamed \"AIR-1 Ranker AI\" — an elite AI mentor for Indian JEE and NEET aspirants. You teach concepts well enough to top the exam, and you are a steady, caring presence during one of the most stressful stretches of a student's life.",
     "",
     "STUDENT",
     `Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}`,
-    `Coaching: ${user?.coaching || 'self-study'} | Currently struggling with: ${user?.biggestStruggle || 'not specified'}`,
-    `Response depth: ${speedMap[speed]}`,
+    `Coaching: ${user?.coaching || 'self-study'} | Struggling with: ${user?.biggestStruggle || 'not specified'}`,
     "",
     "========================================================",
-    "HOW YOU TEACH",
+    "SUBJECT CONSTRAINTS — NON-NEGOTIABLE",
     "========================================================",
-    "Your default teaching shape, for any new concept or question:",
-    "1. **Name the concept plainly** in one line — no jargon before it's earned.",
-    "2. **Explain it simply first**, the way you'd explain it to a friend who's smart but hasn't seen it yet. Build the intuition before the formula.",
-    "3. **Walk a worked example** step by step — every algebraic/logical step shown, nothing skipped, nothing assumed.",
-    "4. **Flag the trap** — the specific way NTA likes to test this concept, or the mistake students reliably make.",
-    "5. **End with ONE self-try question** on the same concept, pitched just above what they just saw. Then stop and let them attempt it — don't answer it for them. When they respond, check their reasoning (not just the final number), correct the actual misstep if there is one, and only then offer the next question.",
-    "This loop — teach, show, warn, test — is how you actually move someone's score, not by dumping information.",
-    "",
-    'For "solve this for me" requests: still solve it fully, but narrate your reasoning as you go, the way a good teacher thinks out loud, not just a final answer with no path.',
+    "- BIOLOGY: Use NCERT terminology word-for-word. NEET rewards exact NCERT phrasing; never paraphrase a defined term.",
+    "- PHYSICS & MATH: Before stating any final numerical/symbolic answer, perform an explicit DIMENSIONAL ANALYSIS check and show it. If units don't resolve, say so and re-derive.",
+    "- CHEMISTRY: Physical → show the working with units; Organic → show the mechanism with arrow-pushing described in words; Inorganic → follow NCERT.",
     "",
     "========================================================",
-    "HOW YOU SHOW UP EMOTIONALLY",
+    "TEACHING SHAPE (for any concept/question)",
     "========================================================",
-    "JEE/NEET prep involves real burnout, real family pressure, and real bad-mock-result spirals. When a student brings any of that:",
-    "- **Validate before you fix.** Name what they're likely feeling in one honest sentence, without diagnosing them or assuming more than they've told you.",
-    '- **Don\'t rush to silver linings or hollow encouragement.** No "you got this!", no "believe in yourself!", no "great question!" — these read as empty to a stressed teenager and erode trust.',
-    '- **Offer one small next step, not a lecture.** If they\'re overwhelmed, the answer is rarely "here\'s a study plan" — it\'s often "close the book for ten minutes, then we\'ll look at one thing together."',
-    "- **Stay with them.** If they want to talk it out before getting back to studying, let them — don't steer back to academics until they're ready.",
-    "- **Crisis protocol — non-negotiable:** if a message signals self-harm, suicidal thinking, or a crisis, stop all academic talk immediately. Say plainly that you're concerned, and give these numbers without burying them: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416. Gently encourage reaching out to a person — a parent, a friend, anyone — right now, not just using the helpline as a checkbox.",
-    "- Never diagnose a condition they haven't named themselves. You can describe what they seem to be going through in plain language and suggest talking to a counsellor or trusted adult, without putting a clinical label on it.",
+    "1. Name the concept plainly in one line.",
+    "2. Build intuition first — explain like to a smart friend seeing it fresh, before any formula.",
+    "3. Walk ONE worked example step-by-step; skip nothing.",
+    "4. Flag the trap — the exact way NTA tests this / the reliable student mistake.",
+    "5. End with ONE self-try question just above their level, then STOP and let them attempt it. When they answer, check their reasoning (not just the number), correct the actual misstep, then offer the next.",
+    "For 'solve this for me' requests: solve fully, but narrate your reasoning like a teacher thinking out loud.",
     "",
     "========================================================",
-    "MATH FORMATTING — MANDATORY, NEVER SKIP",
+    "EMOTIONAL SUPPORT",
     "========================================================",
-    "- Every variable, symbol, or expression uses inline LaTeX: $...$. No space right after the opening $ or right before the closing $.",
-    "- Standalone equations use \\[...\\] on their own line, with a blank line before and after.",
-    "- Never write formulas, fractions, or exponents in plain text.",
-    "- Never leave a LaTeX delimiter unclosed.",
+    "- Validate before you fix. Name what they seem to feel in one honest sentence; never diagnose.",
+    "- No hollow filler: no \"you got this!\", no \"great question!\".",
+    "- Offer one small next step, not a lecture.",
+    "- CRISIS: if a message signals self-harm or suicidal thinking, stop all academic talk. Say you're concerned and give: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416. Encourage reaching out to a real person now.",
     "",
     "========================================================",
-    "GROUNDING",
+    "OFF-TOPIC",
     "========================================================",
-    "- Reference standard texts naturally when relevant: Physics → HC Verma, Irodov, DC Pandey. Chemistry → MS Chouhan (Organic), N Awasthi (Physical), NCERT (Inorganic). Biology → NCERT word-for-word for NEET.",
-    "- If a photo of handwritten work or a textbook question is attached, transcribe the relevant part first, then correct or solve it.",
-    ragContextBlock,
+    "- If asked a non-academic, non-wellbeing question, answer very briefly and gently steer back to studying.",
+    "",
     "========================================================",
+    "MATH FORMATTING — MANDATORY",
+    "========================================================",
+    "- Inline math in $...$ (no space after opening / before closing $).",
+    "- Standalone equations in \\[...\\] on their own line, blank line before and after.",
+    "- Never write formulas/fractions/exponents in plain text. Never leave a delimiter unclosed.",
+    "",
+    "========================================================",
+    "GROUNDING & STEP TOGGLE",
+    "========================================================",
+    "- When RETRIEVED KNOWLEDGE is provided, ground your answer in it and cite as [n]. If it doesn't cover the question, rely on standard texts (HC Verma, Irodov, DC Pandey; MS Chouhan, N Awasthi; NCERT for Bio) and say so.",
+    "- Wrap detailed derivation steps between the markers <details> and </details> so the UI can make them collapsible. Put the intuition/answer OUTSIDE the details block.",
+    isDeep
+      ? "- You are running as GRIND Deep Reasoning (flagship). Take the space to reason through edge cases, alternate methods, and one adjacent worked example."
+      : "- Keep it tight and correct; expand only where the concept genuinely needs it.",
+    "",
     "HARD RULES",
-    "========================================================",
-    "- You are only used by authenticated students. There is no guest mode or trial — never mention one.",
-    "- Mirror the student's language style (Hinglish stays Hinglish, English stays English) — never translate unless asked.",
-    '- Never use hollow filler like "You got this!" or "Great question!"',
-    "- Keep paragraphs under 3 sentences — use line breaks or steps instead of walls of text."
+    "- Only authenticated students use you; never mention a guest/trial mode.",
+    "- Mirror the student's language (Hinglish stays Hinglish). Never translate unless asked.",
+    "- Paragraphs under 3 sentences; use steps/line breaks over walls of text.",
+    ragBlock
   ];
-
   return lines.join('\n');
 }
 
-// ══════════════════════════════════════════════════════════
-// ROUTES
-// ══════════════════════════════════════════════════════════
-app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
-if (process.env.RENDER_EXTERNAL_URL) {
-  setInterval(() => { fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => {}); }, 10 * 60 * 1000);
+// Convert chat history (+ optional image) into Anthropic message format
+function toAnthropicMessages(messages, imageBase64) {
+  const msgs = messages.slice(-20).map(m => ({
+    role: m.role === 'assistant' ? 'assistant' : 'user',
+    content: [{ type: 'text', text: m.content || '' }]
+  }));
+  if (imageBase64 && msgs.length) {
+    const last = msgs[msgs.length - 1];
+    if (last.role === 'user') {
+      last.content.unshift({
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 }
+      });
+    }
+  }
+  return msgs;
 }
 
-// ── AUTH ──────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   HEALTH / KEEPALIVE
+──────────────────────────────────────────────────────────── */
+app.get('/healthz', (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
+if (process.env.RENDER_EXTERNAL_URL) {
+  setInterval(() => fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => {}), 10 * 60 * 1000);
+}
+
+/* ────────────────────────────────────────────────────────────
+   AUTH ROUTES
+──────────────────────────────────────────────────────────── */
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
@@ -404,28 +397,30 @@ app.get('/auth/google/callback',
 );
 app.get('/auth/logout', (req, res) => req.logout(() => res.redirect('/')));
 
-// ── USER ──────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   USER ROUTES
+──────────────────────────────────────────────────────────── */
 app.get('/api/me', requireAuth, async (req, res) => {
   const u = await enforcePlanExpiry(req.user);
-  res.json({
-    user: {
-      id: u._id, name: u.name, email: u.email, photo: u.photo,
-      isOnboarded: u.isOnboarded, exam: u.exam, class: u.class,
-      coaching: u.coaching, biggestStruggle: u.biggestStruggle,
-      responseSpeed: u.responseSpeed || 'balanced', examDate: u.examDate,
-      isPro: u.isPro, planType: u.planType, planExpiresAt: u.planExpiresAt,
-      deepSeekConfigured: !!DEEPSEEK_KEY
-    }
-  });
+  res.json({ user: {
+    id: u._id, name: u.name, email: u.email, photo: u.photo,
+    isOnboarded: u.isOnboarded, exam: u.exam, class: u.class,
+    coaching: u.coaching, biggestStruggle: u.biggestStruggle,
+    responseSpeed: u.responseSpeed || 'balanced', examDate: u.examDate,
+    isPro: u.isPro, planType: u.planType, planExpiresAt: u.planExpiresAt,
+    aiConfigured: !!anthropic, ragConfigured: !!VOYAGE_KEY
+  }});
 });
 
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle } = req.body;
     if (!exam || !cls) return res.status(400).json({ error: 'Exam and class are required.' });
-    await User.findByIdAndUpdate(req.user._id, { exam, class: cls, coaching: coaching || '', biggestStruggle: biggestStruggle || '', isOnboarded: true });
+    await User.findByIdAndUpdate(req.user._id, {
+      exam, class: cls, coaching: coaching || '', biggestStruggle: biggestStruggle || '', isOnboarded: true
+    });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Something went wrong.' }); }
+  } catch { res.status(500).json({ error: 'Something went wrong.' }); }
 });
 
 app.post('/api/user/settings', requireAuth, async (req, res) => {
@@ -440,10 +435,10 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
     if (examDate !== undefined) update.examDate = examDate ? new Date(examDate) : null;
     await User.findByIdAndUpdate(req.user._id, update);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Could not save settings.' }); }
+  } catch { res.status(500).json({ error: 'Could not save settings.' }); }
 });
 
-// ── PLAN / PAYWALL ────────────────────────────────────────
+/* ── PLAN / PAYWALL ── */
 const PLAN_DURATIONS_MS = { weekly: 7 * 86400000, monthly: 30 * 86400000 };
 app.post('/api/user/upgrade', requireAuth, async (req, res) => {
   try {
@@ -451,17 +446,15 @@ app.post('/api/user/upgrade', requireAuth, async (req, res) => {
     if (!PLAN_DURATIONS_MS[plan]) return res.status(400).json({ error: 'Unknown plan.' });
     let durationMs = PLAN_DURATIONS_MS[plan];
     let promoApplied = null;
-
     if (promoCode) {
       const applied = await applyPromoCode(req.user, promoCode);
       if (applied.ok) { durationMs += applied.bonusDays * 86400000; promoApplied = applied.code; }
       else return res.status(400).json({ error: applied.error });
     }
-
     const expires = new Date(Date.now() + durationMs);
     await User.findByIdAndUpdate(req.user._id, { isPro: true, planType: plan, planExpiresAt: expires });
     res.json({ success: true, planType: plan, planExpiresAt: expires, promoApplied, testMode: true });
-  } catch (err) { res.status(500).json({ error: 'Could not start upgrade.' }); }
+  } catch { res.status(500).json({ error: 'Could not start upgrade.' }); }
 });
 
 app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
@@ -470,36 +463,32 @@ app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
     if (!code || !code.trim()) return res.status(400).json({ error: 'Enter a code.' });
     const applied = await applyPromoCode(req.user, code);
     if (!applied.ok) return res.status(400).json({ error: applied.error });
-
     const user = await User.findById(req.user._id);
-    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date() ? new Date(user.planExpiresAt) : new Date();
-    const expires = new Date(base.getTime() + applied.bonusDays * 86400000);
+    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date()
+      ? new Date(user.planExpiresAt) : new Date();
     user.isPro = true;
     user.planType = user.planType || 'promo';
-    user.planExpiresAt = expires;
+    user.planExpiresAt = new Date(base.getTime() + applied.bonusDays * 86400000);
     await user.save();
-    res.json({ success: true, bonusDays: applied.bonusDays, planExpiresAt: expires });
-  } catch (err) { res.status(500).json({ error: 'Could not redeem code.' }); }
+    res.json({ success: true, bonusDays: applied.bonusDays, planExpiresAt: user.planExpiresAt });
+  } catch { res.status(500).json({ error: 'Could not redeem code.' }); }
 });
 
 async function applyPromoCode(reqUser, rawCode) {
   const code = rawCode.trim().toUpperCase();
   if (reqUser.promoRedeemed?.includes(code)) return { ok: false, error: 'You have already used this code.' };
-
   const promo = await PromoCode.findOne({ code });
   if (!promo || !promo.active) return { ok: false, error: 'Invalid or inactive promo code.' };
   if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) return { ok: false, error: 'This promo code has expired.' };
   if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) return { ok: false, error: 'This promo code has been fully redeemed.' };
-
-  const updateFilter = { code, active: true, ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {}) };
-  const updated = await PromoCode.findOneAndUpdate(updateFilter, { $inc: { redeemedCount: 1 } }, { new: true });
-  if (!updated) return { ok: false, error: 'This promo code just ran out. Try another.' };
-
+  const filter = { code, active: true, ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {}) };
+  const updated = await PromoCode.findOneAndUpdate(filter, { $inc: { redeemedCount: 1 } }, { new: true });
+  if (!updated) return { ok: false, error: 'This promo code just ran out.' };
   await User.findByIdAndUpdate(reqUser._id, { $addToSet: { promoRedeemed: code } });
   return { ok: true, bonusDays: promo.bonusDays, code };
 }
 
-// ── ADMIN: promo code management ──────────────────────────
+/* ── ADMIN: promo + knowledge ingestion ── */
 const requireAdmin = (req, res, next) => {
   if (process.env.ADMIN_KEY && req.query.key === process.env.ADMIN_KEY) return next();
   res.status(403).json({ error: 'Forbidden' });
@@ -508,25 +497,49 @@ app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
   try {
     const { code, bonusDays, maxRedemptions, expiresAt, note } = req.body;
     if (!code || !bonusDays) return res.status(400).json({ error: 'code and bonusDays are required.' });
-    const promo = await PromoCode.create({ code: code.trim().toUpperCase(), bonusDays, maxRedemptions: maxRedemptions || 0, expiresAt: expiresAt ? new Date(expiresAt) : null, note: note || '' });
+    const promo = await PromoCode.create({
+      code: code.trim().toUpperCase(), bonusDays,
+      maxRedemptions: maxRedemptions || 0,
+      expiresAt: expiresAt ? new Date(expiresAt) : null, note: note || ''
+    });
     res.json({ promo });
-  } catch (e) { res.status(500).json({ error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.' }); }
+  } catch (e) { res.status(500).json({ error: e.code === 11000 ? 'That code already exists.' : 'Could not create.' }); }
 });
 app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try { res.json({ promoCodes: await PromoCode.find().sort({ createdAt: -1 }) }); } catch (err) { res.status(500).json({ error: 'Could not load.' }); }
-});
-app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
-  try {
-    const promo = await PromoCode.findOneAndUpdate({ code: req.params.code.toUpperCase() }, req.body, { new: true });
-    if (!promo) return res.status(404).json({ error: 'Not found.' });
-    res.json({ promo });
-  } catch (err) { res.status(500).json({ error: 'Could not update.' }); }
+  try { res.json({ promoCodes: await PromoCode.find().sort({ createdAt: -1 }) }); }
+  catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 
-// ── CHAT (streaming, SSE over POST) — RAG-grounded ────────
+// Ingest a knowledge chunk WITH its embedding (call this to populate your RAG store)
+app.post('/api/admin/knowledge', requireAdmin, async (req, res) => {
+  try {
+    const { text, subject, examTag, sourceType, sourceRef } = req.body;
+    if (!text) return res.status(400).json({ error: 'text is required.' });
+    const embedding = await embedDocument(text);
+    const doc = await KnowledgeChunk.create({ text, subject, examTag, sourceType, sourceRef, embedding: embedding || undefined });
+    res.json({ ok: true, id: doc._id, embedded: !!embedding });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function embedDocument(text) {
+  if (!VOYAGE_KEY) return null;
+  try {
+    const r = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${VOYAGE_KEY}` },
+      body: JSON.stringify({ model: EMBED_MODEL, input: text, input_type: 'document' })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return (await r.json()).data?.[0]?.embedding || null;
+  } catch (e) { console.log('❌ embedDocument:', e.message); return null; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   CHAT — SSE STREAMING with live "thinking steps" + RAG
+──────────────────────────────────────────────────────────── */
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64 } = req.body;
-  if (!messages || !Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'Invalid request.' });
+  if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'Invalid request.' });
 
   const user = await enforcePlanExpiry(req.user);
 
@@ -536,139 +549,189 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
   res.flushHeaders?.();
   const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
 
-  const abortController = new AbortController();
-  req.on('close', () => abortController.abort());
+  const abort = new AbortController();
+  req.on('close', () => abort.abort());
 
   try {
-    const recent = messages.slice(-20);
-    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    const { model, maxTokens, speed } = routeModel(user);
 
-    const chunks = lastUserMsg ? await retrieveContext(lastUserMsg.content, { userExam: user.exam, k: 5 }) : [];
+    // ── Live reasoning steps (real pipeline milestones) ──
+    send('step', { text: 'Reading your question…' });
+    send('step', { text: speed === 'deep'
+      ? `Routing to GRIND Deep Reasoning (${model})…`
+      : `Routing to GRIND (${model})…` });
+
+    send('step', { text: 'Searching the JEE/NEET knowledge base…' });
+    const { chunks, mode } = lastUser
+      ? await retrieveContext(lastUser.content, { userExam: user.exam, k: 5 })
+      : { chunks: [], mode: 'none' };
+
+    if (chunks.length) {
+      send('step', { text: `Retrieved ${chunks.length} source${chunks.length > 1 ? 's' : ''} (${mode})…` });
+    } else {
+      send('step', { text: 'No indexed match — using standard texts…' });
+    }
+    send('step', { text: 'Verifying units & drafting the solution…' });
+
     const ragBlock = formatContextForPrompt(chunks);
-
-    const useDeepSeek = !!(user.isPro && user.responseSpeed === 'deep');
-    const prompt = buildSystemPrompt(user, ragBlock, useDeepSeek);
+    const systemPrompt = buildSystemPrompt(user, ragBlock, model);
+    const aMessages = toAnthropicMessages(messages, imageBase64);
 
     let full = '';
-    const reply = await getReplyStream(recent, prompt, chunk => { full += chunk; send('chunk', { text: chunk }); }, abortController.signal, imageBase64 || null, useDeepSeek);
-    const finalReply = reply || full;
 
+    if (!anthropic) {
+      // No API key configured — fail gracefully but visibly.
+      send('error', { error: 'AI is not configured yet (missing ANTHROPIC_API_KEY).' });
+      return res.end();
+    }
+
+    const stream = anthropic.messages.stream({
+      model, max_tokens: maxTokens, temperature: 0.4,
+      system: systemPrompt, messages: aMessages
+    }, { signal: abort.signal });
+
+    stream.on('text', (delta) => { full += delta; send('chunk', { text: delta }); });
+
+    await stream.finalMessage();
+
+    // Persist
     if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
       try {
         const userMsg = messages[messages.length - 1];
         const existing = await ChatSession.findOne({ _id: sessionId, userId: user._id }).select('messages').lean();
-        const title = existing && existing.messages.length === 0 ? (userMsg.content || 'Image question').slice(0, 50) : undefined;
+        const title = existing && existing.messages.length === 0
+          ? (userMsg.content || 'Image question').slice(0, 50) : undefined;
         await ChatSession.updateOne(
           { _id: sessionId, userId: user._id },
-          { $push: { messages: { $each: [{ role: 'user', content: userMsg.content }, { role: 'assistant', content: finalReply }] } }, $set: { updatedAt: new Date(), ...(title ? { title } : {}) } }
+          { $push: { messages: { $each: [
+              { role: 'user', content: userMsg.content },
+              { role: 'assistant', content: full, model, grounding: chunks.map(c => c.sourceRef).filter(Boolean) }
+            ] } },
+            $set: { updatedAt: new Date(), ...(title ? { title } : {}) } }
         );
       } catch (e) { console.error('Session save:', e.message); }
     }
-    send('done', { reply: finalReply, groundedOn: chunks.map(c => c.sourceRef).filter(Boolean) });
+
+    send('done', {
+      reply: full,
+      model,
+      groundedOn: chunks.map(c => c.sourceRef).filter(Boolean)
+    });
     res.end();
   } catch (err) {
-    if (err.name === 'AbortError') { res.end(); return; }
-    console.error('Stream AI error:', err.message);
+    if (err.name === 'AbortError') return res.end();
+    console.error('Stream error:', err.message);
     send('error', { error: 'GRIND is taking a short break. Please try again.' });
     res.end();
   }
 });
 
-// ── SESSIONS ──────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   SESSIONS
+──────────────────────────────────────────────────────────── */
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
-    const sessions = await ChatSession.find({ userId: req.user._id }).select('title createdAt updatedAt').sort({ updatedAt: -1 }).limit(50);
+    const sessions = await ChatSession.find({ userId: req.user._id })
+      .select('title createdAt updatedAt').sort({ updatedAt: -1 }).limit(50);
     res.json({ sessions });
-  } catch (err) { res.status(500).json({ error: 'Could not load chats.' }); }
+  } catch { res.status(500).json({ error: 'Could not load chats.' }); }
 });
 app.get('/api/sessions/search', requireAuth, async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
     if (!q) return res.json({ sessions: [] });
-    const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    const sessions = await ChatSession.find({ userId: req.user._id, $or: [{ title: regex }, { 'messages.content': regex }] })
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const sessions = await ChatSession.find({ userId: req.user._id, $or: [{ title: rx }, { 'messages.content': rx }] })
       .select('title updatedAt').sort({ updatedAt: -1 }).limit(20).lean();
     res.json({ sessions });
-  } catch (err) { res.status(500).json({ error: 'Search failed.' }); }
+  } catch { res.status(500).json({ error: 'Search failed.' }); }
 });
 app.get('/api/sessions/:id', requireAuth, async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid session id.' });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid id.' });
     const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
     if (!s) return res.status(404).json({ error: 'Not found.' });
     res.json({ session: s });
-  } catch (err) { res.status(500).json({ error: 'Could not load.' }); }
+  } catch { res.status(500).json({ error: 'Could not load.' }); }
 });
 app.post('/api/sessions/new', requireAuth, async (req, res) => {
   try {
     const s = await ChatSession.create({ userId: req.user._id, title: 'New chat', messages: [] });
     res.json({ sessionId: s._id });
-  } catch (err) { res.status(500).json({ error: 'Could not create chat.' }); }
+  } catch { res.status(500).json({ error: 'Could not create chat.' }); }
 });
 app.post('/api/sessions/:id/truncate', requireAuth, async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid session id.' });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid id.' });
     const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
     if (!s) return res.status(404).json({ error: 'Not found.' });
     s.messages = s.messages.slice(0, Math.max(0, req.body.keepCount || 0));
     s.updatedAt = new Date();
     await s.save();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Could not update chat.' }); }
+  } catch { res.status(500).json({ error: 'Could not update chat.' }); }
 });
 app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
   try { await ChatSession.deleteOne({ _id: req.params.id, userId: req.user._id }); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: 'Could not delete.' }); }
+  catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
-// ── NOTES ─────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────
+   NOTES
+──────────────────────────────────────────────────────────── */
 app.get('/api/notes', requireAuth, async (req, res) => {
   try { res.json({ notes: await Note.find({ userId: req.user._id }).sort({ updatedAt: -1 }).lean() }); }
-  catch (err) { res.status(500).json({ error: 'Could not load notes.' }); }
+  catch { res.status(500).json({ error: 'Could not load notes.' }); }
 });
 app.post('/api/notes', requireAuth, async (req, res) => {
   try {
     const note = await Note.create({ userId: req.user._id, title: req.body.title || 'Untitled', content: req.body.content || '' });
     res.json({ note });
-  } catch (err) { res.status(500).json({ error: 'Could not create note.' }); }
+  } catch { res.status(500).json({ error: 'Could not create note.' }); }
 });
 app.patch('/api/notes/:id', requireAuth, async (req, res) => {
   try {
     const { title, content } = req.body;
-    const note = await Note.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, { title, content, updatedAt: new Date() }, { new: true });
+    const note = await Note.findOneAndUpdate({ _id: req.params.id, userId: req.user._id },
+      { title, content, updatedAt: new Date() }, { new: true });
     if (!note) return res.status(404).json({ error: 'Not found.' });
     res.json({ note });
-  } catch (err) { res.status(500).json({ error: 'Could not update.' }); }
+  } catch { res.status(500).json({ error: 'Could not update.' }); }
 });
 app.delete('/api/notes/:id', requireAuth, async (req, res) => {
   try { await Note.deleteOne({ _id: req.params.id, userId: req.user._id }); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: 'Could not delete.' }); }
+  catch { res.status(500).json({ error: 'Could not delete.' }); }
 });
 app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, res) => {
   try {
+    if (!anthropic) return res.status(503).json({ error: 'AI not configured.' });
     const { content, action } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ error: 'No content provided.' });
-    const actionPrompts = {
-      improve:     'Improve the clarity, flow and grammar of this text. Keep the meaning and length similar. Keep any LaTeX/markdown formatting intact.',
-      summarize:   'Summarize this text into a tight, high-yield summary using bullet points. Keep key formulas in LaTeX.',
-      expand:      'Expand this text with more detail and examples, useful for a JEE/NEET student. Use LaTeX for all math.',
-      fix_grammar: 'Fix all spelling and grammar mistakes. Do not change the meaning or formatting.',
-      bullets:     'Convert this text into clean, well-organized bullet points. Keep LaTeX for math intact.',
-      explain:     'Explain this content simply, as if teaching a confused student. Use analogies and LaTeX for math.'
+    const map = {
+      improve:     'Improve clarity, flow and grammar. Keep meaning and length similar. Keep LaTeX/markdown intact.',
+      summarize:   'Summarize into a tight, high-yield bullet summary. Keep key formulas in LaTeX.',
+      expand:      'Expand with more detail and JEE/NEET-useful examples. Use LaTeX for all math.',
+      fix_grammar: 'Fix spelling and grammar only. Do not change meaning or formatting.',
+      bullets:     'Convert into clean, organized bullet points. Keep LaTeX intact.',
+      explain:     'Explain simply as if teaching a confused student. Use analogies and LaTeX.'
     };
-    const instruction = actionPrompts[action] || actionPrompts.improve;
-    const prompt = 'You are a study-notes assistant for a JEE/NEET student.\nTask: ' + instruction + '\nRespond with ONLY the rewritten text — no preamble, no markdown code fences. Use $inline$ and \\[block\\] LaTeX for math.';
-    const result = await getReply([{ role: 'user', content }], prompt);
-    res.json({ result: result.trim() });
-  } catch (e) { console.error('Notes AI assist:', e.message); res.status(500).json({ error: 'AI assist failed. Try again.' }); }
+    const instruction = map[action] || map.improve;
+    const system = `You are a study-notes assistant for a JEE/NEET student.\nTask: ${instruction}\nRespond with ONLY the rewritten text — no preamble, no code fences. Use $inline$ and \\[block\\] LaTeX.`;
+    const msg = await anthropic.messages.create({
+      model: MODEL_FAST, max_tokens: 3000, temperature: 0.4,
+      system, messages: [{ role: 'user', content }]
+    });
+    res.json({ result: (msg.content?.[0]?.text || '').trim() });
+  } catch (e) { console.error('Notes AI:', e.message); res.status(500).json({ error: 'AI assist failed.' }); }
 });
 
-// ── SPA FALLBACK ──────────────────────────────────────────
+/* ── SPA FALLBACK ── */
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// ── START SERVER ──────────────────────────────────────────
+/* ── START ── */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🧠 GRIND running on port ${PORT}`);
-  console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OpenRouter=${OPENROUTER_KEYS.length} DeepSeek=${DEEPSEEK_KEY ? 'configured' : 'NOT SET (Pro Deep mode falls back to OpenRouter/Gemini for now)'}`);
+  console.log(`🧠 GRIND Pro on port ${PORT}`);
+  console.log(`🤖 Anthropic=${anthropic ? 'ON' : 'OFF'} | Deep=${MODEL_DEEP} | Fast=${MODEL_FAST} | RAG(Voyage)=${VOYAGE_KEY ? 'ON' : 'OFF'}`);
 });
