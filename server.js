@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
   isPro:           { type: Boolean, default: false },
   planType:        { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
   planExpiresAt:   { type: Date, default: null },
-  promoRedeemed:   { type: [String], default: [] }, // codes this user already used — one use per code per user
+  promoRedeemed:   { type: [String], default: [] },
 
   createdAt:       { type: Date, default: Date.now }
 });
@@ -64,13 +64,10 @@ const noteSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// Promo codes — kept deliberately simple (bonus days added to a Pro plan)
-// rather than modelling currency/discounts, since there's no real payment
-// gateway wired in yet (see README "Payments").
 const promoCodeSchema = new mongoose.Schema({
   code:            { type: String, required: true, unique: true, uppercase: true, trim: true },
   bonusDays:       { type: Number, required: true, min: 1 },
-  maxRedemptions:  { type: Number, default: 0 }, // 0 = unlimited
+  maxRedemptions:  { type: Number, default: 0 },
   redeemedCount:   { type: Number, default: 0 },
   expiresAt:       { type: Date, default: null },
   active:          { type: Boolean, default: true },
@@ -140,11 +137,6 @@ async function enforcePlanExpiry(user) {
 }
 
 // ── LIGHTWEIGHT RATE LIMITING ─────────────────────────────
-// FIX (found on recheck): the chat-stream and AI-assist routes had no
-// limiter at all, so one user hammering the send button could burn through
-// every provider key. Simple in-memory sliding window — fine for a
-// single-instance deploy; swap for Redis if you ever scale to multiple
-// instances behind a load balancer.
 const rateBuckets = new Map();
 function rateLimit(maxRequests, windowMs) {
   return (req, res, next) => {
@@ -168,7 +160,7 @@ setInterval(() => {
 const GROQ_KEYS = [process.env.GROQ_KEY_1, process.env.GROQ_KEY_2, process.env.GROQ_KEY_3].filter(Boolean);
 const GEMINI_KEYS = [process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2, process.env.GEMINI_KEY_3].filter(Boolean);
 const OPENROUTER_KEYS = [process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2, process.env.OPENROUTER_KEY_3].filter(Boolean);
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''; // Pro / Deep tier — not set yet, and that's fine, see getReply()
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || '';
 const OPENROUTER_MODELS = ['deepseek/deepseek-v4-flash:free', 'openai/gpt-oss-120b:free', 'meta-llama/llama-3.3-70b:free'];
 let gIdx = 0, grIdx = 0, orIdx = 0, orMIdx = 0;
 
@@ -183,18 +175,13 @@ async function fetchWithTimeout(url, options, ms = 30000) {
   } catch (err) { clearTimeout(timeout); throw err; }
 }
 
-// ── DeepSeek R1 (Pro / Deep tier) ─────────────────────────
-// Model 'deepseek-reasoner' is DeepSeek R1 — it "thinks" before answering
-// and returns that reasoning trace in a separate `reasoning_content`
-// field. We deliberately only surface `content` to the student; the raw
-// chain-of-thought isn't useful to show them and can be confusing/wrong.
 async function callDeepSeek(messages, prompt) {
   if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured yet');
   const response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
     body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4000, messages: [{ role: 'system', content: prompt }, ...messages] })
-  }, 60000); // R1 reasons before answering — give it more time than the fast providers
+  }, 60000);
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
   return data.choices[0].message.content;
@@ -224,7 +211,7 @@ async function callDeepSeekStream(messages, prompt, onToken, abortSignal) {
       if (data === '[DONE]') continue;
       try {
         const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content; // ignore delta.reasoning_content on purpose
+        const delta = json.choices?.[0]?.delta?.content;
         if (delta) { full += delta; onToken(delta); }
       } catch (e) { /* ignore partial chunk */ }
     }
@@ -312,10 +299,6 @@ async function callGroq(messages, prompt) {
   return data.choices[0].message.content;
 }
 
-// useDeepSeek: only ever true for isPro users on 'deep' speed (checked
-// server-side before this is called). If the key isn't configured yet,
-// this transparently falls through to the normal chain instead of
-// erroring the whole request.
 async function getReply(messages, prompt, imageBase64 = null, useDeepSeek = false) {
   const attempts = [];
   if (useDeepSeek && DEEPSEEK_KEY) attempts.push(() => callDeepSeek(messages, prompt));
@@ -342,10 +325,6 @@ async function getReplyStream(messages, prompt, onToken, abortSignal, imageBase6
   return text;
 }
 
-// ── SYSTEM PROMPT ─────────────────────────────────────────
-// Rewritten with two things held equally: the emotional reality of
-// prepping for JEE/NEET, and the technical rigor actually needed to move
-// someone's score. Neither is allowed to crowd out the other.
 function buildSystemPrompt(user, ragContextBlock = '', usingDeepSeek = false) {
   const name = user?.name?.split(' ')[0] || 'there';
   const canGoDeep = !!user?.isPro;
@@ -467,7 +446,6 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
 });
 
 // ── PLAN / PAYWALL ────────────────────────────────────────
-// TEST-MODE ONLY — see README "Payments" before taking real money.
 const PLAN_DURATIONS_MS = { weekly: 7 * 86400000, monthly: 30 * 86400000 };
 app.post('/api/user/upgrade', requireAuth, async (req, res) => {
   try {
@@ -488,8 +466,6 @@ app.post('/api/user/upgrade', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not start upgrade.' }); }
 });
 
-// Redeem a promo code on its own — grants/extends Pro without going
-// through a paid plan first (useful for giveaways, beta testers, etc).
 app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
   try {
     const { code } = req.body;
@@ -508,8 +484,6 @@ app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Could not redeem code.' }); }
 });
 
-// Validates + atomically reserves one redemption slot on a promo code.
-// Returns { ok:true, bonusDays, code } or { ok:false, error }.
 async function applyPromoCode(reqUser, rawCode) {
   const code = rawCode.trim().toUpperCase();
   if (reqUser.promoRedeemed?.includes(code)) return { ok: false, error: 'You have already used this code.' };
@@ -519,8 +493,6 @@ async function applyPromoCode(reqUser, rawCode) {
   if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) return { ok: false, error: 'This promo code has expired.' };
   if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) return { ok: false, error: 'This promo code has been fully redeemed.' };
 
-  // Atomic guard against a race where two requests both pass the check
-  // above at the same instant and both try to redeem the last slot.
   const updateFilter = { code, active: true, ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {}) };
   const updated = await PromoCode.findOneAndUpdate(updateFilter, { $inc: { redeemedCount: 1 } }, { new: true });
   if (!updated) return { ok: false, error: 'This promo code just ran out. Try another.' };
@@ -573,8 +545,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
     const recent = messages.slice(-20);
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
 
-    // RAG: retrieve grounding context for the latest question. Fails soft
-    // (see lib/rag.js) so a missing index or empty corpus never breaks chat.
+    // RAG: retrieve grounding context for the latest question
     const chunks = lastUserMsg ? await retrieveContext(lastUserMsg.content, { userExam: user.exam, k: 5 }) : [];
     const ragBlock = formatContextForPrompt(chunks);
 
