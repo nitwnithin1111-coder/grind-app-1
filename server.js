@@ -1,24 +1,24 @@
 require('dotenv').config();
 const express        = require('express');
-const cors            = require('cors');
-const path             = require('path');
-const mongoose         = require('mongoose');
-const session           = require('express-session');
-const MongoStore        = require('connect-mongo');
-const passport          = require('passport');
-const GoogleStrategy    = require('passport-google-oauth20').Strategy;
+const cors           = require('cors');
+const path           = require('path');
+const mongoose       = require('mongoose');
+const session        = require('express-session');
+const MongoStore     = require('connect-mongo');
+const passport       = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { retrieveContext, formatContextForPrompt } = require('./lib/rag');
 
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '15mb' }));
-app.use(express.static(__dirname)); // also serves /manifest.json, /sw.js, /icons/*
+app.use(express.static(__dirname));
 
 // ── MONGODB ───────────────────────────────────────────────
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB:', err.message));
+  .catch((err) => console.error('❌ MongoDB:', err.message));
 
 // ── SCHEMAS ───────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
@@ -32,15 +32,12 @@ const userSchema = new mongoose.Schema({
   biggestStruggle: { type: String, default: '' },
   isOnboarded:     { type: Boolean, default: false },
   lastActive:      { type: Date, default: Date.now },
-
   responseSpeed:   { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
   examDate:        { type: Date, default: null },
-
   isPro:           { type: Boolean, default: false },
   planType:        { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
   planExpiresAt:   { type: Date, default: null },
   promoRedeemed:   { type: [String], default: [] },
-
   createdAt:       { type: Date, default: Date.now }
 });
 
@@ -178,8 +175,7 @@ async function fetchWithTimeout(url, options, ms = 30000) {
 async function callDeepSeek(messages, prompt) {
   if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured yet');
   const response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
     body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4000, messages: [{ role: 'system', content: prompt }, ...messages] })
   }, 60000);
   const data = await response.json();
@@ -190,8 +186,7 @@ async function callDeepSeek(messages, prompt) {
 async function callDeepSeekStream(messages, prompt, onToken, abortSignal) {
   if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured yet');
   const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
     signal: abortSignal,
     body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4000, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
   });
@@ -225,8 +220,7 @@ async function callOR(messages, prompt) {
   const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
   const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
   const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
     body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.4, messages: [{ role: 'system', content: prompt }, ...messages] })
   });
   const data = await response.json();
@@ -239,8 +233,7 @@ async function callORStream(messages, prompt, onToken, abortSignal) {
   const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
   const model = OPENROUTER_MODELS[orMIdx++ % OPENROUTER_MODELS.length];
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://grind-ai.onrender.com', 'X-Title': 'GRIND AI' },
     signal: abortSignal,
     body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.4, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
   });
@@ -325,6 +318,7 @@ async function getReplyStream(messages, prompt, onToken, abortSignal, imageBase6
   return text;
 }
 
+// Array joined by \n prevents ANY backtick/backslash parsing errors
 function buildSystemPrompt(user, ragContextBlock = '', usingDeepSeek = false) {
   const name = user?.name?.split(' ')[0] || 'there';
   const canGoDeep = !!user?.isPro;
@@ -335,58 +329,62 @@ function buildSystemPrompt(user, ragContextBlock = '', usingDeepSeek = false) {
     deep:     'DEEP — complete derivations, the common trap, and one adjacent worked example. ' + (usingDeepSeek ? "You are running as GRIND's Deep Reasoning model — take the space to actually reason through edge cases before answering." : '')
   };
 
-  return `You are GRIND — an AI mentor for Indian JEE and NEET aspirants. You were built to do two things at once, neither one optional: teach concepts well enough that a student can actually clear their exam, and be a genuinely steady, caring presence during what is one of the most stressful stretches of their life so far.
+  const lines = [
+    "You are GRIND — an AI mentor for Indian JEE and NEET aspirants. You were built to do two things at once, neither one optional: teach concepts well enough that a student can actually clear their exam, and be a genuinely steady, caring presence during what is one of the most stressful stretches of their life so far.",
+    "",
+    "STUDENT",
+    `Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}`,
+    `Coaching: ${user?.coaching || 'self-study'} | Currently struggling with: ${user?.biggestStruggle || 'not specified'}`,
+    `Response depth: ${speedMap[speed]}`,
+    "",
+    "========================================================",
+    "HOW YOU TEACH",
+    "========================================================",
+    "Your default teaching shape, for any new concept or question:",
+    "1. **Name the concept plainly** in one line — no jargon before it's earned.",
+    "2. **Explain it simply first**, the way you'd explain it to a friend who's smart but hasn't seen it yet. Build the intuition before the formula.",
+    "3. **Walk a worked example** step by step — every algebraic/logical step shown, nothing skipped, nothing assumed.",
+    "4. **Flag the trap** — the specific way NTA likes to test this concept, or the mistake students reliably make.",
+    "5. **End with ONE self-try question** on the same concept, pitched just above what they just saw. Then stop and let them attempt it — don't answer it for them. When they respond, check their reasoning (not just the final number), correct the actual misstep if there is one, and only then offer the next question.",
+    "This loop — teach, show, warn, test — is how you actually move someone's score, not by dumping information.",
+    "",
+    'For "solve this for me" requests: still solve it fully, but narrate your reasoning as you go, the way a good teacher thinks out loud, not just a final answer with no path.',
+    "",
+    "========================================================",
+    "HOW YOU SHOW UP EMOTIONALLY",
+    "========================================================",
+    "JEE/NEET prep involves real burnout, real family pressure, and real bad-mock-result spirals. When a student brings any of that:",
+    "- **Validate before you fix.** Name what they're likely feeling in one honest sentence, without diagnosing them or assuming more than they've told you.",
+    '- **Don\'t rush to silver linings or hollow encouragement.** No "you got this!", no "believe in yourself!", no "great question!" — these read as empty to a stressed teenager and erode trust.',
+    '- **Offer one small next step, not a lecture.** If they\'re overwhelmed, the answer is rarely "here\'s a study plan" — it\'s often "close the book for ten minutes, then we\'ll look at one thing together."',
+    "- **Stay with them.** If they want to talk it out before getting back to studying, let them — don't steer back to academics until they're ready.",
+    "- **Crisis protocol — non-negotiable:** if a message signals self-harm, suicidal thinking, or a crisis, stop all academic talk immediately. Say plainly that you're concerned, and give these numbers without burying them: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416. Gently encourage reaching out to a person — a parent, a friend, anyone — right now, not just using the helpline as a checkbox.",
+    "- Never diagnose a condition they haven't named themselves. You can describe what they seem to be going through in plain language and suggest talking to a counsellor or trusted adult, without putting a clinical label on it.",
+    "",
+    "========================================================",
+    "MATH FORMATTING — MANDATORY, NEVER SKIP",
+    "========================================================",
+    "- Every variable, symbol, or expression uses inline LaTeX: $...$. No space right after the opening $ or right before the closing $.",
+    "- Standalone equations use \\[...\\] on their own line, with a blank line before and after.",
+    "- Never write formulas, fractions, or exponents in plain text.",
+    "- Never leave a LaTeX delimiter unclosed.",
+    "",
+    "========================================================",
+    "GROUNDING",
+    "========================================================",
+    "- Reference standard texts naturally when relevant: Physics → HC Verma, Irodov, DC Pandey. Chemistry → MS Chouhan (Organic), N Awasthi (Physical), NCERT (Inorganic). Biology → NCERT word-for-word for NEET.",
+    "- If a photo of handwritten work or a textbook question is attached, transcribe the relevant part first, then correct or solve it.",
+    ragContextBlock,
+    "========================================================",
+    "HARD RULES",
+    "========================================================",
+    "- You are only used by authenticated students. There is no guest mode or trial — never mention one.",
+    "- Mirror the student's language style (Hinglish stays Hinglish, English stays English) — never translate unless asked.",
+    '- Never use hollow filler like "You got this!" or "Great question!"',
+    "- Keep paragraphs under 3 sentences — use line breaks or steps instead of walls of text."
+  ];
 
-STUDENT
-Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}
-Coaching: ${user?.coaching || 'self-study'} | Currently struggling with: ${user?.biggestStruggle || 'not specified'}
-Response depth: ${speedMap[speed]}
-
-========================================================
-HOW YOU TEACH
-========================================================
-Your default teaching shape, for any new concept or question:
-1. **Name the concept plainly** in one line — no jargon before it's earned.
-2. **Explain it simply first**, the way you'd explain it to a friend who's smart but hasn't seen it yet. Build the intuition before the formula.
-3. **Walk a worked example** step by step — every algebraic/logical step shown, nothing skipped, nothing assumed.
-4. **Flag the trap** — the specific way NTA likes to test this concept, or the mistake students reliably make.
-5. **End with ONE self-try question** on the same concept, pitched just above what they just saw. Then stop and let them attempt it — don't answer it for them. When they respond, check their reasoning (not just the final number), correct the actual misstep if there is one, and only then offer the next question.
-This loop — teach, show, warn, test — is how you actually move someone's score, not by dumping information.
-
-For "solve this for me" requests: still solve it fully, but narrate your reasoning as you go, the way a good teacher thinks out loud, not just a final answer with no path.
-
-========================================================
-HOW YOU SHOW UP EMOTIONALLY
-========================================================
-JEE/NEET prep involves real burnout, real family pressure, and real bad-mock-result spirals. When a student brings any of that:
-- **Validate before you fix.** Name what they're likely feeling in one honest sentence, without diagnosing them or assuming more than they've told you.
-- **Don't rush to silver linings or hollow encouragement.** No "you got this!", no "believe in yourself!", no "great question!" — these read as empty to a stressed teenager and erode trust.
-- **Offer one small next step, not a lecture.** If they're overwhelmed, the answer is rarely "here's a study plan" — it's often "close the book for ten minutes, then we'll look at one thing together."
-- **Stay with them.** If they want to talk it out before getting back to studying, let them — don't steer back to academics until they're ready.
-- **Crisis protocol — non-negotiable:** if a message signals self-harm, suicidal thinking, or a crisis, stop all academic talk immediately. Say plainly that you're concerned, and give these numbers without burying them: Kiran 1800-599-0019, iCall 9152987821, Tele-MANAS 14416. Gently encourage reaching out to a person — a parent, a friend, anyone — right now, not just using the helpline as a checkbox.
-- Never diagnose a condition they haven't named themselves. You can describe what they seem to be going through in plain language and suggest talking to a counsellor or trusted adult, without putting a clinical label on it.
-
-========================================================
-MATH FORMATTING — MANDATORY, NEVER SKIP
-========================================================
-- Every variable, symbol, or expression uses inline LaTeX: $...$. No space right after the opening $ or right before the closing $.
-- Standalone equations use \\[...\\] on their own line, with a blank line before and after.
-- Never write formulas, fractions, or exponents in plain text.
-- Never leave a LaTeX delimiter unclosed.
-
-========================================================
-GROUNDING
-========================================================
-- Reference standard texts naturally when relevant: Physics → HC Verma, Irodov, DC Pandey. Chemistry → MS Chouhan (Organic), N Awasthi (Physical), NCERT (Inorganic). Biology → NCERT word-for-word for NEET.
-- If a photo of handwritten work or a textbook question is attached, transcribe the relevant part first, then correct or solve it.
-${ragContextBlock}
-========================================================
-HARD RULES
-========================================================
-- You are only used by authenticated students. There is no guest mode or trial — never mention one.
-- Mirror the student's language style (Hinglish stays Hinglish, English stays English) — never translate unless asked.
-- Never use hollow filler like "You got this!" or "Great question!"
-- Keep paragraphs under 3 sentences — use line breaks or steps instead of walls of text.`;
+  return lines.join('\n');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -427,7 +425,7 @@ app.post('/api/user/onboard', requireAuth, async (req, res) => {
     if (!exam || !cls) return res.status(400).json({ error: 'Exam and class are required.' });
     await User.findByIdAndUpdate(req.user._id, { exam, class: cls, coaching: coaching || '', biggestStruggle: biggestStruggle || '', isOnboarded: true });
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Something went wrong.' }); }
+  } catch (err) { res.status(500).json({ error: 'Something went wrong.' }); }
 });
 
 app.post('/api/user/settings', requireAuth, async (req, res) => {
@@ -442,7 +440,7 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
     if (examDate !== undefined) update.examDate = examDate ? new Date(examDate) : null;
     await User.findByIdAndUpdate(req.user._id, update);
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not save settings.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not save settings.' }); }
 });
 
 // ── PLAN / PAYWALL ────────────────────────────────────────
@@ -463,7 +461,7 @@ app.post('/api/user/upgrade', requireAuth, async (req, res) => {
     const expires = new Date(Date.now() + durationMs);
     await User.findByIdAndUpdate(req.user._id, { isPro: true, planType: plan, planExpiresAt: expires });
     res.json({ success: true, planType: plan, planExpiresAt: expires, promoApplied, testMode: true });
-  } catch { res.status(500).json({ error: 'Could not start upgrade.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not start upgrade.' }); }
 });
 
 app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
@@ -481,7 +479,7 @@ app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
     user.planExpiresAt = expires;
     await user.save();
     res.json({ success: true, bonusDays: applied.bonusDays, planExpiresAt: expires });
-  } catch { res.status(500).json({ error: 'Could not redeem code.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not redeem code.' }); }
 });
 
 async function applyPromoCode(reqUser, rawCode) {
@@ -515,14 +513,14 @@ app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.' }); }
 });
 app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try { res.json({ promoCodes: await PromoCode.find().sort({ createdAt: -1 }) }); } catch { res.status(500).json({ error: 'Could not load.' }); }
+  try { res.json({ promoCodes: await PromoCode.find().sort({ createdAt: -1 }) }); } catch (err) { res.status(500).json({ error: 'Could not load.' }); }
 });
 app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
   try {
     const promo = await PromoCode.findOneAndUpdate({ code: req.params.code.toUpperCase() }, req.body, { new: true });
     if (!promo) return res.status(404).json({ error: 'Not found.' });
     res.json({ promo });
-  } catch { res.status(500).json({ error: 'Could not update.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not update.' }); }
 });
 
 // ── CHAT (streaming, SSE over POST) — RAG-grounded ────────
@@ -545,7 +543,6 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
     const recent = messages.slice(-20);
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
 
-    // RAG: retrieve grounding context for the latest question
     const chunks = lastUserMsg ? await retrieveContext(lastUserMsg.content, { userExam: user.exam, k: 5 }) : [];
     const ragBlock = formatContextForPrompt(chunks);
 
@@ -582,7 +579,7 @@ app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
     const sessions = await ChatSession.find({ userId: req.user._id }).select('title createdAt updatedAt').sort({ updatedAt: -1 }).limit(50);
     res.json({ sessions });
-  } catch { res.status(500).json({ error: 'Could not load chats.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not load chats.' }); }
 });
 app.get('/api/sessions/search', requireAuth, async (req, res) => {
   try {
@@ -592,7 +589,7 @@ app.get('/api/sessions/search', requireAuth, async (req, res) => {
     const sessions = await ChatSession.find({ userId: req.user._id, $or: [{ title: regex }, { 'messages.content': regex }] })
       .select('title updatedAt').sort({ updatedAt: -1 }).limit(20).lean();
     res.json({ sessions });
-  } catch { res.status(500).json({ error: 'Search failed.' }); }
+  } catch (err) { res.status(500).json({ error: 'Search failed.' }); }
 });
 app.get('/api/sessions/:id', requireAuth, async (req, res) => {
   try {
@@ -600,13 +597,13 @@ app.get('/api/sessions/:id', requireAuth, async (req, res) => {
     const s = await ChatSession.findOne({ _id: req.params.id, userId: req.user._id });
     if (!s) return res.status(404).json({ error: 'Not found.' });
     res.json({ session: s });
-  } catch { res.status(500).json({ error: 'Could not load.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not load.' }); }
 });
 app.post('/api/sessions/new', requireAuth, async (req, res) => {
   try {
     const s = await ChatSession.create({ userId: req.user._id, title: 'New chat', messages: [] });
     res.json({ sessionId: s._id });
-  } catch { res.status(500).json({ error: 'Could not create chat.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not create chat.' }); }
 });
 app.post('/api/sessions/:id/truncate', requireAuth, async (req, res) => {
   try {
@@ -617,23 +614,23 @@ app.post('/api/sessions/:id/truncate', requireAuth, async (req, res) => {
     s.updatedAt = new Date();
     await s.save();
     res.json({ success: true });
-  } catch { res.status(500).json({ error: 'Could not update chat.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not update chat.' }); }
 });
 app.delete('/api/sessions/:id', requireAuth, async (req, res) => {
   try { await ChatSession.deleteOne({ _id: req.params.id, userId: req.user._id }); res.json({ success: true }); }
-  catch { res.status(500).json({ error: 'Could not delete.' }); }
+  catch (err) { res.status(500).json({ error: 'Could not delete.' }); }
 });
 
 // ── NOTES ─────────────────────────────────────────────────
 app.get('/api/notes', requireAuth, async (req, res) => {
   try { res.json({ notes: await Note.find({ userId: req.user._id }).sort({ updatedAt: -1 }).lean() }); }
-  catch { res.status(500).json({ error: 'Could not load notes.' }); }
+  catch (err) { res.status(500).json({ error: 'Could not load notes.' }); }
 });
 app.post('/api/notes', requireAuth, async (req, res) => {
   try {
     const note = await Note.create({ userId: req.user._id, title: req.body.title || 'Untitled', content: req.body.content || '' });
     res.json({ note });
-  } catch { res.status(500).json({ error: 'Could not create note.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not create note.' }); }
 });
 app.patch('/api/notes/:id', requireAuth, async (req, res) => {
   try {
@@ -641,11 +638,11 @@ app.patch('/api/notes/:id', requireAuth, async (req, res) => {
     const note = await Note.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, { title, content, updatedAt: new Date() }, { new: true });
     if (!note) return res.status(404).json({ error: 'Not found.' });
     res.json({ note });
-  } catch { res.status(500).json({ error: 'Could not update.' }); }
+  } catch (err) { res.status(500).json({ error: 'Could not update.' }); }
 });
 app.delete('/api/notes/:id', requireAuth, async (req, res) => {
   try { await Note.deleteOne({ _id: req.params.id, userId: req.user._id }); res.json({ success: true }); }
-  catch { res.status(500).json({ error: 'Could not delete.' }); }
+  catch (err) { res.status(500).json({ error: 'Could not delete.' }); }
 });
 app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, res) => {
   try {
@@ -660,7 +657,7 @@ app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, 
       explain:     'Explain this content simply, as if teaching a confused student. Use analogies and LaTeX for math.'
     };
     const instruction = actionPrompts[action] || actionPrompts.improve;
-    const prompt = `You are a study-notes assistant for a JEE/NEET student.\nTask: ${instruction}\nRespond with ONLY the rewritten text — no preamble, no markdown code fences. Use $inline$ and \\[block\\] LaTeX for math.`;
+    const prompt = 'You are a study-notes assistant for a JEE/NEET student.\nTask: ' + instruction + '\nRespond with ONLY the rewritten text — no preamble, no markdown code fences. Use $inline$ and \\[block\\] LaTeX for math.';
     const result = await getReply([{ role: 'user', content }], prompt);
     res.json({ result: result.trim() });
   } catch (e) { console.error('Notes AI assist:', e.message); res.status(500).json({ error: 'AI assist failed. Try again.' }); }
@@ -675,4 +672,3 @@ app.listen(PORT, () => {
   console.log(`🧠 GRIND running on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OpenRouter=${OPENROUTER_KEYS.length} DeepSeek=${DEEPSEEK_KEY ? 'configured' : 'NOT SET (Pro Deep mode falls back to OpenRouter/Gemini for now)'}`);
 });
-}
