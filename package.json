@@ -1,7 +1,7 @@
 {
   "name": "grind-jee-neet",
   "version": "2.0.0",
-  "description": "GRIND — a premium AI mentor for JEE and NEET aspirants (thinks, retrieves, and cites before answering)",
+  "description": "GRIND — a premium AI mentor for JEE and NEET aspirants",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
