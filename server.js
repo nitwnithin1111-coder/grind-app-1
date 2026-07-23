@@ -675,3 +675,4 @@ app.listen(PORT, () => {
   console.log(`🧠 GRIND running on port ${PORT}`);
   console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OpenRouter=${OPENROUTER_KEYS.length} DeepSeek=${DEEPSEEK_KEY ? 'configured' : 'NOT SET (Pro Deep mode falls back to OpenRouter/Gemini for now)'}`);
 });
+}
