@@ -20,7 +20,7 @@
    that becomes the logo, the loading state, and the send button.
 ══════════════════════════════════════════ */
 :root {
-  --ink:        #0E1116;   /* page background — graphite ink, not cyberpunk black */
+  --ink:        #0E1116;
   --panel:      #161A21;
   --card:       #1B2029;
   --card2:      #20262F;
@@ -31,10 +31,10 @@
   --text-dim:   #9AA4B2;
   --text-faint: #5C6675;
 
-  --accent:     #34D399;   /* "correct answer" green — used sparingly, on purpose */
+  --accent:     #34D399;
   --accent-ink: #06231A;
-  --link:       #6E8CFF;   /* ink-blue — interactive, calmer than neon cyan */
-  --pro:        #F0A94E;   /* amber — reserved for Pro / paid state only */
+  --link:       #6E8CFF;
+  --pro:        #F0A94E;
   --danger:     #F0596B;
 
   --radius-s: 8px;
@@ -62,9 +62,7 @@ a { color: var(--link); }
 :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
 
-/* ══ LOGO — the OMR bubble mark ══
-   A filled answer circle inside a rounded badge. Same mark scales
-   from the browser tab to the login hero to the sidebar. */
+/* ══ LOGO ══ */
 .logomark { display:inline-flex; align-items:center; justify-content:center; border-radius: 26%; background: linear-gradient(155deg, #1B2029, #12151B); position:relative; flex-shrink:0; }
 .logomark svg { display:block; }
 .logo-lockup { display:flex; align-items:center; gap:10px; }
@@ -162,6 +160,13 @@ a { color: var(--link); }
 .tab-panel { position:absolute; inset:0; display:none; flex-direction:column; overflow:hidden; }
 .tab-panel.tab-active { display:flex; }
 
+/* ══ PRO BANNER (new) ══ */
+.pro-banner { background: linear-gradient(135deg, rgba(240,169,78,0.08) 0%, rgba(240,169,78,0.03) 100%); border: 1px solid rgba(240,169,78,0.25); border-radius: var(--radius-m); padding: 12px 18px; margin: 12px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.pro-banner-text { font-size: 13px; font-weight:600; }
+.pro-banner-text span { color: var(--pro); }
+.pro-banner-btn { background: var(--pro); color: var(--ink); border: none; border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight:700; cursor:pointer; transition: all .15s; }
+.pro-banner-btn:hover { opacity:0.9; transform: translateY(-1px); }
+
 /* ══ CHAT ══ */
 #chat-area { flex:1; overflow-y:auto; padding: 22px 18px 8px; display:flex; flex-direction:column; gap:16px; max-width: 780px; width:100%; margin: 0 auto; }
 .welcome-card { padding: 8px 4px 20px; animation: fadeup .35s ease; }
@@ -179,7 +184,7 @@ a { color: var(--link); }
 .msg.user { align-items:flex-end; }
 .msg.ai { align-items:flex-start; }
 .msg-sender { font-size:10px; font-family: var(--font-mono); color: var(--text-faint); margin-bottom:5px; padding:0 3px; letter-spacing:.4px; }
-.msg-bubble { max-width: 92%; padding: 13px 16px; border-radius: var(--radius-m); font-size: 14.5px; line-height:1.8; position:relative; }
+.msg-bubble { max-width: 92%; padding: 13px 16px; border-radius: var(--radius-m); font-size: 14.5px; line-height:1.8; position:relative; word-break:break-word; }
 .user .msg-bubble { background: var(--card2); border: 1px solid var(--line2); border-bottom-right-radius: 4px; }
 .ai .msg-bubble { background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; padding-right: 40px; }
 .msg-bubble strong { color: var(--text); font-weight:700; }
@@ -282,6 +287,9 @@ a { color: var(--link); }
 .danger-link:hover { color: var(--danger); }
 
 /* Paywall */
+.promo-row { display:flex; gap:8px; margin-bottom: 16px; }
+.promo-input { flex:1; padding: 8px 12px; background: var(--card); border: 1px solid var(--line2); border-radius: var(--radius-s); color: var(--text); font-size:13px; }
+.promo-btn { padding: 8px 16px; background: var(--card2); border: 1px solid var(--line2); border-radius: var(--radius-s); color: var(--text); font-size:12px; font-weight:600; cursor:pointer; }
 .plan-cards { display:flex; flex-direction:column; gap:10px; margin-bottom: 8px; }
 .plan-card { border: 1px solid var(--line2); border-radius: var(--radius-m); padding: 16px; cursor:pointer; transition: all .15s; position:relative; }
 .plan-card:hover { border-color: var(--pro); }
@@ -310,6 +318,7 @@ a { color: var(--link); }
   #main { width:100%; }
   #notes-tab { flex-direction:column; }
   .notes-list-pane { width:100%; height:150px; border-right:none; border-bottom: 1px solid var(--line); }
+  .pro-banner { margin: 8px 12px; }
 }
 </style>
 </head>
@@ -422,6 +431,13 @@ a { color: var(--link); }
     <span class="modal-close" onclick="closePaywall()">✕</span>
     <div class="modal-title">Upgrade to Pro</div>
     <div class="modal-sub">Unlocks Deep response mode — full derivations and extra worked examples on every answer.</div>
+
+    <!-- Promo code input -->
+    <div class="promo-row">
+      <input class="promo-input" id="promo-code-input" placeholder="Promo code (optional)"/>
+      <button class="promo-btn" onclick="applyPromoCode()">Apply</button>
+    </div>
+
     <div class="plan-cards">
       <div class="plan-card" onclick="startUpgrade('weekly')">
         <div class="plan-card-top"><span class="plan-card-name">Weekly</span><span class="plan-card-price">₹29<span>/wk</span></span></div>
@@ -506,6 +522,11 @@ a { color: var(--link); }
     <div id="main-content">
       <!-- CHAT -->
       <div id="chat-tab" class="tab-panel tab-active">
+        <!-- Pro banner (shown only to free users) -->
+        <div class="pro-banner" id="pro-banner-chat" style="display:none;">
+          <div class="pro-banner-text">Go <span>Pro</span> for deep derivations &amp; step‑by‑step answers.</div>
+          <button class="pro-banner-btn" onclick="openPaywall()">Upgrade</button>
+        </div>
         <div id="chat-area"></div>
         <div class="input-wrap">
           <div class="input-inner">
@@ -569,7 +590,7 @@ let pendingImageBase64 = null;
 let currentNoteId = null;
 let allNotes = [];
 let noteAutoSaveTimer = null;
-let pendingUpgradePlan = null;
+let promoApplied = null; // stores promo code applied during upgrade
 
 if (typeof marked !== 'undefined') marked.setOptions({ breaks: true, gfm: true });
 
@@ -636,7 +657,7 @@ async function init() {
 }
 function handleLogout() { window.location = '/auth/logout'; }
 
-function showApp(user) {
+async function showApp(user) {
   document.getElementById('login-screen').classList.remove('active');
   document.getElementById('onboarding-screen').classList.remove('active');
   document.getElementById('app').classList.add('active');
@@ -644,6 +665,18 @@ function showApp(user) {
 
   renderUserChrome(user);
   loadHistory();
+
+  // Try to resume last session instead of always starting new
+  try {
+    const lastRes = await fetch('/api/sessions/last', { credentials:'include' });
+    const lastData = await lastRes.json();
+    if (lastData.sessionId) {
+      await loadSession(lastData.sessionId);
+      return;
+    }
+  } catch(e) { console.warn('Could not fetch last session', e); }
+
+  // Fallback: new chat
   newChat();
   const name = user.name?.split(' ')[0] || 'there';
   setTimeout(() => addAiMsg(`Welcome back, ${name}. What are we working through today — a concept, a tricky PYQ, or a plan for the week?`), 350);
@@ -668,6 +701,10 @@ function renderUserChrome(user) {
   document.getElementById('plan-banner').classList.toggle('is-pro', isPro);
   document.getElementById('deep-lock').style.display = isPro ? 'none' : 'inline-block';
   selectSpeed(user.responseSpeed || 'balanced', false);
+
+  // Show/hide Pro banner in chat
+  const banner = document.getElementById('pro-banner-chat');
+  if (banner) banner.style.display = isPro ? 'none' : 'flex';
 }
 
 // ════════════════════════════════════════════
@@ -728,15 +765,39 @@ async function saveExamDate() {
   try { await fetch('/api/user/settings', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ examDate: val || null }) }); }
   catch { showToast('Could not save exam date', 'error'); }
 }
-async function startUpgrade(plan) {
-  pendingUpgradePlan = plan;
+
+// ════════════════════════════════════════════
+//  PRO / PROMO / UPGRADE
+// ════════════════════════════════════════════
+async function applyPromoCode() {
+  const code = document.getElementById('promo-code-input').value.trim();
+  if (!code) return;
   try {
-    const res = await fetch('/api/user/upgrade', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ plan }) });
+    const res = await fetch('/api/user/redeem-promo', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ code }) });
+    const d = await res.json();
+    if (res.ok) {
+      promoApplied = code;
+      currentUser = { ...currentUser, isPro: d.isPro ?? currentUser.isPro, planExpiresAt: d.planExpiresAt ?? currentUser.planExpiresAt };
+      renderUserChrome(currentUser);
+      showToast(`Promo applied! ${d.bonusDays} bonus days.`, 'success');
+    } else {
+      showToast(d.error || 'Invalid code', 'error');
+    }
+  } catch(e) { showToast('Could not apply promo code', 'error'); }
+}
+
+async function startUpgrade(plan) {
+  try {
+    const body = { plan };
+    if (promoApplied) body.promoCode = promoApplied;
+    const res = await fetch('/api/user/upgrade', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Upgrade failed');
-    currentUser.isPro = true; currentUser.planType = plan;
+    currentUser.isPro = true; currentUser.planType = plan; currentUser.planExpiresAt = d.planExpiresAt;
     renderUserChrome(currentUser);
     closePaywall();
+    promoApplied = null;
+    document.getElementById('promo-code-input').value = '';
     showToast('Pro unlocked — Deep mode is now available', 'success');
   } catch(e) { showToast(e.message || 'Could not start upgrade', 'error'); }
 }
@@ -822,7 +883,7 @@ async function deleteSession(id, e) {
 }
 
 // ════════════════════════════════════════════
-//  CHAT
+//  CHAT (line-by-line streaming upgrade)
 // ════════════════════════════════════════════
 async function newChat() {
   chatHistory = [];
@@ -897,6 +958,7 @@ async function regenerateLast() {
   await streamAssistantReply(null);
 }
 
+// Editor for user messages
 function startEditMessage(wrapEl, originalText, historyIdx) {
   const bubble = wrapEl.querySelector('.msg-bubble');
   const actionsEl = wrapEl.querySelector('.msg-actions');
@@ -925,6 +987,7 @@ function startEditMessage(wrapEl, originalText, historyIdx) {
   };
 }
 
+// ══ Streaming with line-by-line display ══
 async function streamAssistantReply(imageBase64) {
   showTyping();
   const controller = new AbortController();
@@ -950,7 +1013,10 @@ async function streamAssistantReply(imageBase64) {
         let payload; try { payload = JSON.parse(line.slice(5).trim()); } catch { continue; }
         if (payload.event === 'chunk') {
           if (!aiWrap) { removeTyping(); ({wrap: aiWrap, bubble: aiBubble} = createAiBubbleShell()); }
+          // payload.text is a full line (including newline). We append it to accumulated.
           accumulated += payload.text;
+          // Update the bubble content. Since the server already sends whole lines,
+          // rendering the entire accumulated text each time gives a line-by-line appearance.
           aiBubble.innerHTML = safeParse(accumulated);
           safeRenderMath(aiBubble);
           document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
@@ -965,6 +1031,8 @@ async function streamAssistantReply(imageBase64) {
           removeTyping();
           if (!aiWrap) addAiMsg(payload.error || 'Something went wrong.');
           else aiBubble.innerHTML = safeParse(payload.error || 'Something went wrong.');
+        } else if (payload.event === 'thinking') {
+          // thinking steps: we could show them if desired, but for now skip
         }
       }
     }
