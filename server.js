@@ -225,7 +225,7 @@ const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrende
 // ══════════════════════════════════════════════════════════
 //  TOKEN LIMIT & MODEL ROUTING CONFIGURATION
 // ══════════════════════════════════════════════════════════
-const TOKEN_LIMIT = 50000;
+const TOKEN_LIMIT = 500000;
 
 // Model routing: Perplexity FIRST (when tokens < limit), then fallback to OpenRouter
 const MODEL_CONFIG = {
