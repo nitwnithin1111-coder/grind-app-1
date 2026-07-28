@@ -304,7 +304,9 @@ async function routeReplyStream({ user, messages, prompt, onLine, abortSignal, d
       return { model: 'perplexity-sonar' };
     } catch (e) {
       console.error('Perplexity failed, falling back...', e.message);
-    }
+      // Removes all occurrences of [1], [2], etc., completely from the AI answer string
+const cleanAnswerWithoutNumbers = data.choices[0].message.content.replace(/\[\d+\]/g, '');
+   }
   }
 
   // FALLBACK: Existing Logic
