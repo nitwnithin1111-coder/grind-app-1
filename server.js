@@ -188,7 +188,6 @@ function rateLimit(maxRequests, windowMs) {
   };
 }
 
-// Cleanup old entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of rateBuckets) {
@@ -199,87 +198,125 @@ setInterval(() => {
 }, 5 * 60000);
 
 // ══════════════════════════════════════════════════════════
-//  AI PROVIDER CONFIGURATION
+//  API KEYS CONFIGURATION
 // ══════════════════════════════════════════════════════════
-const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY || '';
+const PERPLEXITY_KEYS = [
+  process.env.PERPLEXITY_API_KEY,
+  process.env.PERPLEXITY_KEY_1,
+  process.env.PERPLEXITY_KEY_2,
+  process.env.PERPLEXITY_KEY_3
+].filter(Boolean);
+
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_KEY_1, 
   process.env.OPENROUTER_KEY_2, 
   process.env.OPENROUTER_KEY_3
 ].filter(Boolean);
+
 const GROQ_KEYS = [
   process.env.GROQ_KEY_1, 
   process.env.GROQ_KEY_2, 
   process.env.GROQ_KEY_3
 ].filter(Boolean);
+
 const GEMINI_KEYS = [
   process.env.GEMINI_KEY_1, 
   process.env.GEMINI_KEY_2, 
   process.env.GEMINI_KEY_3
 ].filter(Boolean);
 
-let orIdx = 0, grIdx = 0, gIdx = 0;
+// Rotating indexes for load balancing
+let perplexityIdx = 0;
+let openrouterIdx = 0;
+let groqIdx = 0;
+let geminiIdx = 0;
 
 const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
 
 // ══════════════════════════════════════════════════════════
-//  TOKEN LIMIT & MODEL ROUTING CONFIGURATION
+//  TOKEN LIMIT CONFIGURATION
 // ══════════════════════════════════════════════════════════
 const TOKEN_LIMIT = 500000;
 
-// Model routing: Perplexity FIRST (when tokens < limit), then fallback to OpenRouter
-const MODEL_CONFIG = {
-  fast: {
-    primary: {
-      provider: 'perplexity',
-      model: 'sonar',
-      search: false
-    },
-    fallback: {
-      provider: 'openrouter',
-      model: 'openai/gpt-5.4-nano',
-      reasoning: false,
-      search: false
-    }
-  },
-  balanced: {
-    primary: {
-      provider: 'perplexity',
-      model: 'sonar',
-      search: true
-    },
-    fallback: {
-      provider: 'openrouter',
-      model: 'openai/gpt-5-mini',
-      reasoning: false,
-      search: false
-    }
-  },
-  deep: {
-    primary: {
-      provider: 'perplexity',
-      model: 'sonar-pro',
-      search: true
-    },
-    fallback: {
-      provider: 'openrouter',
-      model: 'openai/gpt-5.4-mini',
-      reasoning: true,
-      search: false
-    }
-  }
+// ══════════════════════════════════════════════════════════
+//  COMPREHENSIVE FALLBACK CHAIN CONFIGURATION
+// ══════════════════════════════════════════════════════════
+const FALLBACK_CHAIN = {
+  fast: [
+    // Priority 1: Perplexity (fastest, no search)
+    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
+    
+    // Priority 2: Perplexity alternative models
+    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
+    
+    // Priority 3: OpenRouter fast models
+    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: false, name: 'GPT-4o Mini' },
+    { provider: 'openrouter', model: 'anthropic/claude-3-haiku', reasoning: false, search: false, name: 'Claude 3 Haiku' },
+    { provider: 'openrouter', model: 'google/gemini-flash-1.5', reasoning: false, search: false, name: 'Gemini Flash' },
+    
+    // Priority 4: Groq (ultra-fast fallback)
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    
+    // Priority 5: Gemini direct
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    
+    // Priority 6: Emergency ultra-cheap
+    { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Llama 3.2 3B' }
+  ],
+  
+  balanced: [
+    // Priority 1: Perplexity with search (BEST for study queries)
+    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
+    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Search)' },
+    
+    // Priority 2: Perplexity without search (faster fallback)
+    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
+    
+    // Priority 3: OpenRouter balanced models
+    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: true, name: 'GPT-4o Mini (Search)' },
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: false, search: false, name: 'Claude 3.5 Sonnet' },
+    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: false, name: 'Gemini Pro' },
+    
+    // Priority 4: Fast alternatives
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    
+    // Priority 5: Emergency
+    { provider: 'openrouter', model: 'meta-llama/llama-3.2-11b-vision-instruct', reasoning: false, search: false, name: 'Llama 3.2 11B' }
+  ],
+  
+  deep: [
+    // Priority 1: Perplexity Pro with search (ULTIMATE for deep reasoning)
+    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Deep Search)' },
+    
+    // Priority 2: Perplexity alternatives
+    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
+    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
+    
+    // Priority 3: OpenRouter reasoning models
+    { provider: 'openrouter', model: 'openai/o1-mini', reasoning: true, search: false, name: 'O1 Mini (Reasoning)' },
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: true, search: true, name: 'Claude 3.5 Sonnet (Deep)' },
+    { provider: 'openrouter', model: 'openai/gpt-4-turbo', reasoning: true, search: false, name: 'GPT-4 Turbo' },
+    
+    // Priority 4: Balanced alternatives
+    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: true, name: 'Gemini Pro (Search)' },
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    
+    // Priority 5: Emergency deep
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { provider: 'openrouter', model: 'meta-llama/llama-3.2-11b-vision-instruct', reasoning: false, search: false, name: 'Llama 3.2 11B' }
+  ]
 };
 
-// Downgrade config (when token limit exceeded)
-const DOWNGRADE_CONFIG = {
-  provider: 'openrouter',
-  model: 'openai/gpt-5.4-nano',
-  reasoning: false,
-  search: false
-};
+// Emergency downgrade when token limit exceeded
+const EMERGENCY_DOWNGRADE_CHAIN = [
+  { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Emergency: Llama 3.2 3B' },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Emergency: Groq Llama' },
+  { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Emergency: Gemini Flash' }
+];
 
 // ══════════════════════════════════════════════════════════
-//  AI PROVIDER HELPER FUNCTIONS
+//  HELPER: FETCH WITH TIMEOUT
 // ══════════════════════════════════════════════════════════
 async function fetchWithTimeout(url, options, ms = 30000) {
   const controller = new AbortController();
@@ -294,16 +331,22 @@ async function fetchWithTimeout(url, options, ms = 30000) {
     
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`${response.status} - ${text}`);
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
     }
     
     return response;
   } catch (err) {
     clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
     throw err;
   }
 }
 
+// ══════════════════════════════════════════════════════════
+//  HELPER: EXTRACT TOKENS FROM USAGE
+// ══════════════════════════════════════════════════════════
 function extractTokensUsed(usage) {
   if (!usage) return 0;
   if (typeof usage.total_tokens === 'number') return usage.total_tokens;
@@ -314,11 +357,15 @@ function extractTokensUsed(usage) {
   return inputTokens + outputTokens;
 }
 
-// ── Perplexity API Call ──
+// ══════════════════════════════════════════════════════════
+//  PROVIDER 1: PERPLEXITY API (FIRST PRIORITY)
+// ══════════════════════════════════════════════════════════
 async function callPerplexity(model, messages, systemPrompt, { search = true } = {}) {
-  if (!PERPLEXITY_KEY) {
-    throw new Error('PERPLEXITY_API_KEY not configured');
+  if (!PERPLEXITY_KEYS.length) {
+    throw new Error('No Perplexity API keys configured');
   }
+
+  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
 
   const payload = {
     model,
@@ -328,12 +375,14 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       { role: 'system', content: systemPrompt },
       ...messages
     ],
-    return_related_questions: false,
-    search_domain_filter: search ? ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org'] : undefined
+    return_related_questions: false
   };
 
-  // For non-search mode, explicitly disable search
-  if (!search) {
+  // Configure search behavior
+  if (search) {
+    payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
+    payload.search_recency_filter = 'month';
+  } else {
     payload.search_recency_filter = 'none';
   }
 
@@ -343,7 +392,7 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${PERPLEXITY_KEY}`
+        'Authorization': `Bearer ${key}`
       },
       body: JSON.stringify(payload)
     },
@@ -358,17 +407,20 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
 
   return {
     content: data.choices?.[0]?.message?.content || '',
-    usage: data.usage || {}
+    usage: data.usage || {},
+    citations: data.citations || []
   };
 }
 
-// ── OpenRouter API Call ──
+// ══════════════════════════════════════════════════════════
+//  PROVIDER 2: OPENROUTER API
+// ══════════════════════════════════════════════════════════
 async function callOpenRouter(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
   if (!OPENROUTER_KEYS.length) {
     throw new Error('No OpenRouter keys configured');
   }
 
-  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
+  const key = OPENROUTER_KEYS[openrouterIdx++ % OPENROUTER_KEYS.length];
 
   const payload = {
     model,
@@ -415,11 +467,15 @@ async function callOpenRouter(model, messages, systemPrompt, { reasoning = false
   };
 }
 
-// ── Groq Fallback (for legacy endpoints) ──
-async function callGroq(messages, prompt) {
-  if (!GROQ_KEYS.length) throw new Error('No Groq keys configured');
+// ══════════════════════════════════════════════════════════
+//  PROVIDER 3: GROQ API
+// ══════════════════════════════════════════════════════════
+async function callGroq(messages, systemPrompt) {
+  if (!GROQ_KEYS.length) {
+    throw new Error('No Groq keys configured');
+  }
   
-  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
+  const key = GROQ_KEYS[groqIdx++ % GROQ_KEYS.length];
   
   const response = await fetchWithTimeout(
     'https://api.groq.com/openai/v1/chat/completions',
@@ -434,24 +490,35 @@ async function callGroq(messages, prompt) {
         max_tokens: 4096,
         temperature: 0.4,
         messages: [
-          { role: 'system', content: prompt },
+          { role: 'system', content: systemPrompt },
           ...messages
         ]
       })
-    }
+    },
+    30000
   );
 
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
   
-  return data.choices[0].message.content;
+  if (data.error) {
+    throw new Error(data.error.message || 'Groq API error');
+  }
+  
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    usage: data.usage || {}
+  };
 }
 
-// ── Gemini Fallback (for legacy endpoints) ──
-async function callGemini(messages, prompt, imageBase64 = null) {
-  if (!GEMINI_KEYS.length) throw new Error('No Gemini keys configured');
+// ══════════════════════════════════════════════════════════
+//  PROVIDER 4: GEMINI API
+// ══════════════════════════════════════════════════════════
+async function callGemini(messages, systemPrompt, imageBase64 = null) {
+  if (!GEMINI_KEYS.length) {
+    throw new Error('No Gemini keys configured');
+  }
   
-  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
+  const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
   
   const contents = messages.map(msg => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
@@ -476,48 +543,125 @@ async function callGemini(messages, prompt, imageBase64 = null) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: prompt }] },
+        system_instruction: { parts: [{ text: systemPrompt }] },
         contents,
         generationConfig: {
           temperature: 0.4,
           maxOutputTokens: 4096
         }
       })
-    }
+    },
+    30000
   );
 
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
   
-  return data.candidates[0].content.parts[0].text;
-}
-
-// ── Unified AI Call with Intelligent Routing ──
-async function callUnifiedAI(config, messages, systemPrompt) {
-  if (config.provider === 'perplexity') {
-    return await callPerplexity(
-      config.model,
-      messages,
-      systemPrompt,
-      { search: config.search }
-    );
-  } else if (config.provider === 'openrouter') {
-    return await callOpenRouter(
-      config.model,
-      messages,
-      systemPrompt,
-      {
-        reasoning: config.reasoning,
-        search: config.search
-      }
-    );
+  if (data.error) {
+    throw new Error(data.error.message || 'Gemini API error');
   }
   
-  throw new Error('Unknown provider');
+  return {
+    content: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+    usage: data.usageMetadata || {}
+  };
 }
 
 // ══════════════════════════════════════════════════════════
-//  SYSTEM PROMPT
+//  UNIFIED AI CALL WITH AUTOMATIC FALLBACK CHAIN
+// ══════════════════════════════════════════════════════════
+async function callAIWithFallback(config, messages, systemPrompt) {
+  const { provider, model, reasoning, search, name } = config;
+  
+  console.log(`🤖 Attempting: ${name || `${provider}/${model}`}`);
+  
+  try {
+    let result;
+    
+    switch (provider) {
+      case 'perplexity':
+        result = await callPerplexity(model, messages, systemPrompt, { search });
+        break;
+        
+      case 'openrouter':
+        result = await callOpenRouter(model, messages, systemPrompt, { reasoning, search });
+        break;
+        
+      case 'groq':
+        result = await callGroq(messages, systemPrompt);
+        break;
+        
+      case 'gemini':
+        result = await callGemini(messages, systemPrompt);
+        break;
+        
+      default:
+        throw new Error(`Unknown provider: ${provider}`);
+    }
+    
+    console.log(`✅ Success: ${name || `${provider}/${model}`}`);
+    return { ...result, providerUsed: name || `${provider}/${model}` };
+    
+  } catch (error) {
+    console.error(`❌ Failed: ${name || `${provider}/${model}`} - ${error.message}`);
+    throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  INTELLIGENT CASCADING FALLBACK SYSTEM
+// ══════════════════════════════════════════════════════════
+async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLimitExceeded = false) {
+  // Determine which fallback chain to use
+  const chain = tokenLimitExceeded 
+    ? EMERGENCY_DOWNGRADE_CHAIN 
+    : FALLBACK_CHAIN[mode] || FALLBACK_CHAIN.balanced;
+
+  const errors = [];
+  
+  // Try each provider in the chain until one succeeds
+  for (let i = 0; i < chain.length; i++) {
+    const config = chain[i];
+    
+    try {
+      const result = await callAIWithFallback(config, messages, systemPrompt);
+      
+      // Success! Return result with metadata
+      return {
+        success: true,
+        content: result.content,
+        usage: result.usage,
+        provider: result.providerUsed,
+        model: config.model,
+        wasDowngraded: tokenLimitExceeded,
+        attemptNumber: i + 1,
+        totalAttempts: chain.length,
+        citations: result.citations
+      };
+      
+    } catch (error) {
+      errors.push({
+        provider: config.name || `${config.provider}/${config.model}`,
+        error: error.message
+      });
+      
+      console.log(`🔄 Falling back... (${i + 1}/${chain.length} failed)`);
+      
+      // Small delay before next attempt to avoid rate limits
+      if (i < chain.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+  
+  // All providers failed
+  console.error('❌ ALL PROVIDERS FAILED:', errors);
+  throw new Error(
+    `All ${chain.length} AI providers failed. Last error: ${errors[errors.length - 1]?.error || 'Unknown'}`
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  SYSTEM PROMPT BUILDER
 // ══════════════════════════════════════════════════════════
 function buildSystemPrompt(user, mode = 'balanced') {
   const name = user?.name?.split(' ')[0] || 'there';
@@ -574,7 +718,7 @@ HARD RULES
 }
 
 // ══════════════════════════════════════════════════════════
-//  MAIN DOUBT-SOLVING ENDPOINT
+//  MAIN DOUBT-SOLVING ENDPOINT WITH PERPLEXITY FIRST PRIORITY
 // ══════════════════════════════════════════════════════════
 app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
   try {
@@ -591,7 +735,7 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       });
     }
 
-    // Fetch fresh user from database
+    // Fetch fresh user
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(401).json({ 
@@ -605,7 +749,7 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
     // Determine mode
     const requestedMode = ['fast', 'balanced', 'deep'].includes(mode) ? mode : 'balanced';
     
-    // Check if user can access deep mode
+    // Check Pro access for deep mode
     if (requestedMode === 'deep' && !user.isPro) {
       return res.status(402).json({
         success: false,
@@ -616,74 +760,23 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       });
     }
 
-    let activeConfig;
-    let wasDowngraded = false;
-    let providerUsed;
+    // Check if token limit exceeded
+    const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
 
-    // TOKEN LIMIT CHECK & ROUTING LOGIC
-    if (user.totalTokensConsumed >= TOKEN_LIMIT) {
-      // OVER LIMIT → Force downgrade to cheapest model
-      activeConfig = DOWNGRADE_CONFIG;
-      wasDowngraded = true;
-      providerUsed = 'openrouter-downgrade';
-    } else {
-      // UNDER LIMIT → Try Perplexity first, fallback to OpenRouter
-      const modeConfig = MODEL_CONFIG[requestedMode];
-      
-      // Try primary (Perplexity) first
-      if (PERPLEXITY_KEY) {
-        activeConfig = modeConfig.primary;
-        providerUsed = 'perplexity';
-      } else {
-        // No Perplexity key → use fallback (OpenRouter)
-        activeConfig = modeConfig.fallback;
-        providerUsed = 'openrouter-fallback';
-      }
-    }
-
+    // Build system prompt
     const systemPrompt = buildSystemPrompt(user, requestedMode);
     const messages = [{ role: 'user', content: message }];
 
-    let aiResult;
-    let finalProvider = providerUsed;
+    // Call AI with automatic fallback chain
+    const aiResult = await getAIResponse(
+      messages, 
+      systemPrompt, 
+      requestedMode, 
+      tokenLimitExceeded
+    );
 
-    try {
-      // Try primary provider
-      aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
-    } catch (primaryErr) {
-      console.error(`❌ ${providerUsed} failed:`, primaryErr.message);
-      
-      // Fallback logic
-      if (!wasDowngraded && providerUsed === 'perplexity') {
-        // Perplexity failed → try OpenRouter fallback
-        console.log('🔄 Falling back to OpenRouter...');
-        const modeConfig = MODEL_CONFIG[requestedMode];
-        activeConfig = modeConfig.fallback;
-        finalProvider = 'openrouter-fallback';
-        
-        try {
-          aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
-        } catch (fallbackErr) {
-          console.error('❌ OpenRouter fallback failed:', fallbackErr.message);
-          // Last resort: use downgrade config
-          activeConfig = DOWNGRADE_CONFIG;
-          wasDowngraded = true;
-          finalProvider = 'openrouter-emergency';
-          aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
-        }
-      } else {
-        // Already using fallback/downgrade → last resort
-        activeConfig = DOWNGRADE_CONFIG;
-        wasDowngraded = true;
-        finalProvider = 'openrouter-emergency';
-        aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
-      }
-    }
-
-    const { content: answer, usage } = aiResult;
-
-    // Extract and accumulate tokens
-    const tokensUsed = extractTokensUsed(usage);
+    // Extract tokens and update user
+    const tokensUsed = extractTokensUsed(aiResult.usage);
     user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
     user.lastActive = new Date();
     await user.save();
@@ -700,8 +793,8 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
                   { role: 'user', content: message },
                   { 
                     role: 'assistant', 
-                    content: answer, 
-                    model: `${activeConfig.model} (${finalProvider})` 
+                    content: aiResult.content, 
+                    model: aiResult.provider 
                   }
                 ]
               }
@@ -714,19 +807,27 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       }
     }
 
-    // Response
-    return res.json({
+    // Build response
+    const response = {
       success: true,
-      answer,
-      limitWarning: wasDowngraded,
-      message: wasDowngraded
-        ? 'Token limit reached. Automatically switched to lightweight model to keep costs manageable.'
+      answer: aiResult.content,
+      limitWarning: aiResult.wasDowngraded,
+      message: aiResult.wasDowngraded
+        ? 'Token limit reached. Using cost-effective model.'
         : null,
       tokensUsedSession: user.totalTokensConsumed,
       tokensUsedThisCall: tokensUsed,
-      provider: finalProvider,
-      model: activeConfig.model
-    });
+      provider: aiResult.provider,
+      model: aiResult.model,
+      attemptNumber: aiResult.attemptNumber,
+      totalAttempts: aiResult.totalAttempts
+    };
+
+    if (aiResult.citations && aiResult.citations.length > 0) {
+      response.citations = aiResult.citations;
+    }
+
+    return res.json(response);
 
   } catch (err) {
     console.error('❌ /api/solve-doubt error:', err.message);
@@ -734,7 +835,8 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       success: false,
       answer: null,
       limitWarning: false,
-      message: 'GRIND encountered an error. Please try again in a moment.',
+      message: 'All AI providers are currently unavailable. Please try again in a moment.',
+      error: err.message,
       tokensUsedSession: req.user?.totalTokensConsumed || 0
     });
   }
@@ -743,72 +845,6 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 // ══════════════════════════════════════════════════════════
 //  LEGACY CHAT STREAM ENDPOINT (for backwards compatibility)
 // ══════════════════════════════════════════════════════════
-async function consumeOpenAIStreamLines(response, onLine) {
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '', fullText = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
-      
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullText += delta;
-          let newlineIndex;
-          while ((newlineIndex = fullText.indexOf('\n')) !== -1) {
-            const lineToEmit = fullText.slice(0, newlineIndex + 1);
-            fullText = fullText.slice(newlineIndex + 1);
-            onLine(lineToEmit);
-          }
-        }
-      } catch (e) { /* partial chunk */ }
-    }
-  }
-
-  if (fullText) onLine(fullText);
-}
-
-async function streamLines(text, onLine) {
-  const lines = text.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    onLine(lines[i] + (i < lines.length - 1 ? '\n' : ''));
-    await new Promise(r => setTimeout(r, 10));
-  }
-  return text;
-}
-
-async function getReplyLegacy(messages, prompt, imageBase64 = null) {
-  const attempts = [
-    () => callGemini(messages, prompt, imageBase64),
-    () => callGroq(messages, prompt)
-  ];
-  
-  let lastErr;
-  for (const attempt of attempts) {
-    try {
-      return await attempt();
-    } catch (e) {
-      lastErr = e;
-      console.log('❌ legacy provider failed:', e.message);
-    }
-  }
-  
-  throw lastErr || new Error('ALL_PROVIDERS_EXHAUSTED');
-}
-
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64 } = req.body;
   
@@ -827,42 +863,38 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
   const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  const abortController = new AbortController();
-  req.on('close', () => abortController.abort());
-
   try {
     const recent = messages.slice(-20);
 
     send('thinking', { step: 'Reading your question…' });
     await sleep(120);
-    send('thinking', { step: 'Identifying core concept…' });
+    send('thinking', { step: 'Analyzing with AI…' });
     await sleep(140);
 
-    const prompt = buildSystemPrompt(user, user.responseSpeed || 'balanced');
+    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced');
+    const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
     
-    let fullReply = '';
-    const onLine = (line) => {
-      if (!fullReply) send('answer_start', {});
-      fullReply += line;
-      send('chunk', { text: line });
-    };
+    // Use fallback system for stream too
+    const aiResult = await getAIResponse(
+      recent,
+      systemPrompt,
+      user.responseSpeed || 'balanced',
+      tokenLimitExceeded
+    );
 
-    const text = await getReplyLegacy(recent, prompt, imageBase64);
-    await streamLines(text, onLine);
+    // Stream the response
+    send('answer_start', {});
+    
+    const lines = aiResult.content.split('\n');
+    for (const line of lines) {
+      send('chunk', { text: line + '\n' });
+      await sleep(10);
+    }
 
     // Persist to session
     if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
       try {
         const userMsg = messages[messages.length - 1];
-        const existing = await ChatSession.findOne({ 
-          _id: sessionId, 
-          userId: user._id 
-        }).select('messages').lean();
-        
-        const title = existing && existing.messages.length === 0 
-          ? (userMsg.content || 'Image question').slice(0, 50) 
-          : undefined;
-
         await ChatSession.updateOne(
           { _id: sessionId, userId: user._id },
           {
@@ -870,14 +902,11 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
               messages: {
                 $each: [
                   { role: 'user', content: userMsg.content },
-                  { role: 'assistant', content: fullReply, model: 'fallback' }
+                  { role: 'assistant', content: aiResult.content, model: aiResult.provider }
                 ]
               }
             },
-            $set: { 
-              updatedAt: new Date(), 
-              ...(title ? { title } : {}) 
-            }
+            $set: { updatedAt: new Date() }
           }
         );
       } catch (e) {
@@ -885,16 +914,12 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
       }
     }
 
-    send('done', { reply: fullReply, model: 'fallback' });
+    send('done', { reply: aiResult.content, model: aiResult.provider });
     res.end();
     
   } catch (err) {
-    if (err.name === 'AbortError') {
-      res.end();
-      return;
-    }
     console.error('Stream error:', err.message);
-    send('error', { error: 'GRIND is taking a short break. Please try again.' });
+    send('error', { error: 'All AI providers failed. Please try again.' });
     res.end();
   }
 });
@@ -950,7 +975,8 @@ app.get('/api/me', requireAuth, async (req, res) => {
       planExpiresAt: u.planExpiresAt,
       totalTokensConsumed: u.totalTokensConsumed || 0,
       tokenLimit: TOKEN_LIMIT,
-      perplexityConfigured: !!PERPLEXITY_KEY
+      perplexityConfigured: PERPLEXITY_KEYS.length > 0,
+      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length
     }
   });
 });
@@ -1388,12 +1414,14 @@ app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, 
     const instruction = actionPrompts[action] || actionPrompts.improve;
     const prompt = `You are a study-notes assistant for a JEE/NEET student.\nTask: ${instruction}\nRespond with ONLY the rewritten text — no preamble, no code fences. Use $inline$ and \\[block\\] LaTeX.`;
 
-    const result = await getReplyLegacy(
+    const result = await getAIResponse(
       [{ role: 'user', content }],
-      prompt
+      prompt,
+      'fast',
+      false
     );
 
-    res.json({ result: result.trim() });
+    res.json({ result: result.content.trim() });
   } catch (e) {
     console.error('Notes AI assist:', e.message);
     res.status(500).json({ error: 'AI assist failed. Try again.' });
@@ -1413,20 +1441,38 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🧠 GRIND AI v3 - Token-Managed Perplexity Priority`);
-  console.log(`📡 Running on port ${PORT}`);
-  console.log(`\n🔑 API Keys Loaded:`);
-  console.log(`   • Perplexity: ${PERPLEXITY_KEY ? '✅ PRIMARY' : '❌ NOT SET'}`);
-  console.log(`   • OpenRouter: ${OPENROUTER_KEYS.length} keys ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
-  console.log(`   • Groq: ${GROQ_KEYS.length} keys (fallback)`);
-  console.log(`   • Gemini: ${GEMINI_KEYS.length} keys (fallback)`);
+  console.log(`\n🧠 ════════════════════════════════════════════════════════`);
+  console.log(`   GRIND AI v4.0 - Perplexity-First with Cascading Fallbacks`);
+  console.log(`════════════════════════════════════════════════════════════`);
+  console.log(`📡 Server running on port ${PORT}`);
+  console.log(`📅 Current date: Tuesday, July 28, 2026\n`);
+  
+  console.log(`🔑 API Keys Configuration:`);
+  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
+  console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
+  console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
+  console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
+  
+  const totalProviders = PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length;
+  console.log(`\n   Total providers: ${totalProviders}`);
+  
   console.log(`\n💰 Cost Management:`);
   console.log(`   • Token limit per user: ${TOKEN_LIMIT.toLocaleString()}`);
-  console.log(`   • Downgrade model: ${DOWNGRADE_CONFIG.model}`);
-  console.log(`\n🎯 Model Routing Strategy:`);
-  console.log(`   • Fast mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar' : 'OpenRouter GPT-5.4-nano'} (no search)`);
-  console.log(`   • Balanced mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar' : 'OpenRouter GPT-5-mini'} (with search)`);
-  console.log(`   • Deep mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar Pro' : 'OpenRouter GPT-5.4-mini'} (reasoning + search)`);
-  console.log(`\n🔄 Fallback Chain: Perplexity → OpenRouter → Emergency Downgrade`);
-  console.log(`✨ Ready to serve!\n`);
+  console.log(`   • Emergency downgrade: ${EMERGENCY_DOWNGRADE_CHAIN.length} fallback options`);
+  
+  console.log(`\n🎯 Intelligent Fallback Chains:`);
+  console.log(`   • Fast mode: ${FALLBACK_CHAIN.fast.length} providers`);
+  console.log(`   • Balanced mode: ${FALLBACK_CHAIN.balanced.length} providers`);
+  console.log(`   • Deep mode: ${FALLBACK_CHAIN.deep.length} providers`);
+  
+  console.log(`\n🔄 Fallback Strategy:`);
+  console.log(`   1. Try Perplexity (FIRST PRIORITY)`);
+  console.log(`   2. If fails → Try alternative Perplexity models`);
+  console.log(`   3. If fails → Try OpenRouter`);
+  console.log(`   4. If fails → Try Groq`);
+  console.log(`   5. If fails → Try Gemini`);
+  console.log(`   6. If all fail → Return error`);
+  
+  console.log(`\n✨ System Ready! Perplexity-first cascading fallback active.\n`);
+  console.log(`════════════════════════════════════════════════════════════\n`);
 });
