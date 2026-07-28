@@ -47,6 +47,13 @@ const userSchema = new mongoose.Schema({
   planType:        { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
   planExpiresAt:   { type: Date, default: null },
   promoRedeemed:   { type: [String], default: [] },
+
+  // ── REQUIREMENT 1: Token Tracking ──────────────────────
+  // Cumulative input + output tokens consumed by this user across
+  // ALL calls to /api/solve-doubt. Used to enforce the 50,000 token
+  // cost perimeter and trigger automatic model downgrade.
+  totalTokensConsumed: { type: Number, default: 0 },
+
   createdAt:       { type: Date, default: Date.now }
 });
 
@@ -57,7 +64,6 @@ const sessionSchema = new mongoose.Schema({
     role:      { type: String, enum: ['user', 'assistant'], required: true },
     content:   { type: String, default: '' },
     model:     { type: String, default: '' },
-    grounded:  { type: [String], default: [] },
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -166,92 +172,16 @@ setInterval(() => {
 }, 5 * 60000);
 
 // ══════════════════════════════════════════════════════════
-//  KNOWLEDGE BASE (unchanged)
-// ══════════════════════════════════════════════════════════
-const KNOWLEDGE_BASE = [
-  { id: 'phy-rot-1', subject: 'Physics', topic: 'Rotational Dynamics', tags: ['rotation','torque','moment of inertia','angular','kinetic energy','rolling'],
-    text: 'Moment of inertia I = Σ m_i r_i². Rotational KE = ½ I ω². Torque τ = I α = r × F. For rolling without slipping v = ωR, and total KE = ½ m v² + ½ I ω². For a solid sphere I = (2/5) m R², solid cylinder (1/2) m R², hollow shell (2/3) m R², ring m R².',
-    source: 'NCERT Physics Class 11, Ch. 7 — Systems of Particles & Rotational Motion' },
-  { id: 'phy-kin-1', subject: 'Physics', topic: 'Kinematics', tags: ['velocity','acceleration','motion','projectile','equations of motion'],
-    text: 'Equations of uniformly accelerated motion: v = u + at; s = ut + ½at²; v² = u² + 2as. Projectile: range R = u²sin2θ/g, max height H = u²sin²θ/2g, time of flight T = 2u sinθ/g.',
-    source: 'NCERT Physics Class 11, Ch. 3 — Motion in a Straight Line' },
-  { id: 'phy-thermo-1', subject: 'Physics', topic: 'Thermodynamics', tags: ['thermodynamics','heat','entropy','carnot','first law','internal energy'],
-    text: 'First law: ΔU = Q − W. For isothermal: ΔU = 0, W = nRT ln(V₂/V₁). For adiabatic: Q = 0, PV^γ = const. Carnot efficiency η = 1 − T_cold/T_hot.',
-    source: 'NCERT Physics Class 11, Ch. 12 — Thermodynamics' },
-  { id: 'phy-em-1', subject: 'Physics', topic: 'Electromagnetism', tags: ['electric field','magnetic','current','gauss','faraday','induction'],
-    text: 'Coulomb: F = k q₁q₂/r². Gauss law: ∮E·dA = q_enc/ε₀. Faraday: emf = −dΦ/dt. Lorentz force F = q(E + v × B).',
-    source: 'NCERT Physics Class 12, Ch. 1 & 6' },
-  { id: 'chem-mole-1', subject: 'Chemistry', topic: 'Mole Concept', tags: ['mole','stoichiometry','molar mass','avogadro','concentration'],
-    text: 'One mole = 6.022×10²³ particles (Avogadro number N_A). Moles n = mass/molar mass = N/N_A. Molarity M = moles solute / litre solution. At STP 1 mole gas = 22.4 L.',
-    source: 'NCERT Chemistry Class 11, Ch. 1 — Some Basic Concepts' },
-  { id: 'chem-equil-1', subject: 'Chemistry', topic: 'Chemical Equilibrium', tags: ['equilibrium','le chatelier','kp','kc','reversible'],
-    text: 'For aA + bB ⇌ cC + dD, Kc = [C]^c[D]^d/([A]^a[B]^b). Kp = Kc(RT)^Δn. Le Chatelier: a system at equilibrium opposes any imposed change in concentration, pressure, or temperature.',
-    source: 'NCERT Chemistry Class 11, Ch. 7 — Equilibrium' },
-  { id: 'chem-org-1', subject: 'Chemistry', topic: 'Organic Reaction Mechanisms', tags: ['organic','mechanism','sn1','sn2','nucleophile','electrophile','carbocation'],
-    text: 'SN1: two-step, rate = k[substrate], via carbocation, favoured by 3° carbon and polar protic solvents, racemisation. SN2: one-step, rate = k[substrate][Nu], backside attack, inversion (Walden), favoured by 1° carbon and polar aprotic solvents. Carbocation stability: 3° > 2° > 1° > methyl.',
-    source: 'NCERT Chemistry Class 12, Ch. 10 — Haloalkanes & Haloarenes' },
-  { id: 'bio-cell-1', subject: 'Biology', topic: 'Cell — The Unit of Life', tags: ['cell','organelle','mitochondria','ribosome','nucleus','prokaryote','eukaryote'],
-    text: 'Prokaryotic cells lack a membrane-bound nucleus and organelles. Mitochondria are the site of aerobic respiration (powerhouse of the cell). Ribosomes (70S in prokaryotes, 80S in eukaryotes) are the site of protein synthesis.',
-    source: 'NCERT Biology Class 11, Ch. 8 — Cell: The Unit of Life' },
-  { id: 'bio-genetics-1', subject: 'Biology', topic: 'Principles of Inheritance', tags: ['genetics','mendel','dominant','recessive','dihybrid','inheritance','allele'],
-    text: 'Mendel: Law of Dominance, Law of Segregation, Law of Independent Assortment. Monohybrid cross ratio 3:1 (phenotype), 1:2:1 (genotype). Dihybrid ratio 9:3:3:1.',
-    source: 'NCERT Biology Class 12, Ch. 5 — Principles of Inheritance & Variation' },
-  { id: 'bio-photo-1', subject: 'Biology', topic: 'Photosynthesis', tags: ['photosynthesis','chlorophyll','calvin','light reaction','stroma','thylakoid'],
-    text: 'Light reactions occur in thylakoid membranes producing ATP and NADPH. The Calvin cycle (dark reaction) occurs in the stroma, fixing CO₂ via RuBisCO. C₃ plants form 3-C PGA; C₄ plants form 4-C OAA (Hatch–Slack pathway).',
-    source: 'NCERT Biology Class 11, Ch. 13 — Photosynthesis in Higher Plants' }
-];
-
-const STOP_WORDS = new Set(['the','a','an','is','are','of','to','in','and','or','for','on','how','what','why','do','does','i','my','me','can','with','this','that','explain','solve','question','doubt']);
-
-function retrieveContext(query, { userExam = '', k = 4 } = {}) {
-  if (!query) return [];
-  const words = String(query).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
-
-  const scored = KNOWLEDGE_BASE.map(doc => {
-    const haystack = (doc.topic + ' ' + doc.tags.join(' ') + ' ' + doc.text).toLowerCase();
-    let score = 0;
-    for (const w of words) {
-      if (doc.tags.some(t => t.includes(w) || w.includes(t))) score += 3;
-      else if (haystack.includes(w)) score += 1;
-    }
-    if (/neet/i.test(userExam) && doc.subject === 'Biology') score += 1;
-    if (/jee/i.test(userExam) && doc.subject !== 'Biology') score += 1;
-    return { doc, score };
-  }).filter(s => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, k);
-
-  return scored.map(s => ({
-    topic: s.doc.topic,
-    subject: s.doc.subject,
-    text: s.doc.text,
-    sourceRef: s.doc.source
-  }));
-}
-
-function formatContextForPrompt(chunks) {
-  if (!chunks || !chunks.length) return '';
-  const body = chunks.map((c, i) =>
-    `[${i + 1}] (${c.subject} · ${c.topic}) — ${c.text}\n    ↳ Source: ${c.sourceRef}`
-  ).join('\n');
-  return [
-    '========================================================',
-    'RETRIEVED KNOWLEDGE (internal NCERT index — cite when used)',
-    '========================================================',
-    body,
-    ''
-  ].join('\n');
-}
-
-// ══════════════════════════════════════════════════════════
-//  AI PROVIDERS + HYBRID ROUTER
+//  AI PROVIDERS (legacy general-purpose helpers — used by
+//  /api/chat/stream and /api/notes/ai-assist, unrelated to the
+//  cost-perimeter logic in /api/solve-doubt below)
 // ══════════════════════════════════════════════════════════
 const GROQ_KEYS       = [process.env.GROQ_KEY_1, process.env.GROQ_KEY_2, process.env.GROQ_KEY_3].filter(Boolean);
 const GEMINI_KEYS     = [process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2, process.env.GEMINI_KEY_3].filter(Boolean);
 const OPENROUTER_KEYS = [process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2, process.env.OPENROUTER_KEY_3].filter(Boolean);
 const DEEPSEEK_KEY    = process.env.DEEPSEEK_API_KEY || '';
 const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY || '';
+const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY || '';
 
 const OPENROUTER_REASON_MODELS = ['deepseek/deepseek-r1:free', 'deepseek/deepseek-chat:free', 'openai/gpt-oss-120b:free'];
 const OPENROUTER_FAST_MODELS   = ['meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-chat:free'];
@@ -408,9 +338,107 @@ async function routeReplyStream({ messages, prompt, onLine, abortSignal, deep, i
 }
 
 // ══════════════════════════════════════════════════════════
-//  SYSTEM PROMPT (complete)
+//  UNIFIED "/api/solve-doubt" AI LAYER — cost perimeter logic
 // ══════════════════════════════════════════════════════════
-function buildSystemPrompt(user, ragContextBlock = '', usingReasoner = false) {
+
+// ── REQUIREMENT 2 config: model routing per requested mode ──
+const TOKEN_LIMIT      = 50000;
+const DOWNGRADE_MODEL  = 'openai/gpt-5.4-nano';
+
+const MODE_ROUTING = {
+  fast:     { model: 'openai/gpt-5.4-nano', provider: 'openrouter', reasoning: false, search: false },
+  balanced: { model: 'sonar',               provider: 'perplexity', reasoning: false, search: true  },
+  depth:    { model: 'openai/gpt-5.4-mini',  provider: 'openrouter', reasoning: true,  search: false }
+};
+
+function buildDowngradeConfig() {
+  return { model: DOWNGRADE_MODEL, provider: 'openrouter', reasoning: false, search: false };
+}
+
+async function callOpenRouterUnified(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
+  if (!OPENROUTER_KEYS.length) throw new Error('No OpenRouter keys configured');
+  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
+
+  const payload = {
+    model,
+    max_tokens: 4096,
+    temperature: reasoning ? 0.3 : 0.4,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages]
+  };
+  if (reasoning) payload.reasoning = { enabled: true };
+  if (search)    payload.plugins  = [{ id: 'web' }];
+
+  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+      'HTTP-Referer': APP_REFERER,
+      'X-Title': 'GRIND AI'
+    },
+    body: JSON.stringify(payload)
+  }, 45000);
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message || 'OpenRouter error');
+
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    usage: data.usage || {}
+  };
+}
+
+async function callPerplexityUnified(model, messages, systemPrompt, { search = true } = {}) {
+  if (!PERPLEXITY_KEY) throw new Error('PERPLEXITY_API_KEY not configured');
+
+  const payload = {
+    model,
+    max_tokens: 4096,
+    temperature: 0.4,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+    return_related_questions: false,
+    // Perplexity's "sonar" model performs web search by default.
+    // When search === false we explicitly disable it to keep costs flat.
+    ...(search ? {} : { disable_search: true })
+  };
+
+  const response = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${PERPLEXITY_KEY}` },
+    body: JSON.stringify(payload)
+  }, 45000);
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message || 'Perplexity error');
+
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    usage: data.usage || {}
+  };
+}
+
+async function callUnifiedAI(config, messages, systemPrompt) {
+  if (config.provider === 'perplexity') {
+    return callPerplexityUnified(config.model, messages, systemPrompt, { search: config.search });
+  }
+  return callOpenRouterUnified(config.model, messages, systemPrompt, {
+    reasoning: config.reasoning,
+    search: config.search
+  });
+}
+
+function extractTokensUsed(usage) {
+  if (!usage) return 0;
+  if (typeof usage.total_tokens === 'number') return usage.total_tokens;
+  const inputTokens  = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+  const outputTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
+  return inputTokens + outputTokens;
+}
+
+// ══════════════════════════════════════════════════════════
+//  SYSTEM PROMPT (knowledge-base / RAG block fully removed)
+// ══════════════════════════════════════════════════════════
+function buildSystemPrompt(user, usingReasoner = false) {
   const name = user?.name?.split(' ')[0] || 'there';
   const canGoDeep = !!user?.isPro;
   const speed = canGoDeep ? (user?.responseSpeed || 'balanced')
@@ -440,76 +468,16 @@ function buildSystemPrompt(user, ragContextBlock = '', usingReasoner = false) {
     "========================================================",
     "HOW YOU TEACH (default shape)",
     "========================================================",
-    "1.You are \"GRIND,\" an elite IIT Professor and a compassionate elder brother (\"Bhaiya\") to students preparing for JEE Main, JEE Advanced, and NEET. Your goal is not to turn students into rote-learning \"exam-cracking machines,\" but to mold them into original thinkers, brilliant problem-solvers, and resilient human beings.",
-    "Your pedagogy balances intellectual rigor with psychological empathy. Your tone is warm, uncompromisingly honest, intellectually stimulating, and deeply grounding. You use a blend of conversational English and subtle, relatable Hindi phrases (like \"Suno,\" \"Bhai,\" \"Samjhe?\") to build a fraternal bond.",
-    "### 👥 USER INFORMATION MATRIX",
-    "Always respect and dynamically tailor your depth, pacing, and vocabulary based on the student's custom profile properties provided in the context:",
-    "- Exam Target: [JEE Main / JEE Advanced / NEET]",
-    "- Class / Year: [Class 11 / Class 12 / Dropper]",
-    "- Coaching Background: [Allen / Aakash / PW / Self-Study / etc.]",
-    "- Biggest Struggle: [Focus / Motivation / Concepts / Time / Exam Anxiety]",
+    "You are \"GRIND,\" an elite IIT Professor and a compassionate elder brother (\"Bhaiya\") to students preparing for JEE Main, JEE Advanced, and NEET. Your goal is not to turn students into rote-learning machines, but to mold them into original thinkers, brilliant problem-solvers, and resilient human beings.",
+    "Balance intellectual rigor with psychological empathy. Warm, honest, intellectually stimulating, grounding tone. Blend conversational English with relatable Hindi phrases (\"Suno,\" \"Bhai,\" \"Samjhe?\") to build a fraternal bond.",
     "",
-    "### 🧱 CORE PEDAGOGICAL PILLARS",
+    "### CORE PEDAGOGICAL PILLARS",
+    "1. Socratic first-principles approach — never dump raw answers immediately; break problems into checkpoints and ask leading questions.",
+    "2. Deep physical/mathematical intuition — explain the 'why' before the equation, use vivid analogies.",
+    "3. Strip the glamour — use Stoicism/Gita philosophy to help students cope with pressure; remind them the exam is a checkpoint, not their identity.",
     "",
-    "#### 1. The Socratic First-Principles Approach (No Direct Answers)",
-    "- Never give out raw solutions or final numbers immediately when a student dumps a question.",
-    "- Instead, break the problem into conceptual checkpoints. Ask leading questions that force them to deduce the next step themselves.",
-    "- If a student makes an error, do not just say \"incorrect.\" Trace their logic back to the flawed assumption using cognitive psychology. Show them exactly *why* their brain fell into that trap.",
-    "",
-    "#### 2. Deep Physical and Mathematical Intuition",
-    "- Before writing an equation, explain the \"Why.\" Every mathematical formula represents a physical reality or a spatial geometry.",
-    "- Use vivid, down-to-earth analogies or real-life engineering examples (e.g., explaining rotational inertia using a rolling water bottle, or thermodynamics using how an engine sweats heat).",
-    "- For Deep PRO mode: Ensure full, unskipped derivations from scratch so the student sees that formulas are not magical spells, but logical progressions.",
-    "",
-    "#### 3. Stripping the Glamour: The Truth of JEE/IIT and Life",
-    "- Use philosophy (Stoicism, Bhagavad Gita, existentialism) to help them cope with academic pressure and burnout.",
-    "- Deconstruct the coaching industry's hype. Tell them the raw truth: IIT is not a golden ticket to an effortless life; it is a training ground for rigorous discipline. The real reward is the transformation of their work ethic and neural plasticity.",
-    "- Remind them that an exam is a checkpoint, not their identity. Address anxiety, fear of failure, and procrastination using modern psychological principles (like dopamine regulation, friction reduction, and identity-shifting).",
-    "",
-    "### 🔄 CHAT WORKFLOW INTERACTION ENGINE",
-    "",
-    "Whenever a student triggers a query or provides a problem, structure your response as follows:",
-    "",
-    "#### Step 1: The Intuitive Hook & Metaphor (The \"Why\")",
-    "Open with a welcoming, empathetic, or grounding phrase. Instantly anchor the concept with an interesting real-world analogy. Strip away the intimidating mathematical jargon and replace it with spatial or physical visualization.",
-    "",
-    "#### Step 2: The Socratic Break & The \"JEE/NEET Trap\"",
-    "Present a representative conceptual checkpoint or the exact problem they are stuck on. Explicitly warn them about the common psychological or mathematical traps (\"Coaching Shortcut Traps\") that 95% of students fall into on this specific topic.",
-    "",
-    "#### Step 3: The Active Challenge (The Next Step)",
-    "Do not solve it for them. Isolate the very first logical junction of the problem. Ask a precise, single-focus question requiring them to think through the fundamental concept, and explicitly tell them: \"Think about this, tell me what you deduce, and then we will crack the next layer together. Your turn.\"",
-    "",
-    "### 🛑 CRITICAL OPERATION RESTRICTIONS",
-    "1. **Never copy-paste** textbook definitions or generic AI-style lists. Write like a human sitting next to them at a study desk.",
-    "2. **Never skip intermediate steps** in explanation chains. Keep the language universally simple and accessible, avoiding overly dense, pretentious English vocabulary.",
-    "3. **Strictly isolate questions**: Do not dump a multi-stage solution text all at once. Give them exactly one task or conceptual puzzle to solve in their reply to keep learning active.",
-    "4. **Context Preservation**: Use their specific coaching background and current struggles to customize small side-notes of brotherly advice (e.g., if they struggle with 'Focus' , advise them on how to manage backlog fatigue productively).",
-    "",
-    "========================================================",
-    "EMOTIONAL SUPPORT",
-    "========================================================",
-    "### 🧘‍♂️ PSYCHO-PHILOSOPHICAL RESILIENCE & NATIVE COMFORT SYSTEM PROMPT",
-    "Activate this module to handle academic burnout, existential dread, parental pressure, or severe exam anxiety. Your goal is to make the student feel unconditionally safe, emotionally grounded, and deeply understood.",
-    "### 🇮🇳 1. THE NATIVE LANGUAGE EMBED (THE COMFORT TRIGGER)",
-    "- **The First Rule of Safety**: A student in severe stress or panic cannot process formal English. They find comfort in the language they speak at home.",
-    "- **The Discovery Protocol**: If a student opens up about feeling overwhelmed, stressed, or lonely, you must immediately ask for their native language. Say something like: \"Suno, open your heart out to me. Let's drop the formal English for a minute. What is your native language / mother tongue? Let's talk in that.\"",
-    "- **The Execution**: Once they mention their language (e.g., Hindi, Telugu, Tamil, Marathi, Bengali, etc.), seamlessly switch your conversational tone to a mixture of that language and English (e.g., pure Hinglish, Telugish, Tanglish). Use affectionate, elder-brotherly regional slang (like \"Bhai,\" \"Thambi,\" \"Anna,\" \"Dada\") to instantly establish a psychological safe space.",
-    "",
-    "### 🧠 2. COGNITIVE PSYCHOLOGY & DE-ESCALATION",
-    "- **De-linking Identity from the Filter**: Use Cognitive Behavioral Therapy (CBT) principles to break their cognitive distortions. Deconstruct the \"All-or-Nothing\" thinking trap.",
-    "- **Somatic Grounding**: If they are actively panicking, guide them through a 5-second physical anchoring exercise before talking about books.",
-    "- **Reducing Friction**: When they say \"I can't study,\" do not give them an aggressive lecture. Teach them the psychology of the \"2-Minute Rule\"—just open the book and read one line. The brain fears the massive volume, not the micro-step.",
-    "",
-    "### 🏛️ 3. PHILOSOPHY & LIFE BEYOND THE SEAT (THE GRAND PERSPECTIVE)",
-    "- **The JEE/NEET Bubble Burst**: Break the toxic coaching-culture illusion. Tell them the raw, liberating truth: **There is an entire, beautiful universe of life beyond getting into an IIT or a medical college.**",
-    "- **Philosophical Anchors**: ",
-    "  - *Stoicism*: Teach them the dichotomy of control. The past weeks are gone; the exam paper is not in their hands. Only the current hour is theirs.",
-    "  - *Existentialism / Gita Philosophy*: Remind them that they are spiritual, evolving beings, not a 3-digit All India Rank. The value of this journey is the grit, focus, and discipline they develop—qualities that will make them successful in business, tech, or arts later in life, regardless of their college.",
-    "- **Reclaiming Joy**: Explicitly give them permission to live. Tell them: \"Go take a walk, look at the sky, listen to your favorite song, smile at your parents, play with a dog. Life is happening right now, don't put it on pause for an exam.\"",
-    "",
-    "### 🎨 TONE CONSTRAINTS",
-    "- **No Textbooks**: Do not summarize clinical psychology terms. Talk like a street-smart, wise elder brother who has been through the fire and realized what truly matters.",
-    "- **Gentle but Firm**: Be extremely tender when they are crying or broken, but switch to a grounded, clear-headed focus when it is time to build a small 10-minute recovery action plan.",
+    "### EMOTIONAL SUPPORT",
+    "If a student is overwhelmed, ask for their native language and switch into a warm mix of that language + English, using affectionate elder-sibling terms. Use CBT-style reframing, somatic grounding, and the 2-minute rule for motivation friction. Remind them of life beyond the exam.",
     "",
     "========================================================",
     "MATH FORMATTING — MANDATORY",
@@ -523,11 +491,10 @@ function buildSystemPrompt(user, ragContextBlock = '', usingReasoner = false) {
     "========================================================",
     "- Reference standard texts naturally: Physics → HC Verma, Irodov, DC Pandey. Chemistry → MS Chouhan (Org), N Awasthi (Phys), NCERT (Inorg). Biology → NCERT for NEET.",
     "- If a photo is attached, transcribe the relevant part first, then correct/solve.",
-    ragContextBlock,
     "========================================================",
     "HARD RULES",
     "========================================================",
-    "- Only authenticated students use you; .",
+    "- Only authenticated students use you.",
     "- Mirror the student's language (Hinglish stays Hinglish).",
     "- Keep paragraphs under 10-20 sentences; use line breaks/steps."
   ];
@@ -562,6 +529,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
       coaching: u.coaching, biggestStruggle: u.biggestStruggle,
       responseSpeed: u.responseSpeed || 'balanced', examDate: u.examDate,
       isPro: u.isPro, planType: u.planType, planExpiresAt: u.planExpiresAt,
+      totalTokensConsumed: u.totalTokensConsumed || 0,
       deepSeekConfigured: !!DEEPSEEK_KEY
     }
   });
@@ -666,7 +634,113 @@ app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
+//  UNIFIED DOUBT-SOLVING ENDPOINT — 50K TOKEN COST PERIMETER
+// ══════════════════════════════════════════════════════════
+app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
+  try {
+    const { message, mode, sessionId } = req.body;
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({
+        success: false,
+        answer: null,
+        limitWarning: false,
+        message: 'A question is required.',
+        tokensUsedSession: req.user?.totalTokensConsumed || 0
+      });
+    }
+
+    // ── Fetch the LIVE user document from Mongo (fresh token count) ──
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(401).json({ success: false, error: 'User not found.' });
+    await enforcePlanExpiry(user);
+
+    const requestedMode = ['fast', 'balanced', 'depth'].includes(mode) ? mode : 'balanced';
+
+    let activeConfig;
+    let wasDowngraded;
+
+    // ── REQUIREMENT 2: Automated Model Downgrade & Fallback Logic ──
+    if (user.totalTokensConsumed > TOKEN_LIMIT) {
+      // Over the 50k allowance → FORCE nano, disable reasoning + search,
+      // regardless of what the frontend requested.
+      activeConfig = buildDowngradeConfig();
+      wasDowngraded = true;
+    } else {
+      // Still under budget → normal routing map
+      activeConfig = MODE_ROUTING[requestedMode];
+      wasDowngraded = false;
+    }
+
+    const systemPrompt = buildSystemPrompt(user, activeConfig.reasoning);
+    const messages = [{ role: 'user', content: message }];
+
+    let aiResult;
+    try {
+      aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+    } catch (primaryErr) {
+      // Safety net: if the routed model/provider call fails outright,
+      // retry once on the cheapest model instead of failing the request.
+      console.error('❌ Primary model call failed, retrying on nano:', primaryErr.message);
+      activeConfig = buildDowngradeConfig();
+      wasDowngraded = true;
+      aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+    }
+
+    const { content: answer, usage } = aiResult;
+
+    // ── REQUIREMENT 3: Token Accumulation & Database Update ──
+    const tokensUsed = extractTokensUsed(usage);
+    user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
+    user.lastActive = new Date();
+    await user.save();
+
+    // Optional: persist the exchange to the chat session
+    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
+      try {
+        await ChatSession.updateOne(
+          { _id: sessionId, userId: user._id },
+          {
+            $push: {
+              messages: {
+                $each: [
+                  { role: 'user', content: message },
+                  { role: 'assistant', content: answer, model: activeConfig.model }
+                ]
+              }
+            },
+            $set: { updatedAt: new Date() }
+          }
+        );
+      } catch (e) { console.error('Session save (solve-doubt):', e.message); }
+    }
+
+    // ── REQUIREMENT 4: Frontend Notification Flag — exact payload shape ──
+    return res.json({
+      success: true,
+      answer,
+      limitWarning: wasDowngraded,
+      message: wasDowngraded
+        ? 'High-performance reasoning limit reached. Automatically switched to lightweight model.'
+        : null,
+      tokensUsedSession: user.totalTokensConsumed
+    });
+
+  } catch (err) {
+    console.error('❌ /api/solve-doubt error:', err.message);
+    return res.status(500).json({
+      success: false,
+      answer: null,
+      limitWarning: false,
+      message: 'GRIND hit a snag processing that. Please try again in a moment.',
+      tokensUsedSession: req.user?.totalTokensConsumed || 0
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
 //  CHAT STREAM (SSE over POST) — line‑by‑line
+//  (knowledge-base / RAG retrieval removed)
 // ══════════════════════════════════════════════════════════
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64 } = req.body;
@@ -688,24 +762,15 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 
   try {
     const recent = messages.slice(-20);
-    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-    const q = lastUserMsg?.content || '';
 
-    // Phase 1: retrieval + thinking steps
+    // Phase 1: thinking steps (no RAG lookup anymore)
     send('thinking', { step: 'Reading your question…' });
     await sleep(120);
+    send('thinking', { step: 'Identifying the core concept…' });
+    await sleep(140);
 
-    const chunks = q ? retrieveContext(q, { userExam: user.exam, k: 4 }) : [];
-    if (chunks.length) {
-      send('thinking', { step: `Searching NCERT index — found ${chunks.length} relevant concept${chunks.length > 1 ? 's' : ''}…` });
-      await sleep(140);
-      const subjects = [...new Set(chunks.map(c => c.subject))].join(', ');
-      send('thinking', { step: `Pulling ${subjects} references…` });
-      await sleep(140);
-    } else {
-      send('thinking', { step: 'Identifying the core concept…' });
-      await sleep(140);
-    }
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    const q = lastUserMsg?.content || '';
 
     const useDeep = !!(user.isPro && user.responseSpeed === 'deep');
     if (useDeep) { send('thinking', { step: 'Engaging Deep Reasoning model — mapping edge cases…' }); await sleep(160); }
@@ -715,8 +780,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
     send('thinking', { step: 'Drafting solution…' });
 
     // Phase 2: generate with line‑by‑line streaming
-    const ragBlock = formatContextForPrompt(chunks);
-    const prompt = buildSystemPrompt(user, ragBlock, useDeep);
+    const prompt = buildSystemPrompt(user, useDeep);
 
     let fullReply = '';
     const onLine = (line) => {
@@ -744,14 +808,14 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
           { _id: sessionId, userId: user._id },
           { $push: { messages: { $each: [
                 { role: 'user', content: userMsg.content },
-                { role: 'assistant', content: fullReply, model, grounded: chunks.map(c => c.sourceRef) }
+                { role: 'assistant', content: fullReply, model }
               ] } },
             $set: { updatedAt: new Date(), ...(title ? { title } : {}) } }
         );
       } catch (e) { console.error('Session save:', e.message); }
     }
 
-    send('done', { reply: fullReply, model, groundedOn: chunks.map(c => c.sourceRef).filter(Boolean) });
+    send('done', { reply: fullReply, model });
     res.end();
   } catch (err) {
     if (err.name === 'AbortError') { res.end(); return; }
@@ -863,6 +927,6 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🧠 GRIND v2 running on port ${PORT}`);
-  console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OpenRouter=${OPENROUTER_KEYS.length} DeepSeekR1=${DEEPSEEK_KEY ? 'ON' : 'off (deep falls back to OpenRouter)'} Anthropic=${ANTHROPIC_KEY ? 'ON' : 'off (reserved slot)'}`);
-  console.log(`📚 Knowledge base: ${KNOWLEDGE_BASE.length} NCERT concept chunks indexed`);
+  console.log(`🔑 Groq=${GROQ_KEYS.length} Gemini=${GEMINI_KEYS.length} OpenRouter=${OPENROUTER_KEYS.length} Perplexity=${PERPLEXITY_KEY ? 'ON' : 'off'} DeepSeekR1=${DEEPSEEK_KEY ? 'ON' : 'off (deep falls back to OpenRouter)'} Anthropic=${ANTHROPIC_KEY ? 'ON' : 'off (reserved slot)'}`);
+  console.log(`💰 Cost perimeter: ${TOKEN_LIMIT} tokens/user before forced downgrade to ${DOWNGRADE_MODEL}`);
 });
