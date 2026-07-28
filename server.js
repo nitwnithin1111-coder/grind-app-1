@@ -172,16 +172,21 @@ setInterval(() => {
 }, 5 * 60000);
 
 // ══════════════════════════════════════════════════════════
-//  AI PROVIDERS (legacy general-purpose helpers — used by
-//  /api/chat/stream and /api/notes/ai-assist, unrelated to the
-//  cost-perimeter logic in /api/solve-doubt below)
+//  AI PROVIDERS + HYBRID ROUTER (UPDATED WITH PERPLEXITY)
 // ══════════════════════════════════════════════════════════
+const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY || '';
 const GROQ_KEYS       = [process.env.GROQ_KEY_1, process.env.GROQ_KEY_2, process.env.GROQ_KEY_3].filter(Boolean);
 const GEMINI_KEYS     = [process.env.GEMINI_KEY_1, process.env.GEMINI_KEY_2, process.env.GEMINI_KEY_3].filter(Boolean);
 const OPENROUTER_KEYS = [process.env.OPENROUTER_KEY_1, process.env.OPENROUTER_KEY_2, process.env.OPENROUTER_KEY_3].filter(Boolean);
 const DEEPSEEK_KEY    = process.env.DEEPSEEK_API_KEY || '';
 const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY || '';
-const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY || '';
+
+// Priority Model Configuration (2026 Frontier Models)
+const MODEL_PRIORITY = {
+  fast:     "openai/gpt-5.4-nano",
+  balanced: "perplexity/sonar",
+  depth:    "openai/gpt-5.4-mini"
+};
 
 const OPENROUTER_REASON_MODELS = ['deepseek/deepseek-r1:free', 'deepseek/deepseek-chat:free', 'openai/gpt-oss-120b:free'];
 const OPENROUTER_FAST_MODELS   = ['meta-llama/llama-3.3-70b-instruct:free', 'deepseek/deepseek-chat:free'];
@@ -189,90 +194,73 @@ let gIdx = 0, grIdx = 0, orIdx = 0;
 
 const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
 
-async function fetchWithTimeout(url, options, ms = 30000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeout);
-    if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-    return response;
-  } catch (err) { clearTimeout(timeout); throw err; }
+/* ── Perplexity Streaming Provider ── */
+async function callPerplexityStreamLines(messages, prompt, onLine, abortSignal, modelId) {
+  if (!PERPLEXITY_KEY) throw new Error('PERPLEXITY_API_KEY not configured');
+  
+  const response = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json', 
+      'Authorization': `Bearer ${PERPLEXITY_KEY}` 
+    },
+    signal: abortSignal,
+    body: JSON.stringify({ 
+      model: modelId, 
+      stream: true, 
+      messages: [{ role: 'system', content: prompt }, ...messages],
+      max_tokens: 4096,
+      temperature: 0.2
+    })
+  });
+
+  if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
+  await consumeOpenAIStreamLines(response, onLine);
 }
 
-/* ── Line‑by‑line stream consumer ── */
-async function consumeOpenAIStreamLines(response, onLine) {
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '', fullText = '';
+/* ── Hybrid Routing with Priority ── */
+async function routeReplyStream({ messages, prompt, onLine, abortSignal, deep, speed, imageBase64 }) {
+  // Determine requested model tier
+  const tier = deep ? 'depth' : (speed || 'balanced');
+  const primaryModel = MODEL_PRIORITY[tier] || MODEL_PRIORITY.balanced;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullText += delta;
-          let newlineIndex;
-          while ((newlineIndex = fullText.indexOf('\n')) !== -1) {
-            const lineToEmit = fullText.slice(0, newlineIndex + 1);
-            fullText = fullText.slice(newlineIndex + 1);
-            onLine(lineToEmit);
-          }
-        }
-      } catch (e) { /* partial chunk */ }
+  // 1. PRIMARY PRIORITY: Perplexity (Agent API)
+  if (PERPLEXITY_KEY) {
+    try {
+      await callPerplexityStreamLines(messages, prompt, onLine, abortSignal, primaryModel);
+      return { model: `perplexity:${primaryModel}` };
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.log('❌ Perplexity primary failed, falling back:', e.message);
     }
   }
 
-  if (fullText) onLine(fullText);
-}
-
-async function streamLines(text, onLine) {
-  const lines = text.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    onLine(lines[i] + (i < lines.length - 1 ? '\n' : ''));
-    await new Promise(r => setTimeout(r, 10));
+  // 2. SECONDARY: Dedicated DeepSeek (for Reasoning depth)
+  if (deep && DEEPSEEK_KEY) {
+    try {
+      await callDeepSeekStreamLines(messages, prompt, onLine, abortSignal);
+      return { model: 'deepseek-reasoner' };
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      console.log('❌ DeepSeek fallback failed:', e.message);
+    }
   }
-  return text;
+
+  // 3. TERTIARY: OpenRouter Free Models
+  try {
+    await callORStreamLines(messages, prompt, onLine, abortSignal, deep);
+    return { model: deep ? 'openrouter-reasoning' : 'openrouter-fast' };
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    console.log('❌ OpenRouter fallback failed, hitting non-stream provider:', e.message);
+  }
+
+  // 4. FINAL FALLBACK: Gemini/Groq (Non-stream)
+  const text = await getReply(messages, prompt, imageBase64);
+  await streamLines(text, onLine);
+  return { model: 'fallback-static' };
 }
 
-async function callDeepSeekStreamLines(messages, prompt, onLine, abortSignal) {
-  if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not configured');
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
-    signal: abortSignal,
-    body: JSON.stringify({ model: 'deepseek-reasoner', max_tokens: 4096, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-  await consumeOpenAIStreamLines(response, onLine);
-}
-
-async function callORStreamLines(messages, prompt, onLine, abortSignal, reasoning = false) {
-  if (!OPENROUTER_KEYS.length) throw new Error('No OpenRouter keys configured');
-  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
-  const pool = reasoning ? OPENROUTER_REASON_MODELS : OPENROUTER_FAST_MODELS;
-  const model = pool[orIdx % pool.length];
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_REFERER, 'X-Title': 'GRIND AI' },
-    signal: abortSignal,
-    body: JSON.stringify({ model, max_tokens: 4096, temperature: reasoning ? 0.3 : 0.4, stream: true, messages: [{ role: 'system', content: prompt }, ...messages] })
-  });
-  if (!response.ok) throw new Error(`${response.status} - ${await response.text()}`);
-  await consumeOpenAIStreamLines(response, onLine);
-}
 
 async function callGemini(messages, prompt, imageBase64 = null) {
   if (!GEMINI_KEYS.length) throw new Error('No Gemini keys configured');
