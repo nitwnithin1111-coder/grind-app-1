@@ -16,13 +16,69 @@ const pdfParse = require('pdf-parse');
 const app = express();
 
 // ══════════════════════════════════════════════════════════
-//  MULTER CONFIGURATION FOR FILE UPLOADS
+//  CONFIGURATION CONSTANTS
+// ══════════════════════════════════════════════════════════
+const PORT = process.env.PORT || 3000;
+const TOKEN_LIMIT = 500000;
+const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
+
+// ══════════════════════════════════════════════════════════
+//  API KEYS CONFIGURATION
+// ══════════════════════════════════════════════════════════
+const PERPLEXITY_KEYS = [
+  process.env.PERPLEXITY_API_KEY,
+  process.env.PERPLEXITY_KEY_1,
+  process.env.PERPLEXITY_KEY_2,
+  process.env.PERPLEXITY_KEY_3
+].filter(Boolean);
+
+const OPENROUTER_KEYS = [
+  process.env.OPENROUTER_KEY_1,
+  process.env.OPENROUTER_KEY_2,
+  process.env.OPENROUTER_KEY_3
+].filter(Boolean);
+
+const GROQ_KEYS = [
+  process.env.GROQ_KEY_1,
+  process.env.GROQ_KEY_2,
+  process.env.GROQ_KEY_3
+].filter(Boolean);
+
+const GEMINI_KEYS = [
+  process.env.GEMINI_KEY_1,
+  process.env.GEMINI_KEY_2,
+  process.env.GEMINI_KEY_3
+].filter(Boolean);
+
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
+// Key rotation indexes
+let perplexityIdx = 0;
+let openrouterIdx = 0;
+let groqIdx = 0;
+let geminiIdx = 0;
+
+// ══════════════════════════════════════════════════════════
+//  MIDDLEWARE CONFIGURATION
+// ══════════════════════════════════════════════════════════
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+app.use(compression());
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.static(__dirname));
+
+// ══════════════════════════════════════════════════════════
+//  MULTER FILE UPLOAD CONFIGURATION
 // ══════════════════════════════════════════════════════════
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -35,26 +91,14 @@ const upload = multer({
 });
 
 // ══════════════════════════════════════════════════════════
-//  MIDDLEWARE
-// ══════════════════════════════════════════════════════════
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
-}));
-app.use(compression());
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '15mb' }));
-app.use(express.static(__dirname));
-
-// ══════════════════════════════════════════════════════════
 //  MONGODB CONNECTION
 // ══════════════════════════════════════════════════════════
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB:', err.message));
+  .catch((err) => console.error('❌ MongoDB connection error:', err.message));
 
 // ══════════════════════════════════════════════════════════
-//  SCHEMAS
+//  DATABASE SCHEMAS
 // ══════════════════════════════════════════════════════════
 const userSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true },
@@ -120,7 +164,7 @@ const Note = mongoose.model('Note', noteSchema);
 const PromoCode = mongoose.model('PromoCode', promoCodeSchema);
 
 // ══════════════════════════════════════════════════════════
-//  SESSION + PASSPORT
+//  SESSION & PASSPORT CONFIGURATION
 // ══════════════════════════════════════════════════════════
 if (!process.env.SESSION_SECRET) {
   console.warn('⚠️  SESSION_SECRET not set. Using insecure default.');
@@ -132,10 +176,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-  cookie: { 
-    maxAge: 30 * 24 * 60 * 60 * 1000, 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'lax' 
+  cookie: {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
   }
 }));
 
@@ -143,7 +187,7 @@ passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (at, rt, profile, done) => {
+}, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
     if (!user) {
@@ -157,17 +201,17 @@ passport.use(new GoogleStrategy({
     user.lastActive = new Date();
     await user.save();
     return done(null, user);
-  } catch (err) { 
-    return done(err, null); 
+  } catch (err) {
+    return done(err, null);
   }
 }));
 
-passport.serializeUser((u, done) => done(null, u._id));
+passport.serializeUser((user, done) => done(null, user._id));
 passport.deserializeUser(async (id, done) => {
-  try { 
-    done(null, await User.findById(id)); 
-  } catch (e) { 
-    done(e, null); 
+  try {
+    done(null, await User.findById(id));
+  } catch (e) {
+    done(e, null);
   }
 });
 
@@ -175,7 +219,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ══════════════════════════════════════════════════════════
-//  AUTH MIDDLEWARE
+//  AUTHENTICATION MIDDLEWARE
 // ══════════════════════════════════════════════════════════
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) return next();
@@ -202,19 +246,20 @@ function rateLimit(maxRequests, windowMs) {
     const key = req.user?._id?.toString() || req.ip;
     const now = Date.now();
     const bucket = (rateBuckets.get(key) || []).filter(t => now - t < windowMs);
-    
+
     if (bucket.length >= maxRequests) {
-      return res.status(429).json({ 
-        error: 'Too many requests. Please wait a moment and try again.' 
+      return res.status(429).json({
+        error: 'Too many requests. Please wait a moment and try again.'
       });
     }
-    
+
     bucket.push(now);
     rateBuckets.set(key, bucket);
     next();
   };
 }
 
+// Clean up old rate limit buckets every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of rateBuckets) {
@@ -225,61 +270,64 @@ setInterval(() => {
 }, 5 * 60000);
 
 // ══════════════════════════════════════════════════════════
-//  API KEYS CONFIGURATION
+//  ADMIN MIDDLEWARE
 // ══════════════════════════════════════════════════════════
-const PERPLEXITY_KEYS = [
-  process.env.PERPLEXITY_API_KEY,
-  process.env.PERPLEXITY_KEY_1,
-  process.env.PERPLEXITY_KEY_2,
-  process.env.PERPLEXITY_KEY_3
-].filter(Boolean);
-
-const OPENROUTER_KEYS = [
-  process.env.OPENROUTER_KEY_1, 
-  process.env.OPENROUTER_KEY_2, 
-  process.env.OPENROUTER_KEY_3
-].filter(Boolean);
-
-const GROQ_KEYS = [
-  process.env.GROQ_KEY_1, 
-  process.env.GROQ_KEY_2, 
-  process.env.GROQ_KEY_3
-].filter(Boolean);
-
-const GEMINI_KEYS = [
-  process.env.GEMINI_KEY_1, 
-  process.env.GEMINI_KEY_2, 
-  process.env.GEMINI_KEY_3
-].filter(Boolean);
-
-// Web search API keys
-const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
-const SERPER_API_KEY = process.env.SERPER_API_KEY;
-
-// Rotating indexes for load balancing
-let perplexityIdx = 0;
-let openrouterIdx = 0;
-let groqIdx = 0;
-let geminiIdx = 0;
-
-const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
+const requireAdmin = (req, res, next) => {
+  if (process.env.ADMIN_KEY && req.query.key === process.env.ADMIN_KEY) {
+    return next();
+  }
+  res.status(403).json({ error: 'Forbidden' });
+};
 
 // ══════════════════════════════════════════════════════════
-//  TOKEN LIMIT CONFIGURATION
+//  UTILITY FUNCTIONS
 // ══════════════════════════════════════════════════════════
-const TOKEN_LIMIT = 500000;
+async function fetchWithTimeout(url, options, ms = 30000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+    }
+
+    return response;
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw err;
+  }
+}
+
+function extractTokensUsed(usage) {
+  if (!usage) return 0;
+  if (typeof usage.total_tokens === 'number') return usage.total_tokens;
+
+  const inputTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+  const outputTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
+
+  return inputTokens + outputTokens;
+}
 
 // ══════════════════════════════════════════════════════════
 //  IMAGE PROCESSING UTILITIES
 // ══════════════════════════════════════════════════════════
 async function processImage(buffer) {
   try {
-    // Compress and convert to base64
     const processed = await sharp(buffer)
       .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
-    
+
     return processed.toString('base64');
   } catch (error) {
     console.error('Image processing error:', error);
@@ -288,12 +336,15 @@ async function processImage(buffer) {
 }
 
 async function extractTextFromImage(base64Image) {
-  // Use Gemini Vision for OCR
   try {
+    if (!GEMINI_KEYS.length) {
+      throw new Error('No Gemini API keys configured for OCR');
+    }
+
     const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
-    
+
     const response = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,7 +371,7 @@ async function extractTextFromImage(base64Image) {
     );
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '[Text extraction failed]';
   } catch (error) {
     console.error('OCR error:', error);
     return '[Image text extraction failed]';
@@ -372,7 +423,7 @@ async function webSearchTavily(query) {
     return {
       answer: data.answer || '',
       results: data.results || [],
-      sources: (data.results || []).map(r => ({ title: r.title, url: r.url }))
+      sources: (data.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content }))
     };
   } catch (error) {
     console.error('Tavily search error:', error);
@@ -406,10 +457,10 @@ async function webSearchSerper(query) {
     return {
       answer: data.answerBox?.answer || '',
       results: data.organic || [],
-      sources: (data.organic || []).slice(0, 5).map(r => ({ 
-        title: r.title, 
+      sources: (data.organic || []).slice(0, 5).map(r => ({
+        title: r.title,
         url: r.link,
-        snippet: r.snippet 
+        snippet: r.snippet
       }))
     };
   } catch (error) {
@@ -420,8 +471,12 @@ async function webSearchSerper(query) {
 
 async function performWebSearch(query) {
   // Try Tavily first, fallback to Serper
-  let searchResult = await webSearchTavily(query);
-  
+  let searchResult = null;
+
+  if (TAVILY_API_KEY) {
+    searchResult = await webSearchTavily(query);
+  }
+
   if (!searchResult && SERPER_API_KEY) {
     searchResult = await webSearchSerper(query);
   }
@@ -430,89 +485,7 @@ async function performWebSearch(query) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  COMPREHENSIVE FALLBACK CHAIN CONFIGURATION
-// ══════════════════════════════════════════════════════════
-const FALLBACK_CHAIN = {
-  fast: [
-    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
-    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: false, name: 'GPT-4o Mini' },
-    { provider: 'openrouter', model: 'anthropic/claude-3-haiku', reasoning: false, search: false, name: 'Claude 3 Haiku' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
-  ],
-  
-  balanced: [
-    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
-    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Search)' },
-    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: true, name: 'GPT-4o Mini (Search)' },
-    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: false, search: false, name: 'Claude 3.5 Sonnet' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
-  ],
-  
-  deep: [
-    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Deep Search)' },
-    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
-    { provider: 'openrouter', model: 'openai/o1-mini', reasoning: true, search: false, name: 'O1 Mini (Reasoning)' },
-    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: true, search: true, name: 'Claude 3.5 Sonnet (Deep)' },
-    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: true, name: 'Gemini Pro (Search)' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
-  ]
-};
-
-const EMERGENCY_DOWNGRADE_CHAIN = [
-  { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Emergency: Llama 3.2 3B' },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Emergency: Groq Llama' },
-  { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Emergency: Gemini Flash' }
-];
-
-// ══════════════════════════════════════════════════════════
-//  HELPER: FETCH WITH TIMEOUT
-// ══════════════════════════════════════════════════════════
-async function fetchWithTimeout(url, options, ms = 30000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
-  
-  try {
-    const response = await fetch(url, { 
-      ...options, 
-      signal: controller.signal 
-    });
-    clearTimeout(timeout);
-    
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
-    }
-    
-    return response;
-  } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === 'AbortError') {
-      throw new Error('Request timeout');
-    }
-    throw err;
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-//  HELPER: EXTRACT TOKENS FROM USAGE
-// ══════════════════════════════════════════════════════════
-function extractTokensUsed(usage) {
-  if (!usage) return 0;
-  if (typeof usage.total_tokens === 'number') return usage.total_tokens;
-  
-  const inputTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
-  const outputTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
-  
-  return inputTokens + outputTokens;
-}
-
-// ══════════════════════════════════════════════════════════
-//  PROVIDER 1: PERPLEXITY API
+//  AI PROVIDER FUNCTIONS
 // ══════════════════════════════════════════════════════════
 async function callPerplexity(model, messages, systemPrompt, { search = true } = {}) {
   if (!PERPLEXITY_KEYS.length) {
@@ -553,7 +526,7 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
   );
 
   const data = await response.json();
-  
+
   if (data.error) {
     throw new Error(data.error.message || 'Perplexity API error');
   }
@@ -565,9 +538,6 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
   };
 }
 
-// ══════════════════════════════════════════════════════════
-//  PROVIDER 2: OPENROUTER API
-// ══════════════════════════════════════════════════════════
 async function callOpenRouter(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
   if (!OPENROUTER_KEYS.length) {
     throw new Error('No OpenRouter keys configured');
@@ -620,16 +590,13 @@ async function callOpenRouter(model, messages, systemPrompt, { reasoning = false
   };
 }
 
-// ══════════════════════════════════════════════════════════
-//  PROVIDER 3: GROQ API
-// ══════════════════════════════════════════════════════════
 async function callGroq(messages, systemPrompt) {
   if (!GROQ_KEYS.length) {
     throw new Error('No Groq keys configured');
   }
-  
+
   const key = GROQ_KEYS[groqIdx++ % GROQ_KEYS.length];
-  
+
   const response = await fetchWithTimeout(
     'https://api.groq.com/openai/v1/chat/completions',
     {
@@ -652,27 +619,24 @@ async function callGroq(messages, systemPrompt) {
   );
 
   const data = await response.json();
-  
+
   if (data.error) {
     throw new Error(data.error.message || 'Groq API error');
   }
-  
+
   return {
     content: data.choices?.[0]?.message?.content || '',
     usage: data.usage || {}
   };
 }
 
-// ══════════════════════════════════════════════════════════
-//  PROVIDER 4: GEMINI API (WITH VISION SUPPORT)
-// ══════════════════════════════════════════════════════════
 async function callGemini(messages, systemPrompt, imageBase64 = null) {
   if (!GEMINI_KEYS.length) {
     throw new Error('No Gemini keys configured');
   }
-  
+
   const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
-  
+
   const contents = messages.map(msg => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: msg.content }]
@@ -691,7 +655,7 @@ async function callGemini(messages, systemPrompt, imageBase64 = null) {
   }
 
   const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -708,11 +672,11 @@ async function callGemini(messages, systemPrompt, imageBase64 = null) {
   );
 
   const data = await response.json();
-  
+
   if (data.error) {
     throw new Error(data.error.message || 'Gemini API error');
   }
-  
+
   return {
     content: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
     usage: data.usageMetadata || {}
@@ -720,62 +684,99 @@ async function callGemini(messages, systemPrompt, imageBase64 = null) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  UNIFIED AI CALL WITH AUTOMATIC FALLBACK CHAIN
+//  FALLBACK CHAIN CONFIGURATION
+// ══════════════════════════════════════════════════════════
+const FALLBACK_CHAIN = {
+  fast: [
+    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
+    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
+    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: false, name: 'GPT-4o Mini' },
+    { provider: 'openrouter', model: 'anthropic/claude-3-haiku', reasoning: false, search: false, name: 'Claude 3 Haiku' },
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
+  ],
+
+  balanced: [
+    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
+    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Search)' },
+    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
+    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: true, name: 'GPT-4o Mini (Search)' },
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: false, search: false, name: 'Claude 3.5 Sonnet' },
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
+  ],
+
+  deep: [
+    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Deep Search)' },
+    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
+    { provider: 'openrouter', model: 'openai/o1-mini', reasoning: true, search: false, name: 'O1 Mini (Reasoning)' },
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: true, search: true, name: 'Claude 3.5 Sonnet (Deep)' },
+    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: true, name: 'Gemini Pro (Search)' },
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
+  ]
+};
+
+const EMERGENCY_DOWNGRADE_CHAIN = [
+  { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Emergency: Llama 3.2 3B' },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Emergency: Groq Llama' },
+  { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Emergency: Gemini Flash' }
+];
+
+// ══════════════════════════════════════════════════════════
+//  UNIFIED AI CALL WITH FALLBACK
 // ══════════════════════════════════════════════════════════
 async function callAIWithFallback(config, messages, systemPrompt, imageBase64 = null) {
   const { provider, model, reasoning, search, name } = config;
-  
+
   console.log(`🤖 Attempting: ${name || `${provider}/${model}`}`);
-  
+
   try {
     let result;
-    
+
     switch (provider) {
       case 'perplexity':
         result = await callPerplexity(model, messages, systemPrompt, { search });
         break;
-        
+
       case 'openrouter':
         result = await callOpenRouter(model, messages, systemPrompt, { reasoning, search });
         break;
-        
+
       case 'groq':
         result = await callGroq(messages, systemPrompt);
         break;
-        
+
       case 'gemini':
         result = await callGemini(messages, systemPrompt, imageBase64);
         break;
-        
+
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
-    
+
     console.log(`✅ Success: ${name || `${provider}/${model}`}`);
     return { ...result, providerUsed: name || `${provider}/${model}` };
-    
+
   } catch (error) {
     console.error(`❌ Failed: ${name || `${provider}/${model}`} - ${error.message}`);
     throw error;
   }
 }
 
-// ══════════════════════════════════════════════════════════
-//  INTELLIGENT CASCADING FALLBACK SYSTEM
-// ══════════════════════════════════════════════════════════
 async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLimitExceeded = false, imageBase64 = null) {
-  const chain = tokenLimitExceeded 
-    ? EMERGENCY_DOWNGRADE_CHAIN 
+  const chain = tokenLimitExceeded
+    ? EMERGENCY_DOWNGRADE_CHAIN
     : FALLBACK_CHAIN[mode] || FALLBACK_CHAIN.balanced;
 
   const errors = [];
-  
+
   for (let i = 0; i < chain.length; i++) {
     const config = chain[i];
-    
+
     try {
       const result = await callAIWithFallback(config, messages, systemPrompt, imageBase64);
-      
+
       return {
         success: true,
         content: result.content,
@@ -787,21 +788,21 @@ async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLim
         totalAttempts: chain.length,
         citations: result.citations
       };
-      
+
     } catch (error) {
       errors.push({
         provider: config.name || `${config.provider}/${config.model}`,
         error: error.message
       });
-      
+
       console.log(`🔄 Falling back... (${i + 1}/${chain.length} failed)`);
-      
+
       if (i < chain.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
   }
-  
+
   console.error('❌ ALL PROVIDERS FAILED:', errors);
   throw new Error(
     `All ${chain.length} AI providers failed. Last error: ${errors[errors.length - 1]?.error || 'Unknown'}`
@@ -875,7 +876,101 @@ Reference standard texts naturally:
 }
 
 // ══════════════════════════════════════════════════════════
-//  FILE UPLOAD ENDPOINT (NEW)
+//  AUTH ROUTES
+// ══════════════════════════════════════════════════════════
+app.get('/auth/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}));
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
+  (req, res) => res.redirect(req.user.isOnboarded ? '/?loggedin=true' : '/?onboarding=true')
+);
+
+app.get('/auth/logout', (req, res) => {
+  req.logout(() => res.redirect('/'));
+});
+
+// ══════════════════════════════════════════════════════════
+//  USER ROUTES
+// ══════════════════════════════════════════════════════════
+app.get('/api/me', requireAuth, async (req, res) => {
+  const u = await enforcePlanExpiry(req.user);
+  res.json({
+    user: {
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      photo: u.photo,
+      isOnboarded: u.isOnboarded,
+      exam: u.exam,
+      class: u.class,
+      coaching: u.coaching,
+      biggestStruggle: u.biggestStruggle,
+      responseSpeed: u.responseSpeed || 'balanced',
+      examDate: u.examDate,
+      isPro: u.isPro,
+      planType: u.planType,
+      planExpiresAt: u.planExpiresAt,
+      totalTokensConsumed: u.totalTokensConsumed || 0,
+      tokenLimit: TOKEN_LIMIT,
+      perplexityConfigured: PERPLEXITY_KEYS.length > 0,
+      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length,
+      webSearchAvailable: !!(TAVILY_API_KEY || SERPER_API_KEY)
+    }
+  });
+});
+
+app.post('/api/user/onboard', requireAuth, async (req, res) => {
+  try {
+    const { exam, class: cls, coaching, biggestStruggle } = req.body;
+
+    if (!exam || !cls) {
+      return res.status(400).json({ error: 'Exam and class are required.' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      exam,
+      class: cls,
+      coaching: coaching || '',
+      biggestStruggle: biggestStruggle || '',
+      isOnboarded: true
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+});
+
+app.post('/api/user/settings', requireAuth, async (req, res) => {
+  try {
+    const { responseSpeed, examDate } = req.body;
+    const update = {};
+
+    if (responseSpeed) {
+      if (!['fast', 'balanced', 'deep'].includes(responseSpeed)) {
+        return res.status(400).json({ error: 'Invalid response depth.' });
+      }
+      if (responseSpeed === 'deep' && !req.user.isPro) {
+        return res.status(402).json({ error: 'Deep mode requires Pro.' });
+      }
+      update.responseSpeed = responseSpeed;
+    }
+
+    if (examDate !== undefined) {
+      update.examDate = examDate ? new Date(examDate) : null;
+    }
+
+    await User.findByIdAndUpdate(req.user._id, update);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not save settings.' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  FILE UPLOAD ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file'), async (req, res) => {
   try {
@@ -905,15 +1000,15 @@ app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file')
     });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to process file',
-      details: error.message 
+      details: error.message
     });
   }
 });
 
 // ══════════════════════════════════════════════════════════
-//  WEB SEARCH ENDPOINT (NEW)
+//  WEB SEARCH ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) => {
   try {
@@ -923,10 +1018,17 @@ app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) 
       return res.status(400).json({ error: 'Search query required' });
     }
 
+    if (!TAVILY_API_KEY && !SERPER_API_KEY) {
+      return res.status(503).json({
+        error: 'Web search not configured',
+        message: 'No search API keys available'
+      });
+    }
+
     const searchResult = await performWebSearch(query);
 
     if (!searchResult) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Web search temporarily unavailable',
         fallback: 'Try asking the AI directly without web search'
       });
@@ -940,15 +1042,15 @@ app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) 
     });
   } catch (error) {
     console.error('Web search error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Search failed',
-      details: error.message 
+      details: error.message
     });
   }
 });
 
 // ══════════════════════════════════════════════════════════
-//  ENHANCED DOUBT-SOLVING ENDPOINT WITH IMAGE/PDF/SEARCH
+//  DOUBT SOLVING ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
   try {
@@ -966,16 +1068,16 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'User not found.' 
+      return res.status(401).json({
+        success: false,
+        error: 'User not found.'
       });
     }
 
     await enforcePlanExpiry(user);
 
     const requestedMode = ['fast', 'balanced', 'deep'].includes(mode) ? mode : 'balanced';
-    
+
     if (requestedMode === 'deep' && !user.isPro) {
       return res.status(402).json({
         success: false,
@@ -1026,9 +1128,9 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
     const messages = [{ role: 'user', content: enhancedMessage }];
 
     const aiResult = await getAIResponse(
-      messages, 
-      systemPrompt, 
-      requestedMode, 
+      messages,
+      systemPrompt,
+      requestedMode,
       tokenLimitExceeded,
       imageBase64 || null
     );
@@ -1048,10 +1150,10 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
               messages: {
                 $each: [
                   { role: 'user', content: message, attachments },
-                  { 
-                    role: 'assistant', 
-                    content: aiResult.content, 
-                    model: aiResult.provider 
+                  {
+                    role: 'assistant',
+                    content: aiResult.content,
+                    model: aiResult.provider
                   }
                 ]
               }
@@ -1105,11 +1207,11 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 });
 
 // ══════════════════════════════════════════════════════════
-//  LEGACY CHAT STREAM ENDPOINT (ENHANCED WITH ATTACHMENTS)
+//  CHAT STREAM ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
-  
+
   if (!messages || !Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: 'Invalid request.' });
   }
@@ -1127,14 +1229,14 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 
   try {
     const recent = messages.slice(-20);
-    
+
     // Enhance last message
     let lastMessage = recent[recent.length - 1].content;
-    
+
     if (pdfText) {
       lastMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
     }
-    
+
     if (imageBase64) {
       lastMessage += '\n\n[Image attached]';
     }
@@ -1161,7 +1263,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 
     const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', !!(imageBase64 || pdfText));
     const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
-    
+
     const aiResult = await getAIResponse(
       recent,
       systemPrompt,
@@ -1171,7 +1273,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
     );
 
     send('answer_start', {});
-    
+
     const lines = aiResult.content.split('\n');
     for (const line of lines) {
       send('chunk', { text: line + '\n' });
@@ -1202,7 +1304,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 
     send('done', { reply: aiResult.content, model: aiResult.provider });
     res.end();
-    
+
   } catch (err) {
     console.error('Stream error:', err.message);
     send('error', { error: 'All AI providers failed. Please try again.' });
@@ -1211,300 +1313,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 });
 
 // ══════════════════════════════════════════════════════════
-//  HEALTH CHECK & KEEP-ALIVE
-// ══════════════════════════════════════════════════════════
-app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
-
-if (process.env.RENDER_EXTERNAL_URL) {
-  setInterval(() => {
-    fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => {});
-  }, 10 * 60 * 1000);
-}
-
-// ══════════════════════════════════════════════════════════
-//  AUTH ROUTES
-// ══════════════════════════════════════════════════════════
-app.get('/auth/google', passport.authenticate('google', { 
-  scope: ['profile', 'email'] 
-}));
-
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
-  (req, res) => res.redirect(req.user.isOnboarded ? '/?loggedin=true' : '/?onboarding=true')
-);
-
-app.get('/auth/logout', (req, res) => {
-  req.logout(() => res.redirect('/'));
-});
-
-// ══════════════════════════════════════════════════════════
-//  USER ROUTES
-// ══════════════════════════════════════════════════════════
-app.get('/api/me', requireAuth, async (req, res) => {
-  const u = await enforcePlanExpiry(req.user);
-  res.json({
-    user: {
-      id: u._id,
-      name: u.name,
-      email: u.email,
-      photo: u.photo,
-      isOnboarded: u.isOnboarded,
-      exam: u.exam,
-      class: u.class,
-      coaching: u.coaching,
-      biggestStruggle: u.biggestStruggle,
-      responseSpeed: u.responseSpeed || 'balanced',
-      examDate: u.examDate,
-      isPro: u.isPro,
-      planType: u.planType,
-      planExpiresAt: u.planExpiresAt,
-      totalTokensConsumed: u.totalTokensConsumed || 0,
-      tokenLimit: TOKEN_LIMIT,
-      perplexityConfigured: PERPLEXITY_KEYS.length > 0,
-      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length,
-      webSearchAvailable: !!(TAVILY_API_KEY || SERPER_API_KEY)
-    }
-  });
-});
-
-app.post('/api/user/onboard', requireAuth, async (req, res) => {
-  try {
-    const { exam, class: cls, coaching, biggestStruggle } = req.body;
-    
-    if (!exam || !cls) {
-      return res.status(400).json({ error: 'Exam and class are required.' });
-    }
-
-    await User.findByIdAndUpdate(req.user._id, {
-      exam,
-      class: cls,
-      coaching: coaching || '',
-      biggestStruggle: biggestStruggle || '',
-      isOnboarded: true
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Something went wrong.' });
-  }
-});
-
-app.post('/api/user/settings', requireAuth, async (req, res) => {
-  try {
-    const { responseSpeed, examDate } = req.body;
-    const update = {};
-
-    if (responseSpeed) {
-      if (!['fast', 'balanced', 'deep'].includes(responseSpeed)) {
-        return res.status(400).json({ error: 'Invalid response depth.' });
-      }
-      if (responseSpeed === 'deep' && !req.user.isPro) {
-        return res.status(402).json({ error: 'Deep mode requires Pro.' });
-      }
-      update.responseSpeed = responseSpeed;
-    }
-
-    if (examDate !== undefined) {
-      update.examDate = examDate ? new Date(examDate) : null;
-    }
-
-    await User.findByIdAndUpdate(req.user._id, update);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not save settings.' });
-  }
-});
-
-// ══════════════════════════════════════════════════════════
-//  SUBSCRIPTION & PROMO CODE ROUTES
-// ══════════════════════════════════════════════════════════
-const PLAN_DURATIONS_MS = {
-  weekly: 7 * 86400000,
-  monthly: 30 * 86400000
-};
-
-app.post('/api/user/upgrade', requireAuth, async (req, res) => {
-  try {
-    const { plan, promoCode } = req.body;
-    
-    if (!PLAN_DURATIONS_MS[plan]) {
-      return res.status(400).json({ error: 'Unknown plan.' });
-    }
-
-    let durationMs = PLAN_DURATIONS_MS[plan];
-    let promoApplied = null;
-
-    if (promoCode) {
-      const applied = await applyPromoCode(req.user, promoCode);
-      if (applied.ok) {
-        durationMs += applied.bonusDays * 86400000;
-        promoApplied = applied.code;
-      } else {
-        return res.status(400).json({ error: applied.error });
-      }
-    }
-
-    const expires = new Date(Date.now() + durationMs);
-    await User.findByIdAndUpdate(req.user._id, {
-      isPro: true,
-      planType: plan,
-      planExpiresAt: expires
-    });
-
-    res.json({
-      success: true,
-      planType: plan,
-      planExpiresAt: expires,
-      promoApplied,
-      testMode: true
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not start upgrade.' });
-  }
-});
-
-app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
-  try {
-    const { code } = req.body;
-    
-    if (!code || !code.trim()) {
-      return res.status(400).json({ error: 'Enter a code.' });
-    }
-
-    const applied = await applyPromoCode(req.user, code);
-    if (!applied.ok) {
-      return res.status(400).json({ error: applied.error });
-    }
-
-    const user = await User.findById(req.user._id);
-    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date()
-      ? new Date(user.planExpiresAt)
-      : new Date();
-
-    const expires = new Date(base.getTime() + applied.bonusDays * 86400000);
-    user.isPro = true;
-    user.planType = user.planType || 'promo';
-    user.planExpiresAt = expires;
-    await user.save();
-
-    res.json({
-      success: true,
-      bonusDays: applied.bonusDays,
-      planExpiresAt: expires
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not redeem code.' });
-  }
-});
-
-async function applyPromoCode(reqUser, rawCode) {
-  const code = rawCode.trim().toUpperCase();
-  
-  if (reqUser.promoRedeemed?.includes(code)) {
-    return { ok: false, error: 'You have already used this code.' };
-  }
-
-  const promo = await PromoCode.findOne({ code });
-  if (!promo || !promo.active) {
-    return { ok: false, error: 'Invalid or inactive promo code.' };
-  }
-
-  if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
-    return { ok: false, error: 'This promo code has expired.' };
-  }
-
-  if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) {
-    return { ok: false, error: 'This promo code has been fully redeemed.' };
-  }
-
-  const updateFilter = {
-    code,
-    active: true,
-    ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {})
-  };
-
-  const updated = await PromoCode.findOneAndUpdate(
-    updateFilter,
-    { $inc: { redeemedCount: 1 } },
-    { new: true }
-  );
-
-  if (!updated) {
-    return { ok: false, error: 'This promo code just ran out. Try another.' };
-  }
-
-  await User.findByIdAndUpdate(reqUser._id, {
-    $addToSet: { promoRedeemed: code }
-  });
-
-  return { ok: true, bonusDays: promo.bonusDays, code };
-}
-
-// ══════════════════════════════════════════════════════════
-//  ADMIN: PROMO CODE MANAGEMENT
-// ══════════════════════════════════════════════════════════
-const requireAdmin = (req, res, next) => {
-  if (process.env.ADMIN_KEY && req.query.key === process.env.ADMIN_KEY) {
-    return next();
-  }
-  res.status(403).json({ error: 'Forbidden' });
-};
-
-app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try {
-    const { code, bonusDays, maxRedemptions, expiresAt, note } = req.body;
-    
-    if (!code || !bonusDays) {
-      return res.status(400).json({ error: 'code and bonusDays are required.' });
-    }
-
-    const promo = await PromoCode.create({
-      code: code.trim().toUpperCase(),
-      bonusDays,
-      maxRedemptions: maxRedemptions || 0,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      note: note || ''
-    });
-
-    res.json({ promo });
-  } catch (e) {
-    res.status(500).json({
-      error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.'
-    });
-  }
-});
-
-app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try {
-    res.json({
-      promoCodes: await PromoCode.find().sort({ createdAt: -1 })
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not load.' });
-  }
-});
-
-app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
-  try {
-    const promo = await PromoCode.findOneAndUpdate(
-      { code: req.params.code.toUpperCase() },
-      req.body,
-      { new: true }
-    );
-    
-    if (!promo) {
-      return res.status(404).json({ error: 'Not found.' });
-    }
-
-    res.json({ promo });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not update.' });
-  }
-});
-
-// ══════════════════════════════════════════════════════════
-//  SESSION MANAGEMENT ROUTES
+//  SESSION ROUTES
 // ══════════════════════════════════════════════════════════
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
@@ -1684,7 +1493,7 @@ app.delete('/api/notes/:id', requireAuth, async (req, res) => {
 app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, res) => {
   try {
     const { content, action } = req.body;
-    
+
     if (!content || !content.trim()) {
       return res.status(400).json({ error: 'No content provided.' });
     }
@@ -1716,6 +1525,198 @@ app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, 
 });
 
 // ══════════════════════════════════════════════════════════
+//  SUBSCRIPTION & PROMO CODE ROUTES
+// ══════════════════════════════════════════════════════════
+const PLAN_DURATIONS_MS = {
+  weekly: 7 * 86400000,
+  monthly: 30 * 86400000
+};
+
+app.post('/api/user/upgrade', requireAuth, async (req, res) => {
+  try {
+    const { plan, promoCode } = req.body;
+
+    if (!PLAN_DURATIONS_MS[plan]) {
+      return res.status(400).json({ error: 'Unknown plan.' });
+    }
+
+    let durationMs = PLAN_DURATIONS_MS[plan];
+    let promoApplied = null;
+
+    if (promoCode) {
+      const applied = await applyPromoCode(req.user, promoCode);
+      if (applied.ok) {
+        durationMs += applied.bonusDays * 86400000;
+        promoApplied = applied.code;
+      } else {
+        return res.status(400).json({ error: applied.error });
+      }
+    }
+
+    const expires = new Date(Date.now() + durationMs);
+    await User.findByIdAndUpdate(req.user._id, {
+      isPro: true,
+      planType: plan,
+      planExpiresAt: expires
+    });
+
+    res.json({
+      success: true,
+      planType: plan,
+      planExpiresAt: expires,
+      promoApplied,
+      testMode: true
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not start upgrade.' });
+  }
+});
+
+app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code || !code.trim()) {
+      return res.status(400).json({ error: 'Enter a code.' });
+    }
+
+    const applied = await applyPromoCode(req.user, code);
+    if (!applied.ok) {
+      return res.status(400).json({ error: applied.error });
+    }
+
+    const user = await User.findById(req.user._id);
+    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date()
+      ? new Date(user.planExpiresAt)
+      : new Date();
+
+    const expires = new Date(base.getTime() + applied.bonusDays * 86400000);
+    user.isPro = true;
+    user.planType = user.planType || 'promo';
+    user.planExpiresAt = expires;
+    await user.save();
+
+    res.json({
+      success: true,
+      bonusDays: applied.bonusDays,
+      planExpiresAt: expires
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not redeem code.' });
+  }
+});
+
+async function applyPromoCode(reqUser, rawCode) {
+  const code = rawCode.trim().toUpperCase();
+
+  if (reqUser.promoRedeemed?.includes(code)) {
+    return { ok: false, error: 'You have already used this code.' };
+  }
+
+  const promo = await PromoCode.findOne({ code });
+  if (!promo || !promo.active) {
+    return { ok: false, error: 'Invalid or inactive promo code.' };
+  }
+
+  if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+    return { ok: false, error: 'This promo code has expired.' };
+  }
+
+  if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) {
+    return { ok: false, error: 'This promo code has been fully redeemed.' };
+  }
+
+  const updateFilter = {
+    code,
+    active: true,
+    ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {})
+  };
+
+  const updated = await PromoCode.findOneAndUpdate(
+    updateFilter,
+    { $inc: { redeemedCount: 1 } },
+    { new: true }
+  );
+
+  if (!updated) {
+    return { ok: false, error: 'This promo code just ran out. Try another.' };
+  }
+
+  await User.findByIdAndUpdate(reqUser._id, {
+    $addToSet: { promoRedeemed: code }
+  });
+
+  return { ok: true, bonusDays: promo.bonusDays, code };
+}
+
+// ══════════════════════════════════════════════════════════
+//  ADMIN: PROMO CODE MANAGEMENT
+// ══════════════════════════════════════════════════════════
+app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
+  try {
+    const { code, bonusDays, maxRedemptions, expiresAt, note } = req.body;
+
+    if (!code || !bonusDays) {
+      return res.status(400).json({ error: 'code and bonusDays are required.' });
+    }
+
+    const promo = await PromoCode.create({
+      code: code.trim().toUpperCase(),
+      bonusDays,
+      maxRedemptions: maxRedemptions || 0,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      note: note || ''
+    });
+
+    res.json({ promo });
+  } catch (e) {
+    res.status(500).json({
+      error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.'
+    });
+  }
+});
+
+app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
+  try {
+    res.json({
+      promoCodes: await PromoCode.find().sort({ createdAt: -1 })
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load.' });
+  }
+});
+
+app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
+  try {
+    const promo = await PromoCode.findOneAndUpdate(
+      { code: req.params.code.toUpperCase() },
+      req.body,
+      { new: true }
+    );
+
+    if (!promo) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    res.json({ promo });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update.' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  HEALTH CHECK & KEEP-ALIVE
+// ══════════════════════════════════════════════════════════
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
+
+if (process.env.RENDER_EXTERNAL_URL) {
+  setInterval(() => {
+    fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => { });
+  }, 10 * 60 * 1000);
+}
+
+// ══════════════════════════════════════════════════════════
 //  SPA FALLBACK
 // ══════════════════════════════════════════════════════════
 app.get('*', (req, res) => {
@@ -1725,42 +1726,40 @@ app.get('*', (req, res) => {
 // ══════════════════════════════════════════════════════════
 //  START SERVER
 // ══════════════════════════════════════════════════════════
-const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`\n🧠 ════════════════════════════════════════════════════════`);
   console.log(`   GRIND AI v5.0 - Enhanced with Image, PDF & Web Search`);
   console.log(`════════════════════════════════════════════════════════════`);
   console.log(`📡 Server running on port ${PORT}`);
-  console.log(`📅 Current date: Wednesday, July 29, 2026\n`);
-  
+  console.log(`📅 Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`);
+
   console.log(`🔑 API Keys Configuration:`);
   console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
   console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
-  console.log(`   🔍 Tavily Search: ${TAVILY_API_KEY ? '✅' : '❌'}`);
-  console.log(`   🔍 Serper Search: ${SERPER_API_KEY ? '✅' : '❌'}`);
-  
+  console.log(`   🔍 Tavily Search: ${TAVILY_API_KEY ? '✅ ENABLED' : '❌ DISABLED'}`);
+  console.log(`   🔍 Serper Search: ${SERPER_API_KEY ? '✅ ENABLED' : '❌ DISABLED'}`);
+
   const totalProviders = PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length;
   console.log(`\n   Total AI providers: ${totalProviders}`);
   console.log(`   Web search: ${(TAVILY_API_KEY || SERPER_API_KEY) ? 'ENABLED ✅' : 'DISABLED ❌'}`);
-  
+
   console.log(`\n✨ New Features:`);
   console.log(`   📸 Image upload & OCR (via Gemini Vision)`);
-  console.log(`   📄 PDF text extraction`);
+  console.log(`   📄 PDF text extraction (via pdf-parse)`);
   console.log(`   🌐 Web search integration (Tavily/Serper)`);
   console.log(`   🔄 Automatic fallback across all providers`);
-  
+
   console.log(`\n💰 Cost Management:`);
   console.log(`   • Token limit per user: ${TOKEN_LIMIT.toLocaleString()}`);
   console.log(`   • Emergency downgrade: ${EMERGENCY_DOWNGRADE_CHAIN.length} fallback options`);
-  
+
   console.log(`\n🎯 Intelligent Fallback Chains:`);
   console.log(`   • Fast mode: ${FALLBACK_CHAIN.fast.length} providers`);
   console.log(`   • Balanced mode: ${FALLBACK_CHAIN.balanced.length} providers`);
   console.log(`   • Deep mode: ${FALLBACK_CHAIN.deep.length} providers`);
-  
+
   console.log(`\n✨ System Ready! All features active.\n`);
   console.log(`════════════════════════════════════════════════════════════\n`);
 });
