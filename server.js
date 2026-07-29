@@ -1,16 +1,38 @@
 require('dotenv').config();
-const express        = require('express');
-const cors           = require('cors');
-const path           = require('path');
-const helmet         = require('helmet');
-const compression    = require('compression');
-const mongoose       = require('mongoose');
-const session        = require('express-session');
-const MongoStore     = require('connect-mongo');
-const passport       = require('passport');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const multer = require('multer');
+const sharp = require('sharp');
+const pdfParse = require('pdf-parse');
 
 const app = express();
+
+// ══════════════════════════════════════════════════════════
+//  MULTER CONFIGURATION FOR FILE UPLOADS
+// ══════════════════════════════════════════════════════════
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and PDF allowed.'));
+    }
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 //  MIDDLEWARE
@@ -35,33 +57,38 @@ mongoose.connect(process.env.MONGODB_URI)
 //  SCHEMAS
 // ══════════════════════════════════════════════════════════
 const userSchema = new mongoose.Schema({
-  googleId:            { type: String, unique: true, sparse: true },
-  email:               String,
-  name:                { type: String, required: true },
-  photo:               { type: String, default: '' },
-  exam:                { type: String, default: '' },
-  class:               { type: String, default: '' },
-  coaching:            { type: String, default: '' },
-  biggestStruggle:     { type: String, default: '' },
-  isOnboarded:         { type: Boolean, default: false },
-  lastActive:          { type: Date, default: Date.now },
-  responseSpeed:       { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
-  examDate:            { type: Date, default: null },
-  isPro:               { type: Boolean, default: false },
-  planType:            { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
-  planExpiresAt:       { type: Date, default: null },
-  promoRedeemed:       { type: [String], default: [] },
+  googleId: { type: String, unique: true, sparse: true },
+  email: String,
+  name: { type: String, required: true },
+  photo: { type: String, default: '' },
+  exam: { type: String, default: '' },
+  class: { type: String, default: '' },
+  coaching: { type: String, default: '' },
+  biggestStruggle: { type: String, default: '' },
+  isOnboarded: { type: Boolean, default: false },
+  lastActive: { type: Date, default: Date.now },
+  responseSpeed: { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
+  examDate: { type: Date, default: null },
+  isPro: { type: Boolean, default: false },
+  planType: { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
+  planExpiresAt: { type: Date, default: null },
+  promoRedeemed: { type: [String], default: [] },
   totalTokensConsumed: { type: Number, default: 0 },
-  createdAt:           { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now }
 });
 
 const sessionSchema = new mongoose.Schema({
-  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  title:    { type: String, default: 'New chat' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  title: { type: String, default: 'New chat' },
   messages: [{
-    role:      { type: String, enum: ['user', 'assistant'], required: true },
-    content:   { type: String, default: '' },
-    model:     { type: String, default: '' },
+    role: { type: String, enum: ['user', 'assistant'], required: true },
+    content: { type: String, default: '' },
+    model: { type: String, default: '' },
+    attachments: [{
+      type: { type: String, enum: ['image', 'pdf'] },
+      filename: String,
+      extractedText: String
+    }],
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -69,28 +96,28 @@ const sessionSchema = new mongoose.Schema({
 });
 
 const noteSchema = new mongoose.Schema({
-  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  title:     { type: String, default: 'Untitled' },
-  content:   { type: String, default: '' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  title: { type: String, default: 'Untitled' },
+  content: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
 const promoCodeSchema = new mongoose.Schema({
-  code:            { type: String, required: true, unique: true, uppercase: true, trim: true },
-  bonusDays:       { type: Number, required: true, min: 1 },
-  maxRedemptions:  { type: Number, default: 0 },
-  redeemedCount:   { type: Number, default: 0 },
-  expiresAt:       { type: Date, default: null },
-  active:          { type: Boolean, default: true },
-  note:            { type: String, default: '' },
-  createdAt:       { type: Date, default: Date.now }
+  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
+  bonusDays: { type: Number, required: true, min: 1 },
+  maxRedemptions: { type: Number, default: 0 },
+  redeemedCount: { type: Number, default: 0 },
+  expiresAt: { type: Date, default: null },
+  active: { type: Boolean, default: true },
+  note: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now }
 });
 
-const User        = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
 const ChatSession = mongoose.model('ChatSession', sessionSchema);
-const Note        = mongoose.model('Note', noteSchema);
-const PromoCode   = mongoose.model('PromoCode', promoCodeSchema);
+const Note = mongoose.model('Note', noteSchema);
+const PromoCode = mongoose.model('PromoCode', promoCodeSchema);
 
 // ══════════════════════════════════════════════════════════
 //  SESSION + PASSPORT
@@ -113,18 +140,18 @@ app.use(session({
 }));
 
 passport.use(new GoogleStrategy({
-  clientID:     process.env.GOOGLE_CLIENT_ID,
+  clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL:  process.env.GOOGLE_CALLBACK_URL
+  callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, async (at, rt, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
     if (!user) {
       user = await User.create({
         googleId: profile.id,
-        email:    profile.emails?.[0]?.value || '',
-        name:     profile.displayName,
-        photo:    profile.photos?.[0]?.value || ''
+        email: profile.emails?.[0]?.value || '',
+        name: profile.displayName,
+        photo: profile.photos?.[0]?.value || ''
       });
     }
     user.lastActive = new Date();
@@ -225,6 +252,10 @@ const GEMINI_KEYS = [
   process.env.GEMINI_KEY_3
 ].filter(Boolean);
 
+// Web search API keys
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+
 // Rotating indexes for load balancing
 let perplexityIdx = 0;
 let openrouterIdx = 0;
@@ -239,76 +270,199 @@ const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrende
 const TOKEN_LIMIT = 500000;
 
 // ══════════════════════════════════════════════════════════
+//  IMAGE PROCESSING UTILITIES
+// ══════════════════════════════════════════════════════════
+async function processImage(buffer) {
+  try {
+    // Compress and convert to base64
+    const processed = await sharp(buffer)
+      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    
+    return processed.toString('base64');
+  } catch (error) {
+    console.error('Image processing error:', error);
+    throw new Error('Failed to process image');
+  }
+}
+
+async function extractTextFromImage(base64Image) {
+  // Use Gemini Vision for OCR
+  try {
+    const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
+    
+    const response = await fetchWithTimeout(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' },
+              {
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: base64Image
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4096
+          }
+        })
+      },
+      30000
+    );
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } catch (error) {
+    console.error('OCR error:', error);
+    return '[Image text extraction failed]';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  PDF PROCESSING UTILITIES
+// ══════════════════════════════════════════════════════════
+async function extractTextFromPDF(buffer) {
+  try {
+    const data = await pdfParse(buffer);
+    return data.text || '';
+  } catch (error) {
+    console.error('PDF parsing error:', error);
+    throw new Error('Failed to extract text from PDF');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  WEB SEARCH UTILITIES
+// ══════════════════════════════════════════════════════════
+async function webSearchTavily(query) {
+  if (!TAVILY_API_KEY) {
+    throw new Error('Tavily API key not configured');
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      'https://api.tavily.com/search',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TAVILY_API_KEY}`
+        },
+        body: JSON.stringify({
+          query,
+          search_depth: 'basic',
+          include_answer: true,
+          include_domains: ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'],
+          max_results: 5
+        })
+      },
+      15000
+    );
+
+    const data = await response.json();
+    return {
+      answer: data.answer || '',
+      results: data.results || [],
+      sources: (data.results || []).map(r => ({ title: r.title, url: r.url }))
+    };
+  } catch (error) {
+    console.error('Tavily search error:', error);
+    return null;
+  }
+}
+
+async function webSearchSerper(query) {
+  if (!SERPER_API_KEY) {
+    throw new Error('Serper API key not configured');
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      'https://google.serper.dev/search',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': SERPER_API_KEY
+        },
+        body: JSON.stringify({
+          q: query,
+          num: 5
+        })
+      },
+      15000
+    );
+
+    const data = await response.json();
+    return {
+      answer: data.answerBox?.answer || '',
+      results: data.organic || [],
+      sources: (data.organic || []).slice(0, 5).map(r => ({ 
+        title: r.title, 
+        url: r.link,
+        snippet: r.snippet 
+      }))
+    };
+  } catch (error) {
+    console.error('Serper search error:', error);
+    return null;
+  }
+}
+
+async function performWebSearch(query) {
+  // Try Tavily first, fallback to Serper
+  let searchResult = await webSearchTavily(query);
+  
+  if (!searchResult && SERPER_API_KEY) {
+    searchResult = await webSearchSerper(query);
+  }
+
+  return searchResult;
+}
+
+// ══════════════════════════════════════════════════════════
 //  COMPREHENSIVE FALLBACK CHAIN CONFIGURATION
 // ══════════════════════════════════════════════════════════
 const FALLBACK_CHAIN = {
   fast: [
-    // Priority 1: Perplexity (fastest, no search)
     { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    
-    // Priority 2: Perplexity alternative models
     { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
-    
-    // Priority 3: OpenRouter fast models
     { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: false, name: 'GPT-4o Mini' },
     { provider: 'openrouter', model: 'anthropic/claude-3-haiku', reasoning: false, search: false, name: 'Claude 3 Haiku' },
-    { provider: 'openrouter', model: 'google/gemini-flash-1.5', reasoning: false, search: false, name: 'Gemini Flash' },
-    
-    // Priority 4: Groq (ultra-fast fallback)
     { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    
-    // Priority 5: Gemini direct
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-    
-    // Priority 6: Emergency ultra-cheap
-    { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Llama 3.2 3B' }
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
   ],
   
   balanced: [
-    // Priority 1: Perplexity with search (BEST for study queries)
     { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
     { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Search)' },
-    
-    // Priority 2: Perplexity without search (faster fallback)
     { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    
-    // Priority 3: OpenRouter balanced models
     { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: true, name: 'GPT-4o Mini (Search)' },
     { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: false, search: false, name: 'Claude 3.5 Sonnet' },
-    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: false, name: 'Gemini Pro' },
-    
-    // Priority 4: Fast alternatives
     { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-    
-    // Priority 5: Emergency
-    { provider: 'openrouter', model: 'meta-llama/llama-3.2-11b-vision-instruct', reasoning: false, search: false, name: 'Llama 3.2 11B' }
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
   ],
   
   deep: [
-    // Priority 1: Perplexity Pro with search (ULTIMATE for deep reasoning)
     { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Deep Search)' },
-    
-    // Priority 2: Perplexity alternatives
     { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
-    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
-    
-    // Priority 3: OpenRouter reasoning models
     { provider: 'openrouter', model: 'openai/o1-mini', reasoning: true, search: false, name: 'O1 Mini (Reasoning)' },
     { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: true, search: true, name: 'Claude 3.5 Sonnet (Deep)' },
-    { provider: 'openrouter', model: 'openai/gpt-4-turbo', reasoning: true, search: false, name: 'GPT-4 Turbo' },
-    
-    // Priority 4: Balanced alternatives
     { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: true, name: 'Gemini Pro (Search)' },
     { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    
-    // Priority 5: Emergency deep
-    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-    { provider: 'openrouter', model: 'meta-llama/llama-3.2-11b-vision-instruct', reasoning: false, search: false, name: 'Llama 3.2 11B' }
+    { provider: 'gemini', model: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
   ]
 };
 
-// Emergency downgrade when token limit exceeded
 const EMERGENCY_DOWNGRADE_CHAIN = [
   { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Emergency: Llama 3.2 3B' },
   { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Emergency: Groq Llama' },
@@ -351,14 +505,14 @@ function extractTokensUsed(usage) {
   if (!usage) return 0;
   if (typeof usage.total_tokens === 'number') return usage.total_tokens;
   
-  const inputTokens  = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+  const inputTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
   const outputTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
   
   return inputTokens + outputTokens;
 }
 
 // ══════════════════════════════════════════════════════════
-//  PROVIDER 1: PERPLEXITY API (FIRST PRIORITY)
+//  PROVIDER 1: PERPLEXITY API
 // ══════════════════════════════════════════════════════════
 async function callPerplexity(model, messages, systemPrompt, { search = true } = {}) {
   if (!PERPLEXITY_KEYS.length) {
@@ -378,7 +532,6 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
     return_related_questions: false
   };
 
-  // Configure search behavior
   if (search) {
     payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
     payload.search_recency_filter = 'month';
@@ -511,7 +664,7 @@ async function callGroq(messages, systemPrompt) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  PROVIDER 4: GEMINI API
+//  PROVIDER 4: GEMINI API (WITH VISION SUPPORT)
 // ══════════════════════════════════════════════════════════
 async function callGemini(messages, systemPrompt, imageBase64 = null) {
   if (!GEMINI_KEYS.length) {
@@ -569,7 +722,7 @@ async function callGemini(messages, systemPrompt, imageBase64 = null) {
 // ══════════════════════════════════════════════════════════
 //  UNIFIED AI CALL WITH AUTOMATIC FALLBACK CHAIN
 // ══════════════════════════════════════════════════════════
-async function callAIWithFallback(config, messages, systemPrompt) {
+async function callAIWithFallback(config, messages, systemPrompt, imageBase64 = null) {
   const { provider, model, reasoning, search, name } = config;
   
   console.log(`🤖 Attempting: ${name || `${provider}/${model}`}`);
@@ -591,7 +744,7 @@ async function callAIWithFallback(config, messages, systemPrompt) {
         break;
         
       case 'gemini':
-        result = await callGemini(messages, systemPrompt);
+        result = await callGemini(messages, systemPrompt, imageBase64);
         break;
         
       default:
@@ -610,22 +763,19 @@ async function callAIWithFallback(config, messages, systemPrompt) {
 // ══════════════════════════════════════════════════════════
 //  INTELLIGENT CASCADING FALLBACK SYSTEM
 // ══════════════════════════════════════════════════════════
-async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLimitExceeded = false) {
-  // Determine which fallback chain to use
+async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLimitExceeded = false, imageBase64 = null) {
   const chain = tokenLimitExceeded 
     ? EMERGENCY_DOWNGRADE_CHAIN 
     : FALLBACK_CHAIN[mode] || FALLBACK_CHAIN.balanced;
 
   const errors = [];
   
-  // Try each provider in the chain until one succeeds
   for (let i = 0; i < chain.length; i++) {
     const config = chain[i];
     
     try {
-      const result = await callAIWithFallback(config, messages, systemPrompt);
+      const result = await callAIWithFallback(config, messages, systemPrompt, imageBase64);
       
-      // Success! Return result with metadata
       return {
         success: true,
         content: result.content,
@@ -646,14 +796,12 @@ async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLim
       
       console.log(`🔄 Falling back... (${i + 1}/${chain.length} failed)`);
       
-      // Small delay before next attempt to avoid rate limits
       if (i < chain.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
   }
   
-  // All providers failed
   console.error('❌ ALL PROVIDERS FAILED:', errors);
   throw new Error(
     `All ${chain.length} AI providers failed. Last error: ${errors[errors.length - 1]?.error || 'Unknown'}`
@@ -663,15 +811,15 @@ async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLim
 // ══════════════════════════════════════════════════════════
 //  SYSTEM PROMPT BUILDER
 // ══════════════════════════════════════════════════════════
-function buildSystemPrompt(user, mode = 'balanced') {
+function buildSystemPrompt(user, mode = 'balanced', hasAttachment = false) {
   const name = user?.name?.split(' ')[0] || 'there';
   const speedMap = {
-    fast:     'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
+    fast: 'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
     balanced: 'Medium length — full explanation, no filler, no repeated caveats.',
-    deep:     'DEEP — complete derivations, common traps, and one adjacent worked example with step-by-step reasoning.'
+    deep: 'DEEP — complete derivations, common traps, and one adjacent worked example with step-by-step reasoning.'
   };
 
-  return `You are GRIND, operating as 'AIR-1 Ranker AI' — an elite AI mentor for Indian JEE and NEET aspirants.
+  let prompt = `You are GRIND, operating as 'AIR-1 Ranker AI' — an elite AI mentor for Indian JEE and NEET aspirants.
 
 STUDENT PROFILE
 Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}
@@ -706,25 +854,106 @@ GROUNDING & SOURCES
 Reference standard texts naturally:
 - Physics: HC Verma, Irodov, DC Pandey
 - Chemistry: MS Chouhan (Org), N Awasthi (Phys), NCERT (Inorg)
-- Biology: NCERT (primary source for NEET)
+- Biology: NCERT (primary source for NEET)`;
 
-If photo attached, transcribe relevant part first, then correct/solve.
+  if (hasAttachment) {
+    prompt += `\n\nATTACHMENT HANDLING
+- The student has shared an image or PDF document
+- Carefully analyze all visible text, equations, diagrams, and handwritten content
+- If it's a question, solve it step-by-step
+- If it contains errors, point them out constructively
+- If it's notes, help clarify or expand concepts`;
+  }
 
-HARD RULES
+  prompt += `\n\nHARD RULES
 - Only authenticated students use you
 - Mirror student's language (Hinglish stays Hinglish)
 - Keep paragraphs under 10-20 sentences; use line breaks/steps
 - Be encouraging but intellectually honest`;
+
+  return prompt;
 }
 
 // ══════════════════════════════════════════════════════════
-//  MAIN DOUBT-SOLVING ENDPOINT WITH PERPLEXITY FIRST PRIORITY
+//  FILE UPLOAD ENDPOINT (NEW)
+// ══════════════════════════════════════════════════════════
+app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'pdf';
+    let extractedText = '';
+    let base64Data = '';
+
+    if (fileType === 'image') {
+      base64Data = await processImage(req.file.buffer);
+      extractedText = await extractTextFromImage(base64Data);
+    } else if (fileType === 'pdf') {
+      extractedText = await extractTextFromPDF(req.file.buffer);
+    }
+
+    res.json({
+      success: true,
+      file: {
+        type: fileType,
+        filename: req.file.originalname,
+        extractedText,
+        base64: fileType === 'image' ? base64Data : null
+      }
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process file',
+      details: error.message 
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  WEB SEARCH ENDPOINT (NEW)
+// ══════════════════════════════════════════════════════════
+app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) => {
+  try {
+    const { query } = req.body;
+
+    if (!query || !query.trim()) {
+      return res.status(400).json({ error: 'Search query required' });
+    }
+
+    const searchResult = await performWebSearch(query);
+
+    if (!searchResult) {
+      return res.status(503).json({ 
+        error: 'Web search temporarily unavailable',
+        fallback: 'Try asking the AI directly without web search'
+      });
+    }
+
+    res.json({
+      success: true,
+      answer: searchResult.answer,
+      sources: searchResult.sources,
+      results: searchResult.results
+    });
+  } catch (error) {
+    console.error('Web search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed',
+      details: error.message 
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  ENHANCED DOUBT-SOLVING ENDPOINT WITH IMAGE/PDF/SEARCH
 // ══════════════════════════════════════════════════════════
 app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
   try {
-    const { message, mode, sessionId } = req.body;
+    const { message, mode, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
 
-    // Validate input
     if (!message || !String(message).trim()) {
       return res.status(400).json({
         success: false,
@@ -735,7 +964,6 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       });
     }
 
-    // Fetch fresh user
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(401).json({ 
@@ -746,10 +974,8 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 
     await enforcePlanExpiry(user);
 
-    // Determine mode
     const requestedMode = ['fast', 'balanced', 'deep'].includes(mode) ? mode : 'balanced';
     
-    // Check Pro access for deep mode
     if (requestedMode === 'deep' && !user.isPro) {
       return res.status(402).json({
         success: false,
@@ -760,22 +986,53 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       });
     }
 
-    // Check if token limit exceeded
     const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(user, requestedMode);
-    const messages = [{ role: 'user', content: message }];
+    // Enhance message with extracted content
+    let enhancedMessage = message;
+    const attachments = [];
 
-    // Call AI with automatic fallback chain
+    if (pdfText && pdfText.trim()) {
+      enhancedMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
+      attachments.push({ type: 'pdf', extractedText: pdfText });
+    }
+
+    if (imageBase64) {
+      enhancedMessage += '\n\n[Image attached - analyzing visual content]';
+      attachments.push({ type: 'image' });
+    }
+
+    // Perform web search if enabled
+    let webSearchContext = '';
+    let searchSources = [];
+
+    if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
+      try {
+        const searchResult = await performWebSearch(message);
+        if (searchResult) {
+          webSearchContext = `\n\n[Web Search Results]:\n${searchResult.answer}\n\nSources: ${searchResult.sources.map(s => `${s.title} (${s.url})`).join(', ')}`;
+          searchSources = searchResult.sources;
+        }
+      } catch (e) {
+        console.error('Web search failed:', e.message);
+      }
+    }
+
+    if (webSearchContext) {
+      enhancedMessage += webSearchContext;
+    }
+
+    const systemPrompt = buildSystemPrompt(user, requestedMode, attachments.length > 0);
+    const messages = [{ role: 'user', content: enhancedMessage }];
+
     const aiResult = await getAIResponse(
       messages, 
       systemPrompt, 
       requestedMode, 
-      tokenLimitExceeded
+      tokenLimitExceeded,
+      imageBase64 || null
     );
 
-    // Extract tokens and update user
     const tokensUsed = extractTokensUsed(aiResult.usage);
     user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
     user.lastActive = new Date();
@@ -790,7 +1047,7 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
             $push: {
               messages: {
                 $each: [
-                  { role: 'user', content: message },
+                  { role: 'user', content: message, attachments },
                   { 
                     role: 'assistant', 
                     content: aiResult.content, 
@@ -807,7 +1064,6 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       }
     }
 
-    // Build response
     const response = {
       success: true,
       answer: aiResult.content,
@@ -820,11 +1076,17 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
       provider: aiResult.provider,
       model: aiResult.model,
       attemptNumber: aiResult.attemptNumber,
-      totalAttempts: aiResult.totalAttempts
+      totalAttempts: aiResult.totalAttempts,
+      hasAttachments: attachments.length > 0,
+      webSearchUsed: searchSources.length > 0
     };
 
     if (aiResult.citations && aiResult.citations.length > 0) {
       response.citations = aiResult.citations;
+    }
+
+    if (searchSources.length > 0) {
+      response.searchSources = searchSources;
     }
 
     return res.json(response);
@@ -843,10 +1105,10 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 });
 
 // ══════════════════════════════════════════════════════════
-//  LEGACY CHAT STREAM ENDPOINT (for backwards compatibility)
+//  LEGACY CHAT STREAM ENDPOINT (ENHANCED WITH ATTACHMENTS)
 // ══════════════════════════════════════════════════════════
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
-  const { messages, sessionId, imageBase64 } = req.body;
+  const { messages, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
   
   if (!messages || !Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: 'Invalid request.' });
@@ -865,24 +1127,49 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
 
   try {
     const recent = messages.slice(-20);
+    
+    // Enhance last message
+    let lastMessage = recent[recent.length - 1].content;
+    
+    if (pdfText) {
+      lastMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
+    }
+    
+    if (imageBase64) {
+      lastMessage += '\n\n[Image attached]';
+    }
+
+    if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
+      send('thinking', { step: 'Searching the web…' });
+      try {
+        const searchResult = await performWebSearch(lastMessage);
+        if (searchResult) {
+          lastMessage += `\n\n[Web Results]: ${searchResult.answer}`;
+        }
+      } catch (e) {
+        console.error('Search failed in stream');
+      }
+      await sleep(200);
+    }
+
+    recent[recent.length - 1].content = lastMessage;
 
     send('thinking', { step: 'Reading your question…' });
     await sleep(120);
     send('thinking', { step: 'Analyzing with AI…' });
     await sleep(140);
 
-    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced');
+    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', !!(imageBase64 || pdfText));
     const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
     
-    // Use fallback system for stream too
     const aiResult = await getAIResponse(
       recent,
       systemPrompt,
       user.responseSpeed || 'balanced',
-      tokenLimitExceeded
+      tokenLimitExceeded,
+      imageBase64 || null
     );
 
-    // Stream the response
     send('answer_start', {});
     
     const lines = aiResult.content.split('\n');
@@ -891,7 +1178,6 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
       await sleep(10);
     }
 
-    // Persist to session
     if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
       try {
         const userMsg = messages[messages.length - 1];
@@ -976,7 +1262,8 @@ app.get('/api/me', requireAuth, async (req, res) => {
       totalTokensConsumed: u.totalTokensConsumed || 0,
       tokenLimit: TOKEN_LIMIT,
       perplexityConfigured: PERPLEXITY_KEYS.length > 0,
-      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length
+      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length,
+      webSearchAvailable: !!(TAVILY_API_KEY || SERPER_API_KEY)
     }
   });
 });
@@ -1403,12 +1690,12 @@ app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, 
     }
 
     const actionPrompts = {
-      improve:     'Improve clarity, flow and grammar. Keep meaning and length similar. Keep LaTeX/markdown intact.',
-      summarize:   'Summarize into a tight, high-yield bullet summary. Keep key formulas in LaTeX.',
-      expand:      'Expand with more detail and examples useful for a JEE/NEET student. Use LaTeX for all math.',
+      improve: 'Improve clarity, flow and grammar. Keep meaning and length similar. Keep LaTeX/markdown intact.',
+      summarize: 'Summarize into a tight, high-yield bullet summary. Keep key formulas in LaTeX.',
+      expand: 'Expand with more detail and examples useful for a JEE/NEET student. Use LaTeX for all math.',
       fix_grammar: 'Fix all spelling and grammar. Do not change meaning or formatting.',
-      bullets:     'Convert into clean, well-organized bullet points. Keep LaTeX intact.',
-      explain:     'Explain this simply, as if teaching a confused student. Use analogies and LaTeX for math.'
+      bullets: 'Convert into clean, well-organized bullet points. Keep LaTeX intact.',
+      explain: 'Explain this simply, as if teaching a confused student. Use analogies and LaTeX for math.'
     };
 
     const instruction = actionPrompts[action] || actionPrompts.improve;
@@ -1442,19 +1729,28 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`\n🧠 ════════════════════════════════════════════════════════`);
-  console.log(`   GRIND AI v4.0 - Perplexity-First with Cascading Fallbacks`);
+  console.log(`   GRIND AI v5.0 - Enhanced with Image, PDF & Web Search`);
   console.log(`════════════════════════════════════════════════════════════`);
   console.log(`📡 Server running on port ${PORT}`);
-  console.log(`📅 Current date: Tuesday, July 28, 2026\n`);
+  console.log(`📅 Current date: Wednesday, July 29, 2026\n`);
   
   console.log(`🔑 API Keys Configuration:`);
   console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
   console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
+  console.log(`   🔍 Tavily Search: ${TAVILY_API_KEY ? '✅' : '❌'}`);
+  console.log(`   🔍 Serper Search: ${SERPER_API_KEY ? '✅' : '❌'}`);
   
   const totalProviders = PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length;
-  console.log(`\n   Total providers: ${totalProviders}`);
+  console.log(`\n   Total AI providers: ${totalProviders}`);
+  console.log(`   Web search: ${(TAVILY_API_KEY || SERPER_API_KEY) ? 'ENABLED ✅' : 'DISABLED ❌'}`);
+  
+  console.log(`\n✨ New Features:`);
+  console.log(`   📸 Image upload & OCR (via Gemini Vision)`);
+  console.log(`   📄 PDF text extraction`);
+  console.log(`   🌐 Web search integration (Tavily/Serper)`);
+  console.log(`   🔄 Automatic fallback across all providers`);
   
   console.log(`\n💰 Cost Management:`);
   console.log(`   • Token limit per user: ${TOKEN_LIMIT.toLocaleString()}`);
@@ -1465,14 +1761,6 @@ app.listen(PORT, () => {
   console.log(`   • Balanced mode: ${FALLBACK_CHAIN.balanced.length} providers`);
   console.log(`   • Deep mode: ${FALLBACK_CHAIN.deep.length} providers`);
   
-  console.log(`\n🔄 Fallback Strategy:`);
-  console.log(`   1. Try Perplexity (FIRST PRIORITY)`);
-  console.log(`   2. If fails → Try alternative Perplexity models`);
-  console.log(`   3. If fails → Try OpenRouter`);
-  console.log(`   4. If fails → Try Groq`);
-  console.log(`   5. If fails → Try Gemini`);
-  console.log(`   6. If all fail → Return error`);
-  
-  console.log(`\n✨ System Ready! Perplexity-first cascading fallback active.\n`);
+  console.log(`\n✨ System Ready! All features active.\n`);
   console.log(`════════════════════════════════════════════════════════════\n`);
 });
