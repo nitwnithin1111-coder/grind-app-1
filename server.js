@@ -322,60 +322,57 @@ function extractTokensUsed(usage) {
 //  IMAGE PROCESSING UTILITIES
 // ══════════════════════════════════════════════════════════
 async function processImage(buffer) {
-  try {
-    const processed = await sharp(buffer)
-      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
+  const processed = await sharp(buffer)
+    .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer();
 
-    return processed.toString('base64');
-  } catch (error) {
-    console.error('Image processing error:', error);
-    throw new Error('Failed to process image');
-  }
+  return processed.toString('base64');
 }
 
 async function extractTextFromImage(base64Image) {
-  try {
-    if (!GEMINI_KEYS.length) {
-      throw new Error('No Gemini API keys configured for OCR');
-    }
+  if (!PERPLEXITY_KEYS.length) {
+    return '[No Perplexity API keys configured for OCR]';
+  }
 
-    const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
+  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
 
-    const response = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
+  const response = await fetchWithTimeout(
+    'https://api.perplexity.ai/chat/completions',
+    {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-large-128k-online', // or 'llama-3.1-sonar-small-128k-online'
+        messages: [
+          {
             role: 'user',
-            parts: [
-              { text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' },
+            content: [
+              { 
+                type: 'text', 
+                text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' 
+              },
               {
-                inline_data: {
-                  mime_type: 'image/jpeg',
-                  data: base64Image
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`
                 }
               }
             ]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 4096
           }
-        })
-      },
-      30000
-    );
+        ],
+        temperature: 0.1,
+        max_tokens: 4096
+      })
+    },
+    30000
+  );
 
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '[Text extraction failed]';
-  } catch (error) {
-    console.error('OCR error:', error);
-    return '[Image text extraction failed]';
-  }
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '[Text extraction failed]';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -383,14 +380,38 @@ async function extractTextFromImage(base64Image) {
 // ══════════════════════════════════════════════════════════
 async function extractTextFromPDF(buffer) {
   try {
-    const data = await pdfParse(buffer);
-    return data.text || '';
+    // Convert buffer to base64
+    const base64PDF = buffer.toString('base64');
+    
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer YOUR_PERPLEXITY_API_KEY`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online', // or other Perplexity models
+        messages: [
+          {
+            role: 'user',
+            content: `Please extract all text content from this PDF. Return only the extracted text without any additional commentary.\n\nPDF Data: ${base64PDF}`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Perplexity API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.choices[0].message.content || '';
+    
   } catch (error) {
     console.error('PDF parsing error:', error);
     throw new Error('Failed to extract text from PDF');
   }
 }
-
 // ══════════════════════════════════════════════════════════
 //  WEB SEARCH UTILITIES
 // ══════════════════════════════════════════════════════════
