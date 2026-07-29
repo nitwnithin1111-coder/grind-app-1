@@ -337,44 +337,54 @@ async function extractTextFromImage(base64Image) {
 
   const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
 
-  const response = await fetchWithTimeout(
-    'https://api.perplexity.ai/chat/completions',
-    {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online', // or 'llama-3.1-sonar-small-128k-online'
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { 
-                type: 'text', 
-                text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' 
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`
+  try {
+    const response = await fetchWithTimeout(
+      'https://api.perplexity.ai/chat/completions',
+      {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.2-11b-vision-instruct', // Perplexity's vision model
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { 
+                  type: 'text', 
+                  text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' 
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:image/jpeg;base64,${base64Image}`
+                  }
                 }
-              }
-            ]
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 4096
-      })
-    },
-    30000
-  );
+              ]
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 4096
+        })
+      },
+      30000
+    );
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '[Text extraction failed]';
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Perplexity API Error:', errorData);
+      return `[Text extraction failed: ${errorData.error?.message || response.statusText}]`;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '[Text extraction failed - no content returned]';
+  } catch (error) {
+    console.error('Error extracting text from image:', error);
+    return `[Text extraction error: ${error.message}]`;
+  }
 }
-
 // ══════════════════════════════════════════════════════════
 //  PDF PROCESSING UTILITIES
 // ══════════════════════════════════════════════════════════
