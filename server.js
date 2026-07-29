@@ -505,12 +505,12 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
     return_related_questions: false
   };
 
+  // ✅ FIXED: Only add search filters when search is enabled
   if (search) {
     payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
     payload.search_recency_filter = 'month';
-  } else {
-    payload.search_recency_filter = 'none';
   }
+  // When search = false, don't add any search-related fields
 
   const response = await fetchWithTimeout(
     'https://api.perplexity.ai/chat/completions',
