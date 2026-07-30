@@ -1,66 +1,19 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const mongoose = require('mongoose');
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
-const passport = require('passport');
+const express        = require('express');
+const cors           = require('cors');
+const path           = require('path');
+const helmet         = require('helmet');
+const compression    = require('compression');
+const mongoose       = require('mongoose');
+const session        = require('express-session');
+const MongoStore     = require('connect-mongo');
+const passport       = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const multer = require('multer');
-const sharp = require('sharp');
-const pdfParse = require('pdf-parse');
 
 const app = express();
 
 // ══════════════════════════════════════════════════════════
-//  CONFIGURATION CONSTANTS
-// ══════════════════════════════════════════════════════════
-const PORT = process.env.PORT || 3000;
-const TOKEN_LIMIT = 500000;
-const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
-
-// ══════════════════════════════════════════════════════════
-//  API KEYS CONFIGURATION
-// ══════════════════════════════════════════════════════════
-const PERPLEXITY_KEYS = [
-  process.env.PERPLEXITY_API_KEY,
-  process.env.PERPLEXITY_KEY_1,
-  process.env.PERPLEXITY_KEY_2,
-  process.env.PERPLEXITY_KEY_3
-].filter(Boolean);
-
-const OPENROUTER_KEYS = [
-  process.env.OPENROUTER_KEY_1,
-  process.env.OPENROUTER_KEY_2,
-  process.env.OPENROUTER_KEY_3
-].filter(Boolean);
-
-const GROQ_KEYS = [
-  process.env.GROQ_KEY_1,
-  process.env.GROQ_KEY_2,
-  process.env.GROQ_KEY_3
-].filter(Boolean);
-
-const GEMINI_KEYS = [
-  process.env.GEMINI_KEY_1,
-  process.env.GEMINI_KEY_2,
-  process.env.GEMINI_KEY_3
-].filter(Boolean);
-
-const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
-const SERPER_API_KEY = process.env.SERPER_API_KEY;
-
-// Key rotation indexes
-let perplexityIdx = 0;
-let openrouterIdx = 0;
-let groqIdx = 0;
-let geminiIdx = 0;
-
-// ══════════════════════════════════════════════════════════
-//  MIDDLEWARE CONFIGURATION
+//  MIDDLEWARE
 // ══════════════════════════════════════════════════════════
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -72,67 +25,43 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.static(__dirname));
 
 // ══════════════════════════════════════════════════════════
-//  MULTER FILE UPLOAD CONFIGURATION
-// ══════════════════════════════════════════════════════════
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and PDF allowed.'));
-    }
-  }
-});
-
-// ══════════════════════════════════════════════════════════
 //  MONGODB CONNECTION
 // ══════════════════════════════════════════════════════════
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err.message));
+  .catch((err) => console.error('❌ MongoDB:', err.message));
 
 // ══════════════════════════════════════════════════════════
-//  DATABASE SCHEMAS
+//  SCHEMAS
 // ══════════════════════════════════════════════════════════
 const userSchema = new mongoose.Schema({
-  googleId: { type: String, unique: true, sparse: true },
-  email: String,
-  name: { type: String, required: true },
-  photo: { type: String, default: '' },
-  exam: { type: String, default: '' },
-  class: { type: String, default: '' },
-  coaching: { type: String, default: '' },
-  biggestStruggle: { type: String, default: '' },
-  isOnboarded: { type: Boolean, default: false },
-  lastActive: { type: Date, default: Date.now },
-  responseSpeed: { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
-  examDate: { type: Date, default: null },
-  isPro: { type: Boolean, default: false },
-  planType: { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
-  planExpiresAt: { type: Date, default: null },
-  promoRedeemed: { type: [String], default: [] },
+  googleId:            { type: String, unique: true, sparse: true },
+  email:               String,
+  name:                { type: String, required: true },
+  photo:               { type: String, default: '' },
+  exam:                { type: String, default: '' },
+  class:               { type: String, default: '' },
+  coaching:            { type: String, default: '' },
+  biggestStruggle:     { type: String, default: '' },
+  isOnboarded:         { type: Boolean, default: false },
+  lastActive:          { type: Date, default: Date.now },
+  responseSpeed:       { type: String, default: 'balanced', enum: ['fast', 'balanced', 'deep'] },
+  examDate:            { type: Date, default: null },
+  isPro:               { type: Boolean, default: false },
+  planType:            { type: String, default: '', enum: ['', 'weekly', 'monthly', 'promo'] },
+  planExpiresAt:       { type: Date, default: null },
+  promoRedeemed:       { type: [String], default: [] },
   totalTokensConsumed: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
+  createdAt:           { type: Date, default: Date.now }
 });
 
 const sessionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  title: { type: String, default: 'New chat' },
+  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  title:    { type: String, default: 'New chat' },
   messages: [{
-    role: { type: String, enum: ['user', 'assistant'], required: true },
-    content: { type: String, default: '' },
-    model: { type: String, default: '' },
-    attachments: [{
-      type: { type: String, enum: ['image', 'pdf'] },
-      filename: String,
-      extractedText: String
-    }],
+    role:      { type: String, enum: ['user', 'assistant'], required: true },
+    content:   { type: String, default: '' },
+    model:     { type: String, default: '' },
     timestamp: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
@@ -140,31 +69,31 @@ const sessionSchema = new mongoose.Schema({
 });
 
 const noteSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  title: { type: String, default: 'Untitled' },
-  content: { type: String, default: '' },
+  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  title:     { type: String, default: 'Untitled' },
+  content:   { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
 const promoCodeSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-  bonusDays: { type: Number, required: true, min: 1 },
-  maxRedemptions: { type: Number, default: 0 },
-  redeemedCount: { type: Number, default: 0 },
-  expiresAt: { type: Date, default: null },
-  active: { type: Boolean, default: true },
-  note: { type: String, default: '' },
-  createdAt: { type: Date, default: Date.now }
+  code:            { type: String, required: true, unique: true, uppercase: true, trim: true },
+  bonusDays:       { type: Number, required: true, min: 1 },
+  maxRedemptions:  { type: Number, default: 0 },
+  redeemedCount:   { type: Number, default: 0 },
+  expiresAt:       { type: Date, default: null },
+  active:          { type: Boolean, default: true },
+  note:            { type: String, default: '' },
+  createdAt:       { type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
+const User        = mongoose.model('User', userSchema);
 const ChatSession = mongoose.model('ChatSession', sessionSchema);
-const Note = mongoose.model('Note', noteSchema);
-const PromoCode = mongoose.model('PromoCode', promoCodeSchema);
+const Note        = mongoose.model('Note', noteSchema);
+const PromoCode   = mongoose.model('PromoCode', promoCodeSchema);
 
 // ══════════════════════════════════════════════════════════
-//  SESSION & PASSPORT CONFIGURATION
+//  SESSION + PASSPORT
 // ══════════════════════════════════════════════════════════
 if (!process.env.SESSION_SECRET) {
   console.warn('⚠️  SESSION_SECRET not set. Using insecure default.');
@@ -176,42 +105,42 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-  cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+  cookie: { 
+    maxAge: 30 * 24 * 60 * 60 * 1000, 
+    secure: process.env.NODE_ENV === 'production', 
+    sameSite: 'lax' 
   }
 }));
 
 passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientID:     process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+  callbackURL:  process.env.GOOGLE_CALLBACK_URL
+}, async (at, rt, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
     if (!user) {
       user = await User.create({
         googleId: profile.id,
-        email: profile.emails?.[0]?.value || '',
-        name: profile.displayName,
-        photo: profile.photos?.[0]?.value || ''
+        email:    profile.emails?.[0]?.value || '',
+        name:     profile.displayName,
+        photo:    profile.photos?.[0]?.value || ''
       });
     }
     user.lastActive = new Date();
     await user.save();
     return done(null, user);
-  } catch (err) {
-    return done(err, null);
+  } catch (err) { 
+    return done(err, null); 
   }
 }));
 
-passport.serializeUser((user, done) => done(null, user._id));
+passport.serializeUser((u, done) => done(null, u._id));
 passport.deserializeUser(async (id, done) => {
-  try {
-    done(null, await User.findById(id));
-  } catch (e) {
-    done(e, null);
+  try { 
+    done(null, await User.findById(id)); 
+  } catch (e) { 
+    done(e, null); 
   }
 });
 
@@ -219,7 +148,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ══════════════════════════════════════════════════════════
-//  AUTHENTICATION MIDDLEWARE
+//  AUTH MIDDLEWARE
 // ══════════════════════════════════════════════════════════
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) return next();
@@ -246,20 +175,20 @@ function rateLimit(maxRequests, windowMs) {
     const key = req.user?._id?.toString() || req.ip;
     const now = Date.now();
     const bucket = (rateBuckets.get(key) || []).filter(t => now - t < windowMs);
-
+    
     if (bucket.length >= maxRequests) {
-      return res.status(429).json({
-        error: 'Too many requests. Please wait a moment and try again.'
+      return res.status(429).json({ 
+        error: 'Too many requests. Please wait a moment and try again.' 
       });
     }
-
+    
     bucket.push(now);
     rateBuckets.set(key, bucket);
     next();
   };
 }
 
-// Clean up old rate limit buckets every 5 minutes
+// Cleanup old entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of rateBuckets) {
@@ -270,40 +199,107 @@ setInterval(() => {
 }, 5 * 60000);
 
 // ══════════════════════════════════════════════════════════
-//  ADMIN MIDDLEWARE
+//  AI PROVIDER CONFIGURATION
 // ══════════════════════════════════════════════════════════
-const requireAdmin = (req, res, next) => {
-  if (process.env.ADMIN_KEY && req.query.key === process.env.ADMIN_KEY) {
-    return next();
+const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY || '';
+const OPENROUTER_KEYS = [
+  process.env.OPENROUTER_KEY_1, 
+  process.env.OPENROUTER_KEY_2, 
+  process.env.OPENROUTER_KEY_3
+].filter(Boolean);
+const GROQ_KEYS = [
+  process.env.GROQ_KEY_1, 
+  process.env.GROQ_KEY_2, 
+  process.env.GROQ_KEY_3
+].filter(Boolean);
+const GEMINI_KEYS = [
+  process.env.GEMINI_KEY_1, 
+  process.env.GEMINI_KEY_2, 
+  process.env.GEMINI_KEY_3
+].filter(Boolean);
+
+let orIdx = 0, grIdx = 0, gIdx = 0;
+
+const APP_REFERER = process.env.RENDER_EXTERNAL_URL || 'https://grind-ai.onrender.com';
+
+// ══════════════════════════════════════════════════════════
+//  TOKEN LIMIT & MODEL ROUTING CONFIGURATION
+// ══════════════════════════════════════════════════════════
+const TOKEN_LIMIT = 500000;
+
+// Model routing: Perplexity FIRST (when tokens < limit), then fallback to OpenRouter
+const MODEL_CONFIG = {
+  fast: {
+    primary: {
+      provider: 'perplexity',
+      model: 'sonar',
+      search: false
+    },
+    fallback: {
+      provider: 'openrouter',
+      model: 'openai/gpt-5.4-nano',
+      reasoning: false,
+      search: false
+    }
+  },
+  balanced: {
+    primary: {
+      provider: 'perplexity',
+      model: 'sonar',
+      search: true
+    },
+    fallback: {
+      provider: 'openrouter',
+      model: 'openai/gpt-5-mini',
+      reasoning: false,
+      search: false
+    }
+  },
+  deep: {
+    primary: {
+      provider: 'perplexity',
+      model: 'sonar-pro',
+      search: true
+    },
+    fallback: {
+      provider: 'openrouter',
+      model: 'openai/gpt-5.4-mini',
+      reasoning: true,
+      search: false
+    }
   }
-  res.status(403).json({ error: 'Forbidden' });
+};
+
+// Downgrade config (when token limit exceeded)
+const DOWNGRADE_CONFIG = {
+  provider: 'openrouter',
+  model: 'openai/gpt-5.4-nano',
+  reasoning: false,
+  search: false
 };
 
 // ══════════════════════════════════════════════════════════
-//  UTILITY FUNCTIONS
+//  AI PROVIDER HELPER FUNCTIONS
 // ══════════════════════════════════════════════════════════
 async function fetchWithTimeout(url, options, ms = 30000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
-
+  
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
+    const response = await fetch(url, { 
+      ...options, 
+      signal: controller.signal 
     });
     clearTimeout(timeout);
-
+    
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+      throw new Error(`${response.status} - ${text}`);
     }
-
+    
     return response;
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') {
-      throw new Error('Request timeout');
-    }
     throw err;
   }
 }
@@ -311,188 +307,18 @@ async function fetchWithTimeout(url, options, ms = 30000) {
 function extractTokensUsed(usage) {
   if (!usage) return 0;
   if (typeof usage.total_tokens === 'number') return usage.total_tokens;
-
-  const inputTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+  
+  const inputTokens  = usage.prompt_tokens ?? usage.input_tokens ?? 0;
   const outputTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
-
+  
   return inputTokens + outputTokens;
 }
 
-// ══════════════════════════════════════════════════════════
-//  IMAGE PROCESSING UTILITIES
-// ══════════════════════════════════════════════════════════
-async function processImage(buffer) {
-  try {
-    const processed = await sharp(buffer)
-      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    return processed.toString('base64');
-  } catch (error) {
-    console.error('Image processing error:', error);
-    throw new Error('Failed to process image');
-  }
-}
-
-async function extractTextFromImage(base64Image) {
-  try {
-    if (!GEMINI_KEYS.length) {
-      throw new Error('No Gemini API keys configured for OCR');
-    }
-
-    const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
-
-    const response = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            role: 'user',
-            parts: [
-              { text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' },
-              {
-                inline_data: {
-                  mime_type: 'image/jpeg',
-                  data: base64Image
-                }
-              }
-            ]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 4096
-          }
-        })
-      },
-      30000
-    );
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '[Text extraction failed]';
-  } catch (error) {
-    console.error('OCR error:', error);
-    return '[Image text extraction failed]';
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-//  PDF PROCESSING UTILITIES
-// ══════════════════════════════════════════════════════════
-async function extractTextFromPDF(buffer) {
-  try {
-    const data = await pdfParse(buffer);
-    return data.text || '';
-  } catch (error) {
-    console.error('PDF parsing error:', error);
-    throw new Error('Failed to extract text from PDF');
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-//  WEB SEARCH UTILITIES
-// ══════════════════════════════════════════════════════════
-async function webSearchTavily(query) {
-  if (!TAVILY_API_KEY) {
-    throw new Error('Tavily API key not configured');
-  }
-
-  try {
-    const response = await fetchWithTimeout(
-      'https://api.tavily.com/search',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${TAVILY_API_KEY}`
-        },
-        body: JSON.stringify({
-          query,
-          search_depth: 'basic',
-          include_answer: true,
-          include_domains: ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'],
-          max_results: 5
-        })
-      },
-      15000
-    );
-
-    const data = await response.json();
-    return {
-      answer: data.answer || '',
-      results: data.results || [],
-      sources: (data.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content }))
-    };
-  } catch (error) {
-    console.error('Tavily search error:', error);
-    return null;
-  }
-}
-
-async function webSearchSerper(query) {
-  if (!SERPER_API_KEY) {
-    throw new Error('Serper API key not configured');
-  }
-
-  try {
-    const response = await fetchWithTimeout(
-      'https://google.serper.dev/search',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': SERPER_API_KEY
-        },
-        body: JSON.stringify({
-          q: query,
-          num: 5
-        })
-      },
-      15000
-    );
-
-    const data = await response.json();
-    return {
-      answer: data.answerBox?.answer || '',
-      results: data.organic || [],
-      sources: (data.organic || []).slice(0, 5).map(r => ({
-        title: r.title,
-        url: r.link,
-        snippet: r.snippet
-      }))
-    };
-  } catch (error) {
-    console.error('Serper search error:', error);
-    return null;
-  }
-}
-
-async function performWebSearch(query) {
-  // Try Tavily first, fallback to Serper
-  let searchResult = null;
-
-  if (TAVILY_API_KEY) {
-    searchResult = await webSearchTavily(query);
-  }
-
-  if (!searchResult && SERPER_API_KEY) {
-    searchResult = await webSearchSerper(query);
-  }
-
-  return searchResult;
-}
-
-// ══════════════════════════════════════════════════════════
-//  AI PROVIDER FUNCTIONS
-// ══════════════════════════════════════════════════════════
+// ── Perplexity API Call ──
 async function callPerplexity(model, messages, systemPrompt, { search = true } = {}) {
-  if (!PERPLEXITY_KEYS.length) {
-    throw new Error('No Perplexity API keys configured');
+  if (!PERPLEXITY_KEY) {
+    throw new Error('PERPLEXITY_API_KEY not configured');
   }
-
-  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
 
   const payload = {
     model,
@@ -502,15 +328,14 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       { role: 'system', content: systemPrompt },
       ...messages
     ],
-    return_related_questions: false
+    return_related_questions: false,
+    search_domain_filter: search ? ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org'] : undefined
   };
 
-  // ✅ FIXED: Only add search filters when search is enabled
-  if (search) {
-    payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
-    payload.search_recency_filter = 'month';
+  // For non-search mode, explicitly disable search
+  if (!search) {
+    payload.search_recency_filter = 'none';
   }
-  // When search = false, don't add any search-related fields
 
   const response = await fetchWithTimeout(
     'https://api.perplexity.ai/chat/completions',
@@ -518,7 +343,7 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
+        'Authorization': `Bearer ${PERPLEXITY_KEY}`
       },
       body: JSON.stringify(payload)
     },
@@ -526,24 +351,24 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
   );
 
   const data = await response.json();
-
+  
   if (data.error) {
     throw new Error(data.error.message || 'Perplexity API error');
   }
 
   return {
     content: data.choices?.[0]?.message?.content || '',
-    usage: data.usage || {},
-    citations: data.citations || []
+    usage: data.usage || {}
   };
 }
 
+// ── OpenRouter API Call ──
 async function callOpenRouter(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
   if (!OPENROUTER_KEYS.length) {
     throw new Error('No OpenRouter keys configured');
   }
 
-  const key = OPENROUTER_KEYS[openrouterIdx++ % OPENROUTER_KEYS.length];
+  const key = OPENROUTER_KEYS[orIdx++ % OPENROUTER_KEYS.length];
 
   const payload = {
     model,
@@ -590,13 +415,12 @@ async function callOpenRouter(model, messages, systemPrompt, { reasoning = false
   };
 }
 
-async function callGroq(messages, systemPrompt) {
-  if (!GROQ_KEYS.length) {
-    throw new Error('No Groq keys configured');
-  }
-
-  const key = GROQ_KEYS[groqIdx++ % GROQ_KEYS.length];
-
+// ── Groq Fallback (for legacy endpoints) ──
+async function callGroq(messages, prompt) {
+  if (!GROQ_KEYS.length) throw new Error('No Groq keys configured');
+  
+  const key = GROQ_KEYS[grIdx++ % GROQ_KEYS.length];
+  
   const response = await fetchWithTimeout(
     'https://api.groq.com/openai/v1/chat/completions',
     {
@@ -610,33 +434,25 @@ async function callGroq(messages, systemPrompt) {
         max_tokens: 4096,
         temperature: 0.4,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: prompt },
           ...messages
         ]
       })
-    },
-    30000
+    }
   );
 
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message || 'Groq API error');
-  }
-
-  return {
-    content: data.choices?.[0]?.message?.content || '',
-    usage: data.usage || {}
-  };
+  if (data.error) throw new Error(data.error.message);
+  
+  return data.choices[0].message.content;
 }
 
-async function callGemini(messages, systemPrompt, imageBase64 = null) {
-  if (!GEMINI_KEYS.length) {
-    throw new Error('No Gemini keys configured');
-  }
-
-  const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
-
+// ── Gemini Fallback (for legacy endpoints) ──
+async function callGemini(messages, prompt, imageBase64 = null) {
+  if (!GEMINI_KEYS.length) throw new Error('No Gemini keys configured');
+  
+  const key = GEMINI_KEYS[gIdx++ % GEMINI_KEYS.length];
+  
   const contents = messages.map(msg => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: msg.content }]
@@ -655,172 +471,63 @@ async function callGemini(messages, systemPrompt, imageBase64 = null) {
   }
 
   const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
+        system_instruction: { parts: [{ text: prompt }] },
         contents,
         generationConfig: {
           temperature: 0.4,
           maxOutputTokens: 4096
         }
       })
-    },
-    30000
+    }
   );
 
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(data.error.message || 'Gemini API error');
-  }
-
-  return {
-    content: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
-    usage: data.usageMetadata || {}
-  };
+  if (data.error) throw new Error(data.error.message);
+  
+  return data.candidates[0].content.parts[0].text;
 }
 
-// ══════════════════════════════════════════════════════════
-//  FALLBACK CHAIN CONFIGURATION
-// ══════════════════════════════════════════════════════════
-const FALLBACK_CHAIN = {
-  fast: [
-    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    { provider: 'perplexity', model: 'sonar-pro', search: false, name: 'Perplexity Sonar Pro' },
-    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: false, name: 'GPT-4o Mini' },
-    { provider: 'openrouter', model: 'anthropic/claude-3-haiku', reasoning: false, search: false, name: 'Claude 3 Haiku' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
-  ],
-
-  balanced: [
-    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
-    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Search)' },
-    { provider: 'perplexity', model: 'sonar', search: false, name: 'Perplexity Sonar' },
-    { provider: 'openrouter', model: 'openai/gpt-4o-mini', reasoning: false, search: true, name: 'GPT-4o Mini (Search)' },
-    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: false, search: false, name: 'Claude 3.5 Sonnet' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
-  ],
-
-  deep: [
-    { provider: 'perplexity', model: 'sonar-pro', search: true, name: 'Perplexity Sonar Pro (Deep Search)' },
-    { provider: 'perplexity', model: 'sonar', search: true, name: 'Perplexity Sonar (Search)' },
-    { provider: 'openrouter', model: 'openai/o1-mini', reasoning: true, search: false, name: 'O1 Mini (Reasoning)' },
-    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', reasoning: true, search: true, name: 'Claude 3.5 Sonnet (Deep)' },
-    { provider: 'openrouter', model: 'google/gemini-pro-1.5', reasoning: false, search: true, name: 'Gemini Pro (Search)' },
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-    { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' }
-  ]
-};
-
-const EMERGENCY_DOWNGRADE_CHAIN = [
-  { provider: 'openrouter', model: 'meta-llama/llama-3.2-3b-instruct', reasoning: false, search: false, name: 'Emergency: Llama 3.2 3B' },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Emergency: Groq Llama' },
-  { provider: 'gemini', model: 'gemini-2.0-flash-exp', name: 'Emergency: Gemini Flash' }
-];
-
-// ══════════════════════════════════════════════════════════
-//  UNIFIED AI CALL WITH FALLBACK
-// ══════════════════════════════════════════════════════════
-async function callAIWithFallback(config, messages, systemPrompt, imageBase64 = null) {
-  const { provider, model, reasoning, search, name } = config;
-
-  console.log(`🤖 Attempting: ${name || `${provider}/${model}`}`);
-
-  try {
-    let result;
-
-    switch (provider) {
-      case 'perplexity':
-        result = await callPerplexity(model, messages, systemPrompt, { search });
-        break;
-
-      case 'openrouter':
-        result = await callOpenRouter(model, messages, systemPrompt, { reasoning, search });
-        break;
-
-      case 'groq':
-        result = await callGroq(messages, systemPrompt);
-        break;
-
-      case 'gemini':
-        result = await callGemini(messages, systemPrompt, imageBase64);
-        break;
-
-      default:
-        throw new Error(`Unknown provider: ${provider}`);
-    }
-
-    console.log(`✅ Success: ${name || `${provider}/${model}`}`);
-    return { ...result, providerUsed: name || `${provider}/${model}` };
-
-  } catch (error) {
-    console.error(`❌ Failed: ${name || `${provider}/${model}`} - ${error.message}`);
-    throw error;
-  }
-}
-
-async function getAIResponse(messages, systemPrompt, mode = 'balanced', tokenLimitExceeded = false, imageBase64 = null) {
-  const chain = tokenLimitExceeded
-    ? EMERGENCY_DOWNGRADE_CHAIN
-    : FALLBACK_CHAIN[mode] || FALLBACK_CHAIN.balanced;
-
-  const errors = [];
-
-  for (let i = 0; i < chain.length; i++) {
-    const config = chain[i];
-
-    try {
-      const result = await callAIWithFallback(config, messages, systemPrompt, imageBase64);
-
-      return {
-        success: true,
-        content: result.content,
-        usage: result.usage,
-        provider: result.providerUsed,
-        model: config.model,
-        wasDowngraded: tokenLimitExceeded,
-        attemptNumber: i + 1,
-        totalAttempts: chain.length,
-        citations: result.citations
-      };
-
-    } catch (error) {
-      errors.push({
-        provider: config.name || `${config.provider}/${config.model}`,
-        error: error.message
-      });
-
-      console.log(`🔄 Falling back... (${i + 1}/${chain.length} failed)`);
-
-      if (i < chain.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+// ── Unified AI Call with Intelligent Routing ──
+async function callUnifiedAI(config, messages, systemPrompt) {
+  if (config.provider === 'perplexity') {
+    return await callPerplexity(
+      config.model,
+      messages,
+      systemPrompt,
+      { search: config.search }
+    );
+  } else if (config.provider === 'openrouter') {
+    return await callOpenRouter(
+      config.model,
+      messages,
+      systemPrompt,
+      {
+        reasoning: config.reasoning,
+        search: config.search
       }
-    }
+    );
   }
-
-  console.error('❌ ALL PROVIDERS FAILED:', errors);
-  throw new Error(
-    `All ${chain.length} AI providers failed. Last error: ${errors[errors.length - 1]?.error || 'Unknown'}`
-  );
+  
+  throw new Error('Unknown provider');
 }
 
 // ══════════════════════════════════════════════════════════
-//  SYSTEM PROMPT BUILDER
+//  SYSTEM PROMPT
 // ══════════════════════════════════════════════════════════
-function buildSystemPrompt(user, mode = 'balanced', hasAttachment = false) {
+function buildSystemPrompt(user, mode = 'balanced') {
   const name = user?.name?.split(' ')[0] || 'there';
   const speedMap = {
-    fast: 'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
+    fast:     'SHORT and direct — 2-4 sentences unless the question genuinely needs a derivation.',
     balanced: 'Medium length — full explanation, no filler, no repeated caveats.',
-    deep: 'DEEP — complete derivations, common traps, and one adjacent worked example with step-by-step reasoning.'
+    deep:     'DEEP — complete derivations, common traps, and one adjacent worked example with step-by-step reasoning.'
   };
 
-  let prompt = `You are GRIND, operating as 'AIR-1 Ranker AI' — an elite AI mentor for Indian JEE and NEET aspirants.
+  return `You are GRIND, operating as 'AIR-1 Ranker AI' — an elite AI mentor for Indian JEE and NEET aspirants.
 
 STUDENT PROFILE
 Name: ${name} | Exam: ${user?.exam || 'JEE/NEET'} | Class: ${user?.class || 'not set'}
@@ -855,31 +562,360 @@ GROUNDING & SOURCES
 Reference standard texts naturally:
 - Physics: HC Verma, Irodov, DC Pandey
 - Chemistry: MS Chouhan (Org), N Awasthi (Phys), NCERT (Inorg)
-- Biology: NCERT (primary source for NEET)`;
+- Biology: NCERT (primary source for NEET)
 
-  if (hasAttachment) {
-    prompt += `\n\nATTACHMENT HANDLING
-- The student has shared an image or PDF document
-- Carefully analyze all visible text, equations, diagrams, and handwritten content
-- If it's a question, solve it step-by-step
-- If it contains errors, point them out constructively
-- If it's notes, help clarify or expand concepts`;
-  }
+If photo attached, transcribe relevant part first, then correct/solve.
 
-  prompt += `\n\nHARD RULES
+HARD RULES
 - Only authenticated students use you
 - Mirror student's language (Hinglish stays Hinglish)
 - Keep paragraphs under 10-20 sentences; use line breaks/steps
 - Be encouraging but intellectually honest`;
+}
 
-  return prompt;
+// ══════════════════════════════════════════════════════════
+//  MAIN DOUBT-SOLVING ENDPOINT
+// ══════════════════════════════════════════════════════════
+app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
+  try {
+    const { message, mode, sessionId } = req.body;
+
+    // Validate input
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({
+        success: false,
+        answer: null,
+        limitWarning: false,
+        message: 'A question is required.',
+        tokensUsedSession: req.user?.totalTokensConsumed || 0
+      });
+    }
+
+    // Fetch fresh user from database
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User not found.' 
+      });
+    }
+
+    await enforcePlanExpiry(user);
+
+    // Determine mode
+    const requestedMode = ['fast', 'balanced', 'deep'].includes(mode) ? mode : 'balanced';
+    
+    // Check if user can access deep mode
+    if (requestedMode === 'deep' && !user.isPro) {
+      return res.status(402).json({
+        success: false,
+        answer: null,
+        limitWarning: false,
+        message: 'Deep reasoning mode requires Pro subscription.',
+        tokensUsedSession: user.totalTokensConsumed || 0
+      });
+    }
+
+    let activeConfig;
+    let wasDowngraded = false;
+    let providerUsed;
+
+    // TOKEN LIMIT CHECK & ROUTING LOGIC
+    if (user.totalTokensConsumed >= TOKEN_LIMIT) {
+      // OVER LIMIT → Force downgrade to cheapest model
+      activeConfig = DOWNGRADE_CONFIG;
+      wasDowngraded = true;
+      providerUsed = 'openrouter-downgrade';
+    } else {
+      // UNDER LIMIT → Try Perplexity first, fallback to OpenRouter
+      const modeConfig = MODEL_CONFIG[requestedMode];
+      
+      // Try primary (Perplexity) first
+      if (PERPLEXITY_KEY) {
+        activeConfig = modeConfig.primary;
+        providerUsed = 'perplexity';
+      } else {
+        // No Perplexity key → use fallback (OpenRouter)
+        activeConfig = modeConfig.fallback;
+        providerUsed = 'openrouter-fallback';
+      }
+    }
+
+    const systemPrompt = buildSystemPrompt(user, requestedMode);
+    const messages = [{ role: 'user', content: message }];
+
+    let aiResult;
+    let finalProvider = providerUsed;
+
+    try {
+      // Try primary provider
+      aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+    } catch (primaryErr) {
+      console.error(`❌ ${providerUsed} failed:`, primaryErr.message);
+      
+      // Fallback logic
+      if (!wasDowngraded && providerUsed === 'perplexity') {
+        // Perplexity failed → try OpenRouter fallback
+        console.log('🔄 Falling back to OpenRouter...');
+        const modeConfig = MODEL_CONFIG[requestedMode];
+        activeConfig = modeConfig.fallback;
+        finalProvider = 'openrouter-fallback';
+        
+        try {
+          aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+        } catch (fallbackErr) {
+          console.error('❌ OpenRouter fallback failed:', fallbackErr.message);
+          // Last resort: use downgrade config
+          activeConfig = DOWNGRADE_CONFIG;
+          wasDowngraded = true;
+          finalProvider = 'openrouter-emergency';
+          aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+        }
+      } else {
+        // Already using fallback/downgrade → last resort
+        activeConfig = DOWNGRADE_CONFIG;
+        wasDowngraded = true;
+        finalProvider = 'openrouter-emergency';
+        aiResult = await callUnifiedAI(activeConfig, messages, systemPrompt);
+      }
+    }
+
+    const { content: answer, usage } = aiResult;
+
+    // Extract and accumulate tokens
+    const tokensUsed = extractTokensUsed(usage);
+    user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
+    user.lastActive = new Date();
+    await user.save();
+
+    // Save to session if provided
+    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
+      try {
+        await ChatSession.updateOne(
+          { _id: sessionId, userId: user._id },
+          {
+            $push: {
+              messages: {
+                $each: [
+                  { role: 'user', content: message },
+                  { 
+                    role: 'assistant', 
+                    content: answer, 
+                    model: `${activeConfig.model} (${finalProvider})` 
+                  }
+                ]
+              }
+            },
+            $set: { updatedAt: new Date() }
+          }
+        );
+      } catch (e) {
+        console.error('Session save error:', e.message);
+      }
+    }
+
+    // Response
+    return res.json({
+      success: true,
+      answer,
+      limitWarning: wasDowngraded,
+      message: wasDowngraded
+        ? 'Token limit reached. Automatically switched to lightweight model to keep costs manageable.'
+        : null,
+      tokensUsedSession: user.totalTokensConsumed,
+      tokensUsedThisCall: tokensUsed,
+      provider: finalProvider,
+      model: activeConfig.model
+    });
+
+  } catch (err) {
+    console.error('❌ /api/solve-doubt error:', err.message);
+    return res.status(500).json({
+      success: false,
+      answer: null,
+      limitWarning: false,
+      message: 'GRIND encountered an error. Please try again in a moment.',
+      tokensUsedSession: req.user?.totalTokensConsumed || 0
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  LEGACY CHAT STREAM ENDPOINT (for backwards compatibility)
+// ══════════════════════════════════════════════════════════
+async function consumeOpenAIStreamLines(response, onLine) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '', fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const data = trimmed.slice(5).trim();
+      if (data === '[DONE]') continue;
+      
+      try {
+        const json = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullText += delta;
+          let newlineIndex;
+          while ((newlineIndex = fullText.indexOf('\n')) !== -1) {
+            const lineToEmit = fullText.slice(0, newlineIndex + 1);
+            fullText = fullText.slice(newlineIndex + 1);
+            onLine(lineToEmit);
+          }
+        }
+      } catch (e) { /* partial chunk */ }
+    }
+  }
+
+  if (fullText) onLine(fullText);
+}
+
+async function streamLines(text, onLine) {
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    onLine(lines[i] + (i < lines.length - 1 ? '\n' : ''));
+    await new Promise(r => setTimeout(r, 10));
+  }
+  return text;
+}
+
+async function getReplyLegacy(messages, prompt, imageBase64 = null) {
+  const attempts = [
+    () => callGemini(messages, prompt, imageBase64),
+    () => callGroq(messages, prompt)
+  ];
+  
+  let lastErr;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (e) {
+      lastErr = e;
+      console.log('❌ legacy provider failed:', e.message);
+    }
+  }
+  
+  throw lastErr || new Error('ALL_PROVIDERS_EXHAUSTED');
+}
+
+app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
+  const { messages, sessionId, imageBase64 } = req.body;
+  
+  if (!messages || !Array.isArray(messages) || !messages.length) {
+    return res.status(400).json({ error: 'Invalid request.' });
+  }
+
+  const user = await enforcePlanExpiry(req.user);
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  const abortController = new AbortController();
+  req.on('close', () => abortController.abort());
+
+  try {
+    const recent = messages.slice(-20);
+
+    send('thinking', { step: 'Reading your question…' });
+    await sleep(120);
+    send('thinking', { step: 'Identifying core concept…' });
+    await sleep(140);
+
+    const prompt = buildSystemPrompt(user, user.responseSpeed || 'balanced');
+    
+    let fullReply = '';
+    const onLine = (line) => {
+      if (!fullReply) send('answer_start', {});
+      fullReply += line;
+      send('chunk', { text: line });
+    };
+
+    const text = await getReplyLegacy(recent, prompt, imageBase64);
+    await streamLines(text, onLine);
+
+    // Persist to session
+    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
+      try {
+        const userMsg = messages[messages.length - 1];
+        const existing = await ChatSession.findOne({ 
+          _id: sessionId, 
+          userId: user._id 
+        }).select('messages').lean();
+        
+        const title = existing && existing.messages.length === 0 
+          ? (userMsg.content || 'Image question').slice(0, 50) 
+          : undefined;
+
+        await ChatSession.updateOne(
+          { _id: sessionId, userId: user._id },
+          {
+            $push: {
+              messages: {
+                $each: [
+                  { role: 'user', content: userMsg.content },
+                  { role: 'assistant', content: fullReply, model: 'fallback' }
+                ]
+              }
+            },
+            $set: { 
+              updatedAt: new Date(), 
+              ...(title ? { title } : {}) 
+            }
+          }
+        );
+      } catch (e) {
+        console.error('Session save:', e.message);
+      }
+    }
+
+    send('done', { reply: fullReply, model: 'fallback' });
+    res.end();
+    
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      res.end();
+      return;
+    }
+    console.error('Stream error:', err.message);
+    send('error', { error: 'GRIND is taking a short break. Please try again.' });
+    res.end();
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  HEALTH CHECK & KEEP-ALIVE
+// ══════════════════════════════════════════════════════════
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
+app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
+
+if (process.env.RENDER_EXTERNAL_URL) {
+  setInterval(() => {
+    fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => {});
+  }, 10 * 60 * 1000);
 }
 
 // ══════════════════════════════════════════════════════════
 //  AUTH ROUTES
 // ══════════════════════════════════════════════════════════
-app.get('/auth/google', passport.authenticate('google', {
-  scope: ['profile', 'email']
+app.get('/auth/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'] 
 }));
 
 app.get('/auth/google/callback',
@@ -914,9 +950,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
       planExpiresAt: u.planExpiresAt,
       totalTokensConsumed: u.totalTokensConsumed || 0,
       tokenLimit: TOKEN_LIMIT,
-      perplexityConfigured: PERPLEXITY_KEYS.length > 0,
-      totalProviders: PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length,
-      webSearchAvailable: !!(TAVILY_API_KEY || SERPER_API_KEY)
+      perplexityConfigured: !!PERPLEXITY_KEY
     }
   });
 });
@@ -924,7 +958,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
 app.post('/api/user/onboard', requireAuth, async (req, res) => {
   try {
     const { exam, class: cls, coaching, biggestStruggle } = req.body;
-
+    
     if (!exam || !cls) {
       return res.status(400).json({ error: 'Exam and class are required.' });
     }
@@ -970,350 +1004,194 @@ app.post('/api/user/settings', requireAuth, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-//  FILE UPLOAD ENDPOINT
+//  SUBSCRIPTION & PROMO CODE ROUTES
 // ══════════════════════════════════════════════════════════
-app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file'), async (req, res) => {
+const PLAN_DURATIONS_MS = {
+  weekly: 7 * 86400000,
+  monthly: 30 * 86400000
+};
+
+app.post('/api/user/upgrade', requireAuth, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    const { plan, promoCode } = req.body;
+    
+    if (!PLAN_DURATIONS_MS[plan]) {
+      return res.status(400).json({ error: 'Unknown plan.' });
     }
 
-    const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'pdf';
-    let extractedText = '';
-    let base64Data = '';
+    let durationMs = PLAN_DURATIONS_MS[plan];
+    let promoApplied = null;
 
-    if (fileType === 'image') {
-      base64Data = await processImage(req.file.buffer);
-      extractedText = await extractTextFromImage(base64Data);
-    } else if (fileType === 'pdf') {
-      extractedText = await extractTextFromPDF(req.file.buffer);
-    }
-
-    res.json({
-      success: true,
-      file: {
-        type: fileType,
-        filename: req.file.originalname,
-        extractedText,
-        base64: fileType === 'image' ? base64Data : null
+    if (promoCode) {
+      const applied = await applyPromoCode(req.user, promoCode);
+      if (applied.ok) {
+        durationMs += applied.bonusDays * 86400000;
+        promoApplied = applied.code;
+      } else {
+        return res.status(400).json({ error: applied.error });
       }
+    }
+
+    const expires = new Date(Date.now() + durationMs);
+    await User.findByIdAndUpdate(req.user._id, {
+      isPro: true,
+      planType: plan,
+      planExpiresAt: expires
     });
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({
-      error: 'Failed to process file',
-      details: error.message
-    });
-  }
-});
-
-// ══════════════════════════════════════════════════════════
-//  WEB SEARCH ENDPOINT
-// ══════════════════════════════════════════════════════════
-app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) => {
-  try {
-    const { query } = req.body;
-
-    if (!query || !query.trim()) {
-      return res.status(400).json({ error: 'Search query required' });
-    }
-
-    if (!TAVILY_API_KEY && !SERPER_API_KEY) {
-      return res.status(503).json({
-        error: 'Web search not configured',
-        message: 'No search API keys available'
-      });
-    }
-
-    const searchResult = await performWebSearch(query);
-
-    if (!searchResult) {
-      return res.status(503).json({
-        error: 'Web search temporarily unavailable',
-        fallback: 'Try asking the AI directly without web search'
-      });
-    }
 
     res.json({
       success: true,
-      answer: searchResult.answer,
-      sources: searchResult.sources,
-      results: searchResult.results
+      planType: plan,
+      planExpiresAt: expires,
+      promoApplied,
+      testMode: true
     });
-  } catch (error) {
-    console.error('Web search error:', error);
-    res.status(500).json({
-      error: 'Search failed',
-      details: error.message
-    });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not start upgrade.' });
   }
 });
 
-// ══════════════════════════════════════════════════════════
-//  DOUBT SOLVING ENDPOINT
-// ══════════════════════════════════════════════════════════
-app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res) => {
+app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
   try {
-    const { message, mode, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
+    const { code } = req.body;
+    
+    if (!code || !code.trim()) {
+      return res.status(400).json({ error: 'Enter a code.' });
+    }
 
-    if (!message || !String(message).trim()) {
-      return res.status(400).json({
-        success: false,
-        answer: null,
-        limitWarning: false,
-        message: 'A question is required.',
-        tokensUsedSession: req.user?.totalTokensConsumed || 0
-      });
+    const applied = await applyPromoCode(req.user, code);
+    if (!applied.ok) {
+      return res.status(400).json({ error: applied.error });
     }
 
     const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'User not found.'
-      });
-    }
+    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date()
+      ? new Date(user.planExpiresAt)
+      : new Date();
 
-    await enforcePlanExpiry(user);
-
-    const requestedMode = ['fast', 'balanced', 'deep'].includes(mode) ? mode : 'balanced';
-
-    if (requestedMode === 'deep' && !user.isPro) {
-      return res.status(402).json({
-        success: false,
-        answer: null,
-        limitWarning: false,
-        message: 'Deep reasoning mode requires Pro subscription.',
-        tokensUsedSession: user.totalTokensConsumed || 0
-      });
-    }
-
-    const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
-
-    // Enhance message with extracted content
-    let enhancedMessage = message;
-    const attachments = [];
-
-    if (pdfText && pdfText.trim()) {
-      enhancedMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
-      attachments.push({ type: 'pdf', extractedText: pdfText });
-    }
-
-    if (imageBase64) {
-      enhancedMessage += '\n\n[Image attached - analyzing visual content]';
-      attachments.push({ type: 'image' });
-    }
-
-    // Perform web search if enabled
-    let webSearchContext = '';
-    let searchSources = [];
-
-    if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
-      try {
-        const searchResult = await performWebSearch(message);
-        if (searchResult) {
-          webSearchContext = `\n\n[Web Search Results]:\n${searchResult.answer}\n\nSources: ${searchResult.sources.map(s => `${s.title} (${s.url})`).join(', ')}`;
-          searchSources = searchResult.sources;
-        }
-      } catch (e) {
-        console.error('Web search failed:', e.message);
-      }
-    }
-
-    if (webSearchContext) {
-      enhancedMessage += webSearchContext;
-    }
-
-    const systemPrompt = buildSystemPrompt(user, requestedMode, attachments.length > 0);
-    const messages = [{ role: 'user', content: enhancedMessage }];
-
-    const aiResult = await getAIResponse(
-      messages,
-      systemPrompt,
-      requestedMode,
-      tokenLimitExceeded,
-      imageBase64 || null
-    );
-
-    const tokensUsed = extractTokensUsed(aiResult.usage);
-    user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
-    user.lastActive = new Date();
+    const expires = new Date(base.getTime() + applied.bonusDays * 86400000);
+    user.isPro = true;
+    user.planType = user.planType || 'promo';
+    user.planExpiresAt = expires;
     await user.save();
 
-    // Save to session if provided
-    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
-      try {
-        await ChatSession.updateOne(
-          { _id: sessionId, userId: user._id },
-          {
-            $push: {
-              messages: {
-                $each: [
-                  { role: 'user', content: message, attachments },
-                  {
-                    role: 'assistant',
-                    content: aiResult.content,
-                    model: aiResult.provider
-                  }
-                ]
-              }
-            },
-            $set: { updatedAt: new Date() }
-          }
-        );
-      } catch (e) {
-        console.error('Session save error:', e.message);
-      }
-    }
-
-    const response = {
+    res.json({
       success: true,
-      answer: aiResult.content,
-      limitWarning: aiResult.wasDowngraded,
-      message: aiResult.wasDowngraded
-        ? 'Token limit reached. Using cost-effective model.'
-        : null,
-      tokensUsedSession: user.totalTokensConsumed,
-      tokensUsedThisCall: tokensUsed,
-      provider: aiResult.provider,
-      model: aiResult.model,
-      attemptNumber: aiResult.attemptNumber,
-      totalAttempts: aiResult.totalAttempts,
-      hasAttachments: attachments.length > 0,
-      webSearchUsed: searchSources.length > 0
-    };
-
-    if (aiResult.citations && aiResult.citations.length > 0) {
-      response.citations = aiResult.citations;
-    }
-
-    if (searchSources.length > 0) {
-      response.searchSources = searchSources;
-    }
-
-    return res.json(response);
-
+      bonusDays: applied.bonusDays,
+      planExpiresAt: expires
+    });
   } catch (err) {
-    console.error('❌ /api/solve-doubt error:', err.message);
-    return res.status(500).json({
-      success: false,
-      answer: null,
-      limitWarning: false,
-      message: 'All AI providers are currently unavailable. Please try again in a moment.',
-      error: err.message,
-      tokensUsedSession: req.user?.totalTokensConsumed || 0
+    res.status(500).json({ error: 'Could not redeem code.' });
+  }
+});
+
+async function applyPromoCode(reqUser, rawCode) {
+  const code = rawCode.trim().toUpperCase();
+  
+  if (reqUser.promoRedeemed?.includes(code)) {
+    return { ok: false, error: 'You have already used this code.' };
+  }
+
+  const promo = await PromoCode.findOne({ code });
+  if (!promo || !promo.active) {
+    return { ok: false, error: 'Invalid or inactive promo code.' };
+  }
+
+  if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+    return { ok: false, error: 'This promo code has expired.' };
+  }
+
+  if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) {
+    return { ok: false, error: 'This promo code has been fully redeemed.' };
+  }
+
+  const updateFilter = {
+    code,
+    active: true,
+    ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {})
+  };
+
+  const updated = await PromoCode.findOneAndUpdate(
+    updateFilter,
+    { $inc: { redeemedCount: 1 } },
+    { new: true }
+  );
+
+  if (!updated) {
+    return { ok: false, error: 'This promo code just ran out. Try another.' };
+  }
+
+  await User.findByIdAndUpdate(reqUser._id, {
+    $addToSet: { promoRedeemed: code }
+  });
+
+  return { ok: true, bonusDays: promo.bonusDays, code };
+}
+
+// ══════════════════════════════════════════════════════════
+//  ADMIN: PROMO CODE MANAGEMENT
+// ══════════════════════════════════════════════════════════
+const requireAdmin = (req, res, next) => {
+  if (process.env.ADMIN_KEY && req.query.key === process.env.ADMIN_KEY) {
+    return next();
+  }
+  res.status(403).json({ error: 'Forbidden' });
+};
+
+app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
+  try {
+    const { code, bonusDays, maxRedemptions, expiresAt, note } = req.body;
+    
+    if (!code || !bonusDays) {
+      return res.status(400).json({ error: 'code and bonusDays are required.' });
+    }
+
+    const promo = await PromoCode.create({
+      code: code.trim().toUpperCase(),
+      bonusDays,
+      maxRedemptions: maxRedemptions || 0,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      note: note || ''
+    });
+
+    res.json({ promo });
+  } catch (e) {
+    res.status(500).json({
+      error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.'
     });
   }
 });
 
-// ══════════════════════════════════════════════════════════
-//  CHAT STREAM ENDPOINT
-// ══════════════════════════════════════════════════════════
-app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
-  const { messages, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
-
-  if (!messages || !Array.isArray(messages) || !messages.length) {
-    return res.status(400).json({ error: 'Invalid request.' });
-  }
-
-  const user = await enforcePlanExpiry(req.user);
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-
-  const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
+app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
   try {
-    const recent = messages.slice(-20);
-
-    // Enhance last message
-    let lastMessage = recent[recent.length - 1].content;
-
-    if (pdfText) {
-      lastMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
-    }
-
-    if (imageBase64) {
-      lastMessage += '\n\n[Image attached]';
-    }
-
-    if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
-      send('thinking', { step: 'Searching the web…' });
-      try {
-        const searchResult = await performWebSearch(lastMessage);
-        if (searchResult) {
-          lastMessage += `\n\n[Web Results]: ${searchResult.answer}`;
-        }
-      } catch (e) {
-        console.error('Search failed in stream');
-      }
-      await sleep(200);
-    }
-
-    recent[recent.length - 1].content = lastMessage;
-
-    send('thinking', { step: 'Reading your question…' });
-    await sleep(120);
-    send('thinking', { step: 'Analyzing with AI…' });
-    await sleep(140);
-
-    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', !!(imageBase64 || pdfText));
-    const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
-
-    const aiResult = await getAIResponse(
-      recent,
-      systemPrompt,
-      user.responseSpeed || 'balanced',
-      tokenLimitExceeded,
-      imageBase64 || null
-    );
-
-    send('answer_start', {});
-
-    const lines = aiResult.content.split('\n');
-    for (const line of lines) {
-      send('chunk', { text: line + '\n' });
-      await sleep(10);
-    }
-
-    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
-      try {
-        const userMsg = messages[messages.length - 1];
-        await ChatSession.updateOne(
-          { _id: sessionId, userId: user._id },
-          {
-            $push: {
-              messages: {
-                $each: [
-                  { role: 'user', content: userMsg.content },
-                  { role: 'assistant', content: aiResult.content, model: aiResult.provider }
-                ]
-              }
-            },
-            $set: { updatedAt: new Date() }
-          }
-        );
-      } catch (e) {
-        console.error('Session save:', e.message);
-      }
-    }
-
-    send('done', { reply: aiResult.content, model: aiResult.provider });
-    res.end();
-
+    res.json({
+      promoCodes: await PromoCode.find().sort({ createdAt: -1 })
+    });
   } catch (err) {
-    console.error('Stream error:', err.message);
-    send('error', { error: 'All AI providers failed. Please try again.' });
-    res.end();
+    res.status(500).json({ error: 'Could not load.' });
+  }
+});
+
+app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
+  try {
+    const promo = await PromoCode.findOneAndUpdate(
+      { code: req.params.code.toUpperCase() },
+      req.body,
+      { new: true }
+    );
+    
+    if (!promo) {
+      return res.status(404).json({ error: 'Not found.' });
+    }
+
+    res.json({ promo });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update.' });
   }
 });
 
 // ══════════════════════════════════════════════════════════
-//  SESSION ROUTES
+//  SESSION MANAGEMENT ROUTES
 // ══════════════════════════════════════════════════════════
 app.get('/api/sessions', requireAuth, async (req, res) => {
   try {
@@ -1493,228 +1371,34 @@ app.delete('/api/notes/:id', requireAuth, async (req, res) => {
 app.post('/api/notes/ai-assist', requireAuth, rateLimit(15, 60000), async (req, res) => {
   try {
     const { content, action } = req.body;
-
+    
     if (!content || !content.trim()) {
       return res.status(400).json({ error: 'No content provided.' });
     }
 
     const actionPrompts = {
-      improve: 'Improve clarity, flow and grammar. Keep meaning and length similar. Keep LaTeX/markdown intact.',
-      summarize: 'Summarize into a tight, high-yield bullet summary. Keep key formulas in LaTeX.',
-      expand: 'Expand with more detail and examples useful for a JEE/NEET student. Use LaTeX for all math.',
+      improve:     'Improve clarity, flow and grammar. Keep meaning and length similar. Keep LaTeX/markdown intact.',
+      summarize:   'Summarize into a tight, high-yield bullet summary. Keep key formulas in LaTeX.',
+      expand:      'Expand with more detail and examples useful for a JEE/NEET student. Use LaTeX for all math.',
       fix_grammar: 'Fix all spelling and grammar. Do not change meaning or formatting.',
-      bullets: 'Convert into clean, well-organized bullet points. Keep LaTeX intact.',
-      explain: 'Explain this simply, as if teaching a confused student. Use analogies and LaTeX for math.'
+      bullets:     'Convert into clean, well-organized bullet points. Keep LaTeX intact.',
+      explain:     'Explain this simply, as if teaching a confused student. Use analogies and LaTeX for math.'
     };
 
     const instruction = actionPrompts[action] || actionPrompts.improve;
     const prompt = `You are a study-notes assistant for a JEE/NEET student.\nTask: ${instruction}\nRespond with ONLY the rewritten text — no preamble, no code fences. Use $inline$ and \\[block\\] LaTeX.`;
 
-    const result = await getAIResponse(
+    const result = await getReplyLegacy(
       [{ role: 'user', content }],
-      prompt,
-      'fast',
-      false
+      prompt
     );
 
-    res.json({ result: result.content.trim() });
+    res.json({ result: result.trim() });
   } catch (e) {
     console.error('Notes AI assist:', e.message);
     res.status(500).json({ error: 'AI assist failed. Try again.' });
   }
 });
-
-// ══════════════════════════════════════════════════════════
-//  SUBSCRIPTION & PROMO CODE ROUTES
-// ══════════════════════════════════════════════════════════
-const PLAN_DURATIONS_MS = {
-  weekly: 7 * 86400000,
-  monthly: 30 * 86400000
-};
-
-app.post('/api/user/upgrade', requireAuth, async (req, res) => {
-  try {
-    const { plan, promoCode } = req.body;
-
-    if (!PLAN_DURATIONS_MS[plan]) {
-      return res.status(400).json({ error: 'Unknown plan.' });
-    }
-
-    let durationMs = PLAN_DURATIONS_MS[plan];
-    let promoApplied = null;
-
-    if (promoCode) {
-      const applied = await applyPromoCode(req.user, promoCode);
-      if (applied.ok) {
-        durationMs += applied.bonusDays * 86400000;
-        promoApplied = applied.code;
-      } else {
-        return res.status(400).json({ error: applied.error });
-      }
-    }
-
-    const expires = new Date(Date.now() + durationMs);
-    await User.findByIdAndUpdate(req.user._id, {
-      isPro: true,
-      planType: plan,
-      planExpiresAt: expires
-    });
-
-    res.json({
-      success: true,
-      planType: plan,
-      planExpiresAt: expires,
-      promoApplied,
-      testMode: true
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not start upgrade.' });
-  }
-});
-
-app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
-  try {
-    const { code } = req.body;
-
-    if (!code || !code.trim()) {
-      return res.status(400).json({ error: 'Enter a code.' });
-    }
-
-    const applied = await applyPromoCode(req.user, code);
-    if (!applied.ok) {
-      return res.status(400).json({ error: applied.error });
-    }
-
-    const user = await User.findById(req.user._id);
-    const base = user.isPro && user.planExpiresAt && new Date(user.planExpiresAt) > new Date()
-      ? new Date(user.planExpiresAt)
-      : new Date();
-
-    const expires = new Date(base.getTime() + applied.bonusDays * 86400000);
-    user.isPro = true;
-    user.planType = user.planType || 'promo';
-    user.planExpiresAt = expires;
-    await user.save();
-
-    res.json({
-      success: true,
-      bonusDays: applied.bonusDays,
-      planExpiresAt: expires
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not redeem code.' });
-  }
-});
-
-async function applyPromoCode(reqUser, rawCode) {
-  const code = rawCode.trim().toUpperCase();
-
-  if (reqUser.promoRedeemed?.includes(code)) {
-    return { ok: false, error: 'You have already used this code.' };
-  }
-
-  const promo = await PromoCode.findOne({ code });
-  if (!promo || !promo.active) {
-    return { ok: false, error: 'Invalid or inactive promo code.' };
-  }
-
-  if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
-    return { ok: false, error: 'This promo code has expired.' };
-  }
-
-  if (promo.maxRedemptions > 0 && promo.redeemedCount >= promo.maxRedemptions) {
-    return { ok: false, error: 'This promo code has been fully redeemed.' };
-  }
-
-  const updateFilter = {
-    code,
-    active: true,
-    ...(promo.maxRedemptions > 0 ? { redeemedCount: { $lt: promo.maxRedemptions } } : {})
-  };
-
-  const updated = await PromoCode.findOneAndUpdate(
-    updateFilter,
-    { $inc: { redeemedCount: 1 } },
-    { new: true }
-  );
-
-  if (!updated) {
-    return { ok: false, error: 'This promo code just ran out. Try another.' };
-  }
-
-  await User.findByIdAndUpdate(reqUser._id, {
-    $addToSet: { promoRedeemed: code }
-  });
-
-  return { ok: true, bonusDays: promo.bonusDays, code };
-}
-
-// ══════════════════════════════════════════════════════════
-//  ADMIN: PROMO CODE MANAGEMENT
-// ══════════════════════════════════════════════════════════
-app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try {
-    const { code, bonusDays, maxRedemptions, expiresAt, note } = req.body;
-
-    if (!code || !bonusDays) {
-      return res.status(400).json({ error: 'code and bonusDays are required.' });
-    }
-
-    const promo = await PromoCode.create({
-      code: code.trim().toUpperCase(),
-      bonusDays,
-      maxRedemptions: maxRedemptions || 0,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      note: note || ''
-    });
-
-    res.json({ promo });
-  } catch (e) {
-    res.status(500).json({
-      error: e.code === 11000 ? 'That code already exists.' : 'Could not create code.'
-    });
-  }
-});
-
-app.get('/api/admin/promo-codes', requireAdmin, async (req, res) => {
-  try {
-    res.json({
-      promoCodes: await PromoCode.find().sort({ createdAt: -1 })
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not load.' });
-  }
-});
-
-app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
-  try {
-    const promo = await PromoCode.findOneAndUpdate(
-      { code: req.params.code.toUpperCase() },
-      req.body,
-      { new: true }
-    );
-
-    if (!promo) {
-      return res.status(404).json({ error: 'Not found.' });
-    }
-
-    res.json({ promo });
-  } catch (err) {
-    res.status(500).json({ error: 'Could not update.' });
-  }
-});
-
-// ══════════════════════════════════════════════════════════
-//  HEALTH CHECK & KEEP-ALIVE
-// ══════════════════════════════════════════════════════════
-app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
-app.get('/ping', (req, res) => res.json({ status: 'alive', ts: new Date() }));
-
-if (process.env.RENDER_EXTERNAL_URL) {
-  setInterval(() => {
-    fetch(`${process.env.RENDER_EXTERNAL_URL}/healthz`).catch(() => { });
-  }, 10 * 60 * 1000);
-}
 
 // ══════════════════════════════════════════════════════════
 //  SPA FALLBACK
@@ -1726,40 +1410,23 @@ app.get('*', (req, res) => {
 // ══════════════════════════════════════════════════════════
 //  START SERVER
 // ══════════════════════════════════════════════════════════
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log(`\n🧠 ════════════════════════════════════════════════════════`);
-  console.log(`   GRIND AI v5.0 - Enhanced with Image, PDF & Web Search`);
-  console.log(`════════════════════════════════════════════════════════════`);
-  console.log(`📡 Server running on port ${PORT}`);
-  console.log(`📅 Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`);
-
-  console.log(`🔑 API Keys Configuration:`);
-  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
-  console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
-  console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
-  console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
-  console.log(`   🔍 Tavily Search: ${TAVILY_API_KEY ? '✅ ENABLED' : '❌ DISABLED'}`);
-  console.log(`   🔍 Serper Search: ${SERPER_API_KEY ? '✅ ENABLED' : '❌ DISABLED'}`);
-
-  const totalProviders = PERPLEXITY_KEYS.length + OPENROUTER_KEYS.length + GROQ_KEYS.length + GEMINI_KEYS.length;
-  console.log(`\n   Total AI providers: ${totalProviders}`);
-  console.log(`   Web search: ${(TAVILY_API_KEY || SERPER_API_KEY) ? 'ENABLED ✅' : 'DISABLED ❌'}`);
-
-  console.log(`\n✨ New Features:`);
-  console.log(`   📸 Image upload & OCR (via Gemini Vision)`);
-  console.log(`   📄 PDF text extraction (via pdf-parse)`);
-  console.log(`   🌐 Web search integration (Tavily/Serper)`);
-  console.log(`   🔄 Automatic fallback across all providers`);
-
+  console.log(`🧠 GRIND AI v3 - Token-Managed Perplexity Priority`);
+  console.log(`📡 Running on port ${PORT}`);
+  console.log(`\n🔑 API Keys Loaded:`);
+  console.log(`   • Perplexity: ${PERPLEXITY_KEY ? '✅ PRIMARY' : '❌ NOT SET'}`);
+  console.log(`   • OpenRouter: ${OPENROUTER_KEYS.length} keys ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
+  console.log(`   • Groq: ${GROQ_KEYS.length} keys (fallback)`);
+  console.log(`   • Gemini: ${GEMINI_KEYS.length} keys (fallback)`);
   console.log(`\n💰 Cost Management:`);
   console.log(`   • Token limit per user: ${TOKEN_LIMIT.toLocaleString()}`);
-  console.log(`   • Emergency downgrade: ${EMERGENCY_DOWNGRADE_CHAIN.length} fallback options`);
-
-  console.log(`\n🎯 Intelligent Fallback Chains:`);
-  console.log(`   • Fast mode: ${FALLBACK_CHAIN.fast.length} providers`);
-  console.log(`   • Balanced mode: ${FALLBACK_CHAIN.balanced.length} providers`);
-  console.log(`   • Deep mode: ${FALLBACK_CHAIN.deep.length} providers`);
-
-  console.log(`\n✨ System Ready! All features active.\n`);
-  console.log(`════════════════════════════════════════════════════════════\n`);
+  console.log(`   • Downgrade model: ${DOWNGRADE_CONFIG.model}`);
+  console.log(`\n🎯 Model Routing Strategy:`);
+  console.log(`   • Fast mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar' : 'OpenRouter GPT-5.4-nano'} (no search)`);
+  console.log(`   • Balanced mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar' : 'OpenRouter GPT-5-mini'} (with search)`);
+  console.log(`   • Deep mode: ${PERPLEXITY_KEY ? 'Perplexity Sonar Pro' : 'OpenRouter GPT-5.4-mini'} (reasoning + search)`);
+  console.log(`\n🔄 Fallback Chain: Perplexity → OpenRouter → Emergency Downgrade`);
+  console.log(`✨ Ready to serve!\n`);
 });
