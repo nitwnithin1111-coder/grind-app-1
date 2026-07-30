@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>GRIND — AI Mentor for JEE & NEET</title>
 <meta name="description" content="GRIND is a focused AI study mentor for JEE and NEET aspirants. Real answers, step-by-step derivations, and a memory that keeps up with you.">
+
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#34D399">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GRIND AI">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230E1116'/%3E%3Ccircle cx='32' cy='32' r='16' fill='%2334D399'/%3E%3Cpath d='M24 33l6 6 12-14' stroke='%230E1116' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -15,9 +24,6 @@
 <style>
 /* ══════════════════════════════════════════
    DESIGN TOKENS
-   Subject: exam-hall seriousness + the one right answer.
-   Signature: the OMR bubble mark — a filled answer circle
-   that becomes the logo, the loading state, and the send button.
 ══════════════════════════════════════════ */
 :root {
   --ink:        #0E1116;
@@ -61,6 +67,16 @@ button, input, textarea { font-family: inherit; }
 a { color: var(--link); }
 :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+/* ══ PWA INSTALL BANNER ══ */
+.pwa-banner { background: linear-gradient(135deg, rgba(52,211,153,0.1) 0%, rgba(110,140,255,0.08) 100%); border: 1px solid rgba(52,211,153,0.3); border-radius: var(--radius-m); padding: 12px 18px; margin: 12px 18px; display:none; align-items:center; justify-content:space-between; gap:12px; animation: slideDown 0.3s ease; }
+@keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+.pwa-banner-text { font-size: 13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.pwa-banner-btns { display:flex; gap:8px; }
+.pwa-install-btn { background: var(--accent); color: var(--accent-ink); border: none; border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight:700; cursor:pointer; transition: all .15s; }
+.pwa-install-btn:hover { opacity:0.9; transform: translateY(-1px); }
+.pwa-dismiss-btn { background: transparent; color: var(--text-dim); border: 1px solid var(--line2); border-radius: 999px; padding: 6px 12px; font-size: 11px; cursor:pointer; }
+.pwa-dismiss-btn:hover { color: var(--text); border-color: var(--text-faint); }
 
 /* ══ LOGO ══ */
 .logomark { display:inline-flex; align-items:center; justify-content:center; border-radius: 26%; background: linear-gradient(155deg, #1B2029, #12151B); position:relative; flex-shrink:0; }
@@ -160,7 +176,7 @@ a { color: var(--link); }
 .tab-panel { position:absolute; inset:0; display:none; flex-direction:column; overflow:hidden; }
 .tab-panel.tab-active { display:flex; }
 
-/* ══ PRO BANNER (new) ══ */
+/* ══ PRO BANNER ══ */
 .pro-banner { background: linear-gradient(135deg, rgba(240,169,78,0.08) 0%, rgba(240,169,78,0.03) 100%); border: 1px solid rgba(240,169,78,0.25); border-radius: var(--radius-m); padding: 12px 18px; margin: 12px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .pro-banner-text { font-size: 13px; font-weight:600; }
 .pro-banner-text span { color: var(--pro); }
@@ -172,8 +188,6 @@ a { color: var(--link); }
 .welcome-card { padding: 8px 4px 20px; animation: fadeup .35s ease; }
 .welcome-card h1 { font-family: var(--font-display); font-size: 26px; font-weight:600; line-height:1.35; margin-bottom:10px; }
 .welcome-card p { font-size: 13.5px; color: var(--text-dim); line-height:1.75; max-width: 46ch; }
-.welcome-focus { margin-top: 16px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-m); font-size: 12.5px; color: var(--text-dim); display:none; }
-.welcome-focus b { color: var(--text); }
 .welcome-prompts { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
 .wprompt { padding: 8px 13px; border-radius: 999px; border: 1px solid var(--line2); background: var(--card); font-size:12.5px; color: var(--text-dim); cursor:pointer; transition: all .15s; }
 .wprompt:hover { border-color: var(--accent); color: var(--accent); }
@@ -432,7 +446,6 @@ a { color: var(--link); }
     <div class="modal-title">Upgrade to Pro</div>
     <div class="modal-sub">Unlocks Deep response mode — full derivations and extra worked examples on every answer.</div>
 
-    <!-- Promo code input -->
     <div class="promo-row">
       <input class="promo-input" id="promo-code-input" placeholder="Promo code (optional)"/>
       <button class="promo-btn" onclick="applyPromoCode()">Apply</button>
@@ -522,11 +535,24 @@ a { color: var(--link); }
     <div id="main-content">
       <!-- CHAT -->
       <div id="chat-tab" class="tab-panel tab-active">
-        <!-- Pro banner (shown only to free users) -->
+        <!-- PWA Install Banner -->
+        <div class="pwa-banner" id="pwa-banner">
+          <div class="pwa-banner-text">
+            <span>📱</span>
+            <span>Install GRIND as an app for faster access</span>
+          </div>
+          <div class="pwa-banner-btns">
+            <button class="pwa-install-btn" id="pwa-install-btn">Install</button>
+            <button class="pwa-dismiss-btn" onclick="dismissPWABanner()">Later</button>
+          </div>
+        </div>
+
+        <!-- Pro banner -->
         <div class="pro-banner" id="pro-banner-chat" style="display:none;">
           <div class="pro-banner-text">Go <span>Pro</span> for deep derivations &amp; step‑by‑step answers.</div>
           <button class="pro-banner-btn" onclick="openPaywall()">Upgrade</button>
         </div>
+
         <div id="chat-area"></div>
         <div class="input-wrap">
           <div class="input-inner">
@@ -567,7 +593,7 @@ a { color: var(--link); }
 
 <script>
 // ════════════════════════════════════════════
-//  LOGO — rendered once, reused everywhere
+//  LOGO
 // ════════════════════════════════════════════
 const LOGO_SVG = `<svg width="100%" height="100%" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <rect width="64" height="64" rx="16" fill="url(#gLogoGrad)"/>
@@ -576,6 +602,50 @@ const LOGO_SVG = `<svg width="100%" height="100%" viewBox="0 0 64 64" xmlns="htt
   <defs><linearGradient id="gLogoGrad" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#1B2029"/><stop offset="1" stop-color="#10131A"/></linearGradient></defs>
 </svg>`;
 document.querySelectorAll('.logomark').forEach(el => el.innerHTML = LOGO_SVG);
+
+// ════════════════════════════════════════════
+//  PWA SUPPORT
+// ════════════════════════════════════════════
+let deferredPrompt;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('✅ Service Worker registered'))
+      .catch(err => console.error('❌ Service Worker registration failed:', err));
+  });
+}
+
+// PWA install prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  
+  // Show install banner only if not dismissed before
+  if (!localStorage.getItem('pwa-dismissed')) {
+    document.getElementById('pwa-banner').style.display = 'flex';
+  }
+});
+
+document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  
+  if (outcome === 'accepted') {
+    showToast('App installed successfully!', 'success');
+  }
+  
+  deferredPrompt = null;
+  document.getElementById('pwa-banner').style.display = 'none';
+});
+
+function dismissPWABanner() {
+  document.getElementById('pwa-banner').style.display = 'none';
+  localStorage.setItem('pwa-dismissed', 'true');
+}
 
 // ════════════════════════════════════════════
 //  GLOBALS
@@ -590,9 +660,37 @@ let pendingImageBase64 = null;
 let currentNoteId = null;
 let allNotes = [];
 let noteAutoSaveTimer = null;
-let promoApplied = null; // stores promo code applied during upgrade
+let promoApplied = null;
 
 if (typeof marked !== 'undefined') marked.setOptions({ breaks: true, gfm: true });
+
+// ════════════════════════════════════════════
+//  PASTE IMAGE SUPPORT (NEW)
+// ════════════════════════════════════════════
+document.addEventListener('paste', async (e) => {
+  // Only handle paste when chat input is focused
+  if (document.activeElement !== document.getElementById('inp')) return;
+  
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  
+  for (let item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingImageBase64 = reader.result.split(',')[1];
+          renderImagePreview(reader.result);
+          showToast('Image pasted successfully', 'success');
+        };
+        reader.readAsDataURL(file);
+      }
+      break;
+    }
+  }
+});
 
 // ════════════════════════════════════════════
 //  SAFE HELPERS
@@ -666,7 +764,6 @@ async function showApp(user) {
   renderUserChrome(user);
   loadHistory();
 
-  // Try to resume last session instead of always starting new
   try {
     const lastRes = await fetch('/api/sessions/last', { credentials:'include' });
     const lastData = await lastRes.json();
@@ -676,7 +773,6 @@ async function showApp(user) {
     }
   } catch(e) { console.warn('Could not fetch last session', e); }
 
-  // Fallback: new chat
   newChat();
   const name = user.name?.split(' ')[0] || 'there';
   setTimeout(() => addAiMsg(`Welcome back, ${name}. What are we working through today — a concept, a tricky PYQ, or a plan for the week?`), 350);
@@ -702,7 +798,6 @@ function renderUserChrome(user) {
   document.getElementById('deep-lock').style.display = isPro ? 'none' : 'inline-block';
   selectSpeed(user.responseSpeed || 'balanced', false);
 
-  // Show/hide Pro banner in chat
   const banner = document.getElementById('pro-banner-chat');
   if (banner) banner.style.display = isPro ? 'none' : 'flex';
 }
@@ -883,7 +978,7 @@ async function deleteSession(id, e) {
 }
 
 // ════════════════════════════════════════════
-//  CHAT (line-by-line streaming upgrade)
+//  CHAT (LINE-BY-LINE STREAMING - IMPROVED)
 // ════════════════════════════════════════════
 async function newChat() {
   chatHistory = [];
@@ -958,7 +1053,6 @@ async function regenerateLast() {
   await streamAssistantReply(null);
 }
 
-// Editor for user messages
 function startEditMessage(wrapEl, originalText, historyIdx) {
   const bubble = wrapEl.querySelector('.msg-bubble');
   const actionsEl = wrapEl.querySelector('.msg-actions');
@@ -987,7 +1081,7 @@ function startEditMessage(wrapEl, originalText, historyIdx) {
   };
 }
 
-// ══ Streaming with line-by-line display ══
+// ══ IMPROVED LINE-BY-LINE STREAMING ══
 async function streamAssistantReply(imageBase64) {
   showTyping();
   const controller = new AbortController();
@@ -1002,24 +1096,40 @@ async function streamAssistantReply(imageBase64) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split('\n\n'); buffer = parts.pop();
+      const parts = buffer.split('\n\n'); 
+      buffer = parts.pop();
+      
       for (const part of parts) {
         const line = part.trim();
         if (!line.startsWith('data:')) continue;
-        let payload; try { payload = JSON.parse(line.slice(5).trim()); } catch { continue; }
+        let payload; 
+        try { payload = JSON.parse(line.slice(5).trim()); } catch { continue; }
+        
         if (payload.event === 'chunk') {
-          if (!aiWrap) { removeTyping(); ({wrap: aiWrap, bubble: aiBubble} = createAiBubbleShell()); }
-          // payload.text is a full line (including newline). We append it to accumulated.
+          if (!aiWrap) { 
+            removeTyping(); 
+            ({wrap: aiWrap, bubble: aiBubble} = createAiBubbleShell()); 
+          }
+          
+          // IMPROVED: Show line-by-line by accumulating and re-rendering with typing effect
           accumulated += payload.text;
-          // Update the bubble content. Since the server already sends whole lines,
-          // rendering the entire accumulated text each time gives a line-by-line appearance.
+          
+          // Update bubble with accumulated text
           aiBubble.innerHTML = safeParse(accumulated);
           safeRenderMath(aiBubble);
-          document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+          
+          // Smooth scroll
+          const chatArea = document.getElementById('chat-area');
+          chatArea.scrollTop = chatArea.scrollHeight;
+          
+          // Small delay for visual effect (remove if you want instant display)
+          await new Promise(r => setTimeout(r, 5));
+          
         } else if (payload.event === 'done') {
           removeTyping();
           if (!aiWrap) ({wrap: aiWrap, bubble: aiBubble} = createAiBubbleShell());
@@ -1031,15 +1141,18 @@ async function streamAssistantReply(imageBase64) {
           removeTyping();
           if (!aiWrap) addAiMsg(payload.error || 'Something went wrong.');
           else aiBubble.innerHTML = safeParse(payload.error || 'Something went wrong.');
-        } else if (payload.event === 'thinking') {
-          // thinking steps: we could show them if desired, but for now skip
         }
       }
     }
   } catch (err) {
     removeTyping();
-    if (err.name !== 'AbortError') { if (!aiWrap) addAiMsg('Connection issue. Please try again.'); }
-    else if (accumulated && aiWrap) { finishAiBubble(aiWrap, aiBubble, accumulated + '\n\n*(stopped)*'); chatHistory.push({role:'assistant', content: accumulated}); }
+    if (err.name !== 'AbortError') { 
+      if (!aiWrap) addAiMsg('Connection issue. Please try again.'); 
+    }
+    else if (accumulated && aiWrap) { 
+      finishAiBubble(aiWrap, aiBubble, accumulated + '\n\n*(stopped)*'); 
+      chatHistory.push({role:'assistant', content: accumulated}); 
+    }
   }
   activeAbortController = null;
   isSending = false;
@@ -1055,6 +1168,7 @@ function createAiBubbleShell() {
   area.appendChild(wrap); area.scrollTop = area.scrollHeight;
   return { wrap, bubble };
 }
+
 function finishAiBubble(wrap, bubble, text) {
   bubble.innerHTML = safeParse(text);
   requestAnimationFrame(() => { safeRenderMath(bubble); bubble.appendChild(makeCopyBtn(text)); });
