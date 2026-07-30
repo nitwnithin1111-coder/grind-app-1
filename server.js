@@ -348,7 +348,7 @@ async function extractTextFromImage(base64Image) {
           'Authorization': `Bearer ${key}`
         },
         body: JSON.stringify({
-          model: 'llama-3.2-11b-vision-instruct', // ✅ Perplexity's vision model
+          model: 'openai/gpt-5', // ✅ Perplexity's vision model
           messages: [
             {
               role: 'user',
