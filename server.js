@@ -322,68 +322,59 @@ function extractTokensUsed(usage) {
 //  IMAGE PROCESSING UTILITIES
 // ══════════════════════════════════════════════════════════
 async function processImage(buffer) {
-  const processed = await sharp(buffer)
-    .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 85 })
-    .toBuffer();
+  try {
+    const processed = await sharp(buffer)
+      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
 
-  return processed.toString('base64');
+    return processed.toString('base64');
+  } catch (error) {
+    console.error('Image processing error:', error);
+    throw new Error('Failed to process image');
+  }
 }
 
-// ✅ FIXED: Proper Perplexity Vision Model for OCR
 async function extractTextFromImage(base64Image) {
-  if (!PERPLEXITY_KEYS.length) {
-    return '[No Perplexity API keys configured for OCR]';
-  }
-
-  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
-
   try {
+    if (!GEMINI_KEYS.length) {
+      throw new Error('No Gemini API keys configured for OCR');
+    }
+
+    const key = GEMINI_KEYS[geminiIdx++ % GEMINI_KEYS.length];
+
     const response = await fetchWithTimeout(
-      'https://api.perplexity.ai/chat/completions',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
       {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
-        }, 
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'openai/gpt-5.4', // ✅ Perplexity's vision model
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { 
-                  type: 'text', 
-                  text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure. If it\'s a question from JEE/NEET, identify the subject and topic.' 
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${base64Image}`
-                  }
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' },
+              {
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: base64Image
                 }
-              ]
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 4096
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4096
+          }
         })
       },
       30000
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Perplexity Vision API Error:', errorData);
-      return `[Text extraction failed: ${errorData.error?.message || response.statusText}]`;
-    }
-
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || '[Text extraction failed - no content returned]';
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '[Text extraction failed]';
   } catch (error) {
-    console.error('Error extracting text from image:', error);
-    return `[Text extraction error: ${error.message}]`;
+    console.error('OCR error:', error);
+    return '[Image text extraction failed]';
   }
 }
 
@@ -511,15 +502,15 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       { role: 'system', content: systemPrompt },
       ...messages
     ],
-    return_related_questions: false,
-    stream: false // ✅ Disable streaming for non-SSE endpoints
+    return_related_questions: false
   };
 
-  // Only add search filters when search is enabled
+  // ✅ FIXED: Only add search filters when search is enabled
   if (search) {
     payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
     payload.search_recency_filter = 'month';
   }
+  // When search = false, don't add any search-related fields
 
   const response = await fetchWithTimeout(
     'https://api.perplexity.ai/chat/completions',
@@ -545,82 +536,6 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
     usage: data.usage || {},
     citations: data.citations || []
   };
-}
-
-// ✅ NEW: Streaming version of Perplexity for SSE
-async function callPerplexityStream(model, messages, systemPrompt, onChunk, { search = true } = {}) {
-  if (!PERPLEXITY_KEYS.length) {
-    throw new Error('No Perplexity API keys configured');
-  }
-
-  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
-
-  const payload = {
-    model,
-    max_tokens: 4096,
-    temperature: 0.4,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...messages
-    ],
-    return_related_questions: false,
-    stream: true // ✅ Enable streaming
-  };
-
-  if (search) {
-    payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
-    payload.search_recency_filter = 'month';
-  }
-
-  const response = await fetchWithTimeout(
-    'https://api.perplexity.ai/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      },
-      body: JSON.stringify(payload)
-    },
-    60000
-  );
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullContent = '';
-  let usage = {};
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data:')) continue;
-      if (trimmed === 'data: [DONE]') continue;
-
-      try {
-        const json = JSON.parse(trimmed.slice(5));
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullContent += delta;
-          await onChunk(delta);
-        }
-        if (json.usage) {
-          usage = json.usage;
-        }
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
-  }
-
-  return { content: fullContent, usage, citations: [] };
 }
 
 async function callOpenRouter(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
@@ -918,9 +833,9 @@ HARD SUBJECT CONSTRAINTS
 3. NON-ACADEMIC questions: Gently steer back to studying with one warm line, then pivot to a useful study action.
 
 TEACHING PHILOSOPHY
-You are an elite IIT Professor and compassionate elder brother to students. Your goal is to mold original thinkers and brilliant problem-solvers, not rote-learning machines.
+You are an elite IIT Professor and compassionate elder brother ("Bhaiya") to students. Your goal is to mold original thinkers and brilliant problem-solvers, not rote-learning machines.
 
-Balance intellectual rigor with psychological empathy. Use warm, honest tone with relatable english phrases to build fraternal bond.
+Balance intellectual rigor with psychological empathy. Use warm, honest tone with relatable Hindi phrases ("Suno," "Bhai," "Samjhe?") to build fraternal bond.
 
 CORE PEDAGOGICAL PILLARS
 1. Socratic first-principles — never dump raw answers; break problems into checkpoints with leading questions
@@ -1093,37 +1008,6 @@ app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file')
 });
 
 // ══════════════════════════════════════════════════════════
-//  ✅ NEW: PASTE IMAGE ENDPOINT (for copy-paste support)
-// ══════════════════════════════════════════════════════════
-app.post('/api/paste-image', requireAuth, rateLimit(10, 60000), async (req, res) => {
-  try {
-    const { imageBase64 } = req.body;
-
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'No image data provided' });
-    }
-
-    // Remove data URL prefix if present
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    
-    // Extract text from pasted image
-    const extractedText = await extractTextFromImage(base64Data);
-
-    res.json({
-      success: true,
-      extractedText,
-      base64: base64Data
-    });
-  } catch (error) {
-    console.error('Paste image error:', error);
-    res.status(500).json({
-      error: 'Failed to process pasted image',
-      details: error.message
-    });
-  }
-});
-
-// ══════════════════════════════════════════════════════════
 //  WEB SEARCH ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) => {
@@ -1216,10 +1100,8 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
     }
 
     if (imageBase64) {
-      // Extract text from image first
-      const extractedImageText = await extractTextFromImage(imageBase64);
-      enhancedMessage += `\n\n[Image Content]:\n${extractedImageText}`;
-      attachments.push({ type: 'image', extractedText: extractedImageText });
+      enhancedMessage += '\n\n[Image attached - analyzing visual content]';
+      attachments.push({ type: 'image' });
     }
 
     // Perform web search if enabled
@@ -1325,7 +1207,7 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 });
 
 // ══════════════════════════════════════════════════════════
-//  ✅ IMPROVED: CHAT STREAM ENDPOINT WITH LINE-BY-LINE RENDERING
+//  CHAT STREAM ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
@@ -1342,111 +1224,62 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
-  const send = (event, data) => {
-    res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
-  };
+  const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   try {
     const recent = messages.slice(-20);
 
-    // Enhance last message with attachments
+    // Enhance last message
     let lastMessage = recent[recent.length - 1].content;
-    const attachments = [];
 
-    if (pdfText && pdfText.trim()) {
+    if (pdfText) {
       lastMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
-      attachments.push({ type: 'pdf', extractedText: pdfText });
     }
 
     if (imageBase64) {
-      send('thinking', { step: 'Analyzing image...' });
-      const extractedImageText = await extractTextFromImage(imageBase64);
-      lastMessage += `\n\n[Image Content]:\n${extractedImageText}`;
-      attachments.push({ type: 'image', extractedText: extractedImageText });
+      lastMessage += '\n\n[Image attached]';
     }
 
     if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
       send('thinking', { step: 'Searching the web…' });
       try {
         const searchResult = await performWebSearch(lastMessage);
-        if (searchResult && searchResult.answer) {
+        if (searchResult) {
           lastMessage += `\n\n[Web Results]: ${searchResult.answer}`;
         }
       } catch (e) {
         console.error('Search failed in stream');
       }
+      await sleep(200);
     }
 
     recent[recent.length - 1].content = lastMessage;
 
-    send('thinking', { step: 'Generating response...' });
+    send('thinking', { step: 'Reading your question…' });
+    await sleep(120);
+    send('thinking', { step: 'Analyzing with AI…' });
+    await sleep(140);
 
-    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', attachments.length > 0);
+    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', !!(imageBase64 || pdfText));
     const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
 
-    // Get the chain for current mode
-    const chain = tokenLimitExceeded
-      ? EMERGENCY_DOWNGRADE_CHAIN
-      : FALLBACK_CHAIN[user.responseSpeed || 'balanced'];
+    const aiResult = await getAIResponse(
+      recent,
+      systemPrompt,
+      user.responseSpeed || 'balanced',
+      tokenLimitExceeded,
+      imageBase64 || null
+    );
 
-    let fullContent = '';
-    let usage = {};
-    let providerUsed = '';
+    send('answer_start', {});
 
-    // Try providers with streaming support
-    for (let i = 0; i < chain.length; i++) {
-      const config = chain[i];
-
-      try {
-        send('answer_start', { provider: config.name });
-
-        if (config.provider === 'perplexity') {
-          // Use streaming for Perplexity
-          const result = await callPerplexityStream(
-            config.model,
-            recent,
-            systemPrompt,
-            async (chunk) => {
-              send('chunk', { text: chunk });
-              fullContent += chunk;
-            },
-            { search: config.search }
-          );
-          usage = result.usage;
-          providerUsed = config.name;
-          break;
-
-        } else {
-          // Fallback: Non-streaming providers (simulate line-by-line)
-          const result = await callAIWithFallback(config, recent, systemPrompt, imageBase64);
-          fullContent = result.content;
-          usage = result.usage;
-          providerUsed = result.providerUsed;
-
-          // Simulate line-by-line streaming
-          const lines = fullContent.split('\n');
-          for (const line of lines) {
-            send('chunk', { text: line + '\n' });
-            await new Promise(r => setTimeout(r, 20)); // Small delay for visual effect
-          }
-          break;
-        }
-
-      } catch (error) {
-        console.error(`Stream attempt ${i + 1} failed:`, error.message);
-        if (i === chain.length - 1) {
-          throw error; // Last attempt failed
-        }
-        // Try next provider
-        continue;
-      }
+    const lines = aiResult.content.split('\n');
+    for (const line of lines) {
+      send('chunk', { text: line + '\n' });
+      await sleep(10);
     }
 
-    if (!fullContent) {
-      throw new Error('All streaming providers failed');
-    }
-
-    // Save to session
     if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
       try {
         const userMsg = messages[messages.length - 1];
@@ -1456,8 +1289,8 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
             $push: {
               messages: {
                 $each: [
-                  { role: 'user', content: userMsg.content, attachments },
-                  { role: 'assistant', content: fullContent, model: providerUsed }
+                  { role: 'user', content: userMsg.content },
+                  { role: 'assistant', content: aiResult.content, model: aiResult.provider }
                 ]
               }
             },
@@ -1469,13 +1302,7 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
       }
     }
 
-    // Update user token count
-    const tokensUsed = extractTokensUsed(usage);
-    user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
-    user.lastActive = new Date();
-    await user.save();
-
-    send('done', { reply: fullContent, model: providerUsed });
+    send('done', { reply: aiResult.content, model: aiResult.provider });
     res.end();
 
   } catch (err) {
@@ -1772,8 +1599,7 @@ app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
     res.json({
       success: true,
       bonusDays: applied.bonusDays,
-      planExpiresAt: expires,
-      isPro: true
+      planExpiresAt: expires
     });
   } catch (err) {
     res.status(500).json({ error: 'Could not redeem code.' });
@@ -1879,38 +1705,6 @@ app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-//  ✅ PWA MANIFEST & SERVICE WORKER
-// ══════════════════════════════════════════════════════════
-app.get('/manifest.json', (req, res) => {
-  res.json({
-    name: 'GRIND AI - JEE & NEET Mentor',
-    short_name: 'GRIND',
-    description: 'Your AI mentor for JEE and NEET. Real answers, step-by-step derivations.',
-    start_url: '/',
-    display: 'standalone',
-    background_color: '#0E1116',
-    theme_color: '#34D399',
-    orientation: 'portrait',
-    icons: [
-      {
-        src: '/icon-192.png',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any maskable'
-      },
-      {
-        src: '/icon-512.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any maskable'
-      }
-    ],
-    categories: ['education', 'productivity'],
-    screenshots: []
-  });
-});
-
-// ══════════════════════════════════════════════════════════
 //  HEALTH CHECK & KEEP-ALIVE
 // ══════════════════════════════════════════════════════════
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
@@ -1934,13 +1728,13 @@ app.get('*', (req, res) => {
 // ══════════════════════════════════════════════════════════
 app.listen(PORT, () => {
   console.log(`\n🧠 ════════════════════════════════════════════════════════`);
-  console.log(`   GRIND AI v6.0 - Enhanced PWA + Streaming + Image Paste`);
+  console.log(`   GRIND AI v5.0 - Enhanced with Image, PDF & Web Search`);
   console.log(`════════════════════════════════════════════════════════════`);
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`📅 Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`);
 
   console.log(`🔑 API Keys Configuration:`);
-  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY (with Vision)' : '❌'}`);
+  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
   console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
@@ -1951,13 +1745,10 @@ app.listen(PORT, () => {
   console.log(`\n   Total AI providers: ${totalProviders}`);
   console.log(`   Web search: ${(TAVILY_API_KEY || SERPER_API_KEY) ? 'ENABLED ✅' : 'DISABLED ❌'}`);
 
-  console.log(`\n✨ New Features v6.0:`);
-  console.log(`   📱 PWA Support - Install as Chrome app`);
-  console.log(`   🎬 Line-by-line streaming responses`);
-  console.log(`   📋 Copy-paste image support with OCR`);
-  console.log(`   📸 Perplexity Vision for image analysis`);
-  console.log(`   📄 PDF text extraction`);
-  console.log(`   🌐 Web search integration`);
+  console.log(`\n✨ New Features:`);
+  console.log(`   📸 Image upload & OCR (via Gemini Vision)`);
+  console.log(`   📄 PDF text extraction (via pdf-parse)`);
+  console.log(`   🌐 Web search integration (Tavily/Serper)`);
   console.log(`   🔄 Automatic fallback across all providers`);
 
   console.log(`\n💰 Cost Management:`);
