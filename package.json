@@ -1,32 +1,41 @@
 {
-  "name": "grind-jee-neet",
-  "version": "2.0.0",
-  "description": "GRIND — a premium AI mentor for JEE and NEET aspirants",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
-  "dependencies": {
-    "@tavily/core": "^0.7.3",
-    "compression": "^1.7.4",
-    "connect-mongo": "^5.1.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "helmet": "^7.1.0",
-    "mongoose": "^8.5.0",
-    "multer": "^2.0.0-beta.1",
-    "pdf-parse": "^1.1.1",
-    "sharp": "^0.33.5",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "name": "GRIND — AI Mentor for JEE & NEET",
+  "short_name": "GRIND",
+  "description": "Your AI mentor for JEE and NEET. Real answers, step-by-step derivations, and a memory that keeps up with you.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1116",
+  "theme_color": "#34D399",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='48' fill='%230E1116'/%3E%3Ccircle cx='96' cy='96' r='45' fill='%2334D399'/%3E%3Cpath d='M70 99l18 18 39-42' stroke='%230E1116' stroke-width='12' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230E1116'/%3E%3Ccircle cx='256' cy='256' r='120' fill='%2334D399'/%3E%3Cpath d='M187 265l48 48 104-112' stroke='%230E1116' stroke-width='32' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "Chat",
+      "description": "Start a new conversation",
+      "url": "/?new=true",
+      "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Cpath d='M12 12h72v72H12z' fill='%2334D399'/%3E%3C/svg%3E", "sizes": "96x96" }]
+    },
+    {
+      "name": "Notes",
+      "short_name": "Notes",
+      "description": "Open your notes",
+      "url": "/?tab=notes",
+      "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Cpath d='M12 12h72v72H12z' fill='%236E8CFF'/%3E%3C/svg%3E", "sizes": "96x96" }]
+    }
+  ]
 }
