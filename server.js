@@ -391,6 +391,47 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+{
+  "name": "GRIND - AI Mentor for JEE & NEET",
+  "short_name": "GRIND AI",
+  "description": "Your personal AI mentor for JEE and NEET preparation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1116",
+  "theme_color": "#34D399",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "Chat",
+      "description": "Start a new conversation",
+      "url": "/?action=new-chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Notes",
+      "short_name": "Notes",
+      "description": "Access your notes",
+      "url": "/?action=notes",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
 
 // ══════════════════════════════════════════════════════════
 //  IMAGE PROCESSING UTILITIES
