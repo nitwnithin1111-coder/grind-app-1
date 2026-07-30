@@ -317,121 +317,6 @@ function extractTokensUsed(usage) {
 
   return inputTokens + outputTokens;
 }
-const CACHE_NAME = 'grind-ai-v1';
-const RUNTIME_CACHE = 'grind-runtime-v1';
-
-const PRECACHE_URLS = [
-  '/',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap',
-  'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
-  'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js',
-  'https://cdn.jsdelivr.net/npm/marked/marked.min.js'
-];
-
-// Install event - cache core assets
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
-  );
-});
-
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME && name !== RUNTIME_CACHE)
-          .map(name => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Fetch event - network first, then cache
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-
-  // Skip API calls (let them go to network only)
-  if (event.request.url.includes('/api/')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Cache successful responses
-        if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(RUNTIME_CACHE).then(cache => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Network failed, try cache
-        return caches.match(event.request).then(cached => {
-          return cached || caches.match('/');
-        });
-      })
-  );
-});
-
-// Handle messages from client
-self.addEventListener('message', (event) => {
-  if (event.data === 'skipWaiting') {
-    self.skipWaiting();
-  }
-});
-{
-  "name": "GRIND - AI Mentor for JEE & NEET",
-  "short_name": "GRIND AI",
-  "description": "Your personal AI mentor for JEE and NEET preparation",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0E1116",
-  "theme_color": "#34D399",
-  "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["education", "productivity"],
-  "shortcuts": [
-    {
-      "name": "New Chat",
-      "short_name": "Chat",
-      "description": "Start a new conversation",
-      "url": "/?action=new-chat",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Notes",
-      "short_name": "Notes",
-      "description": "Access your notes",
-      "url": "/?action=notes",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
-  ]
-}
 
 // ══════════════════════════════════════════════════════════
 //  IMAGE PROCESSING UTILITIES
@@ -445,6 +330,7 @@ async function processImage(buffer) {
   return processed.toString('base64');
 }
 
+// ✅ FIXED: Proper Perplexity Vision Model for OCR
 async function extractTextFromImage(base64Image) {
   if (!PERPLEXITY_KEYS.length) {
     return '[No Perplexity API keys configured for OCR]';
@@ -462,14 +348,14 @@ async function extractTextFromImage(base64Image) {
           'Authorization': `Bearer ${key}`
         },
         body: JSON.stringify({
-          model: 'llama-3.2-11b-vision-instruct', // Perplexity's vision model
+          model: 'llama-3.2-11b-vision-instruct', // ✅ Perplexity's vision model
           messages: [
             {
               role: 'user',
               content: [
                 { 
                   type: 'text', 
-                  text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure.' 
+                  text: 'Extract ALL text from this image. If it contains mathematical equations, diagrams, or handwritten notes, describe them clearly. Preserve formatting and structure. If it\'s a question from JEE/NEET, identify the subject and topic.' 
                 },
                 {
                   type: 'image_url',
@@ -489,7 +375,7 @@ async function extractTextFromImage(base64Image) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Perplexity API Error:', errorData);
+      console.error('Perplexity Vision API Error:', errorData);
       return `[Text extraction failed: ${errorData.error?.message || response.statusText}]`;
     }
 
@@ -500,43 +386,20 @@ async function extractTextFromImage(base64Image) {
     return `[Text extraction error: ${error.message}]`;
   }
 }
+
 // ══════════════════════════════════════════════════════════
 //  PDF PROCESSING UTILITIES
 // ══════════════════════════════════════════════════════════
 async function extractTextFromPDF(buffer) {
   try {
-    // Convert buffer to base64
-    const base64PDF = buffer.toString('base64');
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer YOUR_PERPLEXITY_API_KEY`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online', // or other Perplexity models
-        messages: [
-          {
-            role: 'user',
-            content: `Please extract all text content from this PDF. Return only the extracted text without any additional commentary.\n\nPDF Data: ${base64PDF}`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.choices[0].message.content || '';
-    
+    const data = await pdfParse(buffer);
+    return data.text || '';
   } catch (error) {
     console.error('PDF parsing error:', error);
     throw new Error('Failed to extract text from PDF');
   }
 }
+
 // ══════════════════════════════════════════════════════════
 //  WEB SEARCH UTILITIES
 // ══════════════════════════════════════════════════════════
@@ -648,15 +511,15 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
       { role: 'system', content: systemPrompt },
       ...messages
     ],
-    return_related_questions: false
+    return_related_questions: false,
+    stream: false // ✅ Disable streaming for non-SSE endpoints
   };
 
-  // ✅ FIXED: Only add search filters when search is enabled
+  // Only add search filters when search is enabled
   if (search) {
     payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
     payload.search_recency_filter = 'month';
   }
-  // When search = false, don't add any search-related fields
 
   const response = await fetchWithTimeout(
     'https://api.perplexity.ai/chat/completions',
@@ -682,6 +545,82 @@ async function callPerplexity(model, messages, systemPrompt, { search = true } =
     usage: data.usage || {},
     citations: data.citations || []
   };
+}
+
+// ✅ NEW: Streaming version of Perplexity for SSE
+async function callPerplexityStream(model, messages, systemPrompt, onChunk, { search = true } = {}) {
+  if (!PERPLEXITY_KEYS.length) {
+    throw new Error('No Perplexity API keys configured');
+  }
+
+  const key = PERPLEXITY_KEYS[perplexityIdx++ % PERPLEXITY_KEYS.length];
+
+  const payload = {
+    model,
+    max_tokens: 4096,
+    temperature: 0.4,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ],
+    return_related_questions: false,
+    stream: true // ✅ Enable streaming
+  };
+
+  if (search) {
+    payload.search_domain_filter = ['ncert.nic.in', 'khanacademy.org', 'wikipedia.org', 'brilliant.org'];
+    payload.search_recency_filter = 'month';
+  }
+
+  const response = await fetchWithTimeout(
+    'https://api.perplexity.ai/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify(payload)
+    },
+    60000
+  );
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullContent = '';
+  let usage = {};
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      if (trimmed === 'data: [DONE]') continue;
+
+      try {
+        const json = JSON.parse(trimmed.slice(5));
+        const delta = json.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullContent += delta;
+          await onChunk(delta);
+        }
+        if (json.usage) {
+          usage = json.usage;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  return { content: fullContent, usage, citations: [] };
 }
 
 async function callOpenRouter(model, messages, systemPrompt, { reasoning = false, search = false } = {}) {
@@ -1154,6 +1093,37 @@ app.post('/api/upload', requireAuth, rateLimit(10, 60000), upload.single('file')
 });
 
 // ══════════════════════════════════════════════════════════
+//  ✅ NEW: PASTE IMAGE ENDPOINT (for copy-paste support)
+// ══════════════════════════════════════════════════════════
+app.post('/api/paste-image', requireAuth, rateLimit(10, 60000), async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // Remove data URL prefix if present
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Extract text from pasted image
+    const extractedText = await extractTextFromImage(base64Data);
+
+    res.json({
+      success: true,
+      extractedText,
+      base64: base64Data
+    });
+  } catch (error) {
+    console.error('Paste image error:', error);
+    res.status(500).json({
+      error: 'Failed to process pasted image',
+      details: error.message
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
 //  WEB SEARCH ENDPOINT
 // ══════════════════════════════════════════════════════════
 app.post('/api/web-search', requireAuth, rateLimit(15, 60000), async (req, res) => {
@@ -1246,8 +1216,10 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
     }
 
     if (imageBase64) {
-      enhancedMessage += '\n\n[Image attached - analyzing visual content]';
-      attachments.push({ type: 'image' });
+      // Extract text from image first
+      const extractedImageText = await extractTextFromImage(imageBase64);
+      enhancedMessage += `\n\n[Image Content]:\n${extractedImageText}`;
+      attachments.push({ type: 'image', extractedText: extractedImageText });
     }
 
     // Perform web search if enabled
@@ -1353,7 +1325,7 @@ app.post('/api/solve-doubt', requireAuth, rateLimit(20, 60000), async (req, res)
 });
 
 // ══════════════════════════════════════════════════════════
-//  CHAT STREAM ENDPOINT
+//  ✅ IMPROVED: CHAT STREAM ENDPOINT WITH LINE-BY-LINE RENDERING
 // ══════════════════════════════════════════════════════════
 app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res) => {
   const { messages, sessionId, imageBase64, pdfText, enableWebSearch } = req.body;
@@ -1370,62 +1342,111 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
-  const send = (event, data) => res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const send = (event, data) => {
+    res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+  };
 
   try {
     const recent = messages.slice(-20);
 
-    // Enhance last message
+    // Enhance last message with attachments
     let lastMessage = recent[recent.length - 1].content;
+    const attachments = [];
 
-    if (pdfText) {
+    if (pdfText && pdfText.trim()) {
       lastMessage += `\n\n[PDF Content]:\n${pdfText.slice(0, 8000)}`;
+      attachments.push({ type: 'pdf', extractedText: pdfText });
     }
 
     if (imageBase64) {
-      lastMessage += '\n\n[Image attached]';
+      send('thinking', { step: 'Analyzing image...' });
+      const extractedImageText = await extractTextFromImage(imageBase64);
+      lastMessage += `\n\n[Image Content]:\n${extractedImageText}`;
+      attachments.push({ type: 'image', extractedText: extractedImageText });
     }
 
     if (enableWebSearch && (TAVILY_API_KEY || SERPER_API_KEY)) {
       send('thinking', { step: 'Searching the web…' });
       try {
         const searchResult = await performWebSearch(lastMessage);
-        if (searchResult) {
+        if (searchResult && searchResult.answer) {
           lastMessage += `\n\n[Web Results]: ${searchResult.answer}`;
         }
       } catch (e) {
         console.error('Search failed in stream');
       }
-      await sleep(200);
     }
 
     recent[recent.length - 1].content = lastMessage;
 
-    send('thinking', { step: 'Reading your question…' });
-    await sleep(120);
-    send('thinking', { step: 'Analyzing with AI…' });
-    await sleep(140);
+    send('thinking', { step: 'Generating response...' });
 
-    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', !!(imageBase64 || pdfText));
+    const systemPrompt = buildSystemPrompt(user, user.responseSpeed || 'balanced', attachments.length > 0);
     const tokenLimitExceeded = (user.totalTokensConsumed || 0) >= TOKEN_LIMIT;
 
-    const aiResult = await getAIResponse(
-      recent,
-      systemPrompt,
-      user.responseSpeed || 'balanced',
-      tokenLimitExceeded,
-      imageBase64 || null
-    );
+    // Get the chain for current mode
+    const chain = tokenLimitExceeded
+      ? EMERGENCY_DOWNGRADE_CHAIN
+      : FALLBACK_CHAIN[user.responseSpeed || 'balanced'];
 
-    send('answer_start', {});
+    let fullContent = '';
+    let usage = {};
+    let providerUsed = '';
 
-    const lines = aiResult.content.split('\n');
-    for (const line of lines) {
-      send('chunk', { text: line + '\n' });
-      await sleep(10);
+    // Try providers with streaming support
+    for (let i = 0; i < chain.length; i++) {
+      const config = chain[i];
+
+      try {
+        send('answer_start', { provider: config.name });
+
+        if (config.provider === 'perplexity') {
+          // Use streaming for Perplexity
+          const result = await callPerplexityStream(
+            config.model,
+            recent,
+            systemPrompt,
+            async (chunk) => {
+              send('chunk', { text: chunk });
+              fullContent += chunk;
+            },
+            { search: config.search }
+          );
+          usage = result.usage;
+          providerUsed = config.name;
+          break;
+
+        } else {
+          // Fallback: Non-streaming providers (simulate line-by-line)
+          const result = await callAIWithFallback(config, recent, systemPrompt, imageBase64);
+          fullContent = result.content;
+          usage = result.usage;
+          providerUsed = result.providerUsed;
+
+          // Simulate line-by-line streaming
+          const lines = fullContent.split('\n');
+          for (const line of lines) {
+            send('chunk', { text: line + '\n' });
+            await new Promise(r => setTimeout(r, 20)); // Small delay for visual effect
+          }
+          break;
+        }
+
+      } catch (error) {
+        console.error(`Stream attempt ${i + 1} failed:`, error.message);
+        if (i === chain.length - 1) {
+          throw error; // Last attempt failed
+        }
+        // Try next provider
+        continue;
+      }
     }
 
+    if (!fullContent) {
+      throw new Error('All streaming providers failed');
+    }
+
+    // Save to session
     if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
       try {
         const userMsg = messages[messages.length - 1];
@@ -1435,8 +1456,8 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
             $push: {
               messages: {
                 $each: [
-                  { role: 'user', content: userMsg.content },
-                  { role: 'assistant', content: aiResult.content, model: aiResult.provider }
+                  { role: 'user', content: userMsg.content, attachments },
+                  { role: 'assistant', content: fullContent, model: providerUsed }
                 ]
               }
             },
@@ -1448,7 +1469,13 @@ app.post('/api/chat/stream', requireAuth, rateLimit(20, 60000), async (req, res)
       }
     }
 
-    send('done', { reply: aiResult.content, model: aiResult.provider });
+    // Update user token count
+    const tokensUsed = extractTokensUsed(usage);
+    user.totalTokensConsumed = (user.totalTokensConsumed || 0) + tokensUsed;
+    user.lastActive = new Date();
+    await user.save();
+
+    send('done', { reply: fullContent, model: providerUsed });
     res.end();
 
   } catch (err) {
@@ -1745,7 +1772,8 @@ app.post('/api/user/redeem-promo', requireAuth, async (req, res) => {
     res.json({
       success: true,
       bonusDays: applied.bonusDays,
-      planExpiresAt: expires
+      planExpiresAt: expires,
+      isPro: true
     });
   } catch (err) {
     res.status(500).json({ error: 'Could not redeem code.' });
@@ -1851,6 +1879,38 @@ app.patch('/api/admin/promo-codes/:code', requireAdmin, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
+//  ✅ PWA MANIFEST & SERVICE WORKER
+// ══════════════════════════════════════════════════════════
+app.get('/manifest.json', (req, res) => {
+  res.json({
+    name: 'GRIND AI - JEE & NEET Mentor',
+    short_name: 'GRIND',
+    description: 'Your AI mentor for JEE and NEET. Real answers, step-by-step derivations.',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0E1116',
+    theme_color: '#34D399',
+    orientation: 'portrait',
+    icons: [
+      {
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any maskable'
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any maskable'
+      }
+    ],
+    categories: ['education', 'productivity'],
+    screenshots: []
+  });
+});
+
+// ══════════════════════════════════════════════════════════
 //  HEALTH CHECK & KEEP-ALIVE
 // ══════════════════════════════════════════════════════════
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, ts: Date.now() }));
@@ -1874,13 +1934,13 @@ app.get('*', (req, res) => {
 // ══════════════════════════════════════════════════════════
 app.listen(PORT, () => {
   console.log(`\n🧠 ════════════════════════════════════════════════════════`);
-  console.log(`   GRIND AI v5.0 - Enhanced with Image, PDF & Web Search`);
+  console.log(`   GRIND AI v6.0 - Enhanced PWA + Streaming + Image Paste`);
   console.log(`════════════════════════════════════════════════════════════`);
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`📅 Current date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`);
 
   console.log(`🔑 API Keys Configuration:`);
-  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY' : '❌'}`);
+  console.log(`   🥇 Perplexity: ${PERPLEXITY_KEYS.length} key(s) ${PERPLEXITY_KEYS.length ? '✅ PRIMARY (with Vision)' : '❌'}`);
   console.log(`   🥈 OpenRouter: ${OPENROUTER_KEYS.length} key(s) ${OPENROUTER_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Groq: ${GROQ_KEYS.length} key(s) ${GROQ_KEYS.length ? '✅' : '❌'}`);
   console.log(`   🥉 Gemini: ${GEMINI_KEYS.length} key(s) ${GEMINI_KEYS.length ? '✅' : '❌'}`);
@@ -1891,10 +1951,13 @@ app.listen(PORT, () => {
   console.log(`\n   Total AI providers: ${totalProviders}`);
   console.log(`   Web search: ${(TAVILY_API_KEY || SERPER_API_KEY) ? 'ENABLED ✅' : 'DISABLED ❌'}`);
 
-  console.log(`\n✨ New Features:`);
-  console.log(`   📸 Image upload & OCR (via Gemini Vision)`);
-  console.log(`   📄 PDF text extraction (via pdf-parse)`);
-  console.log(`   🌐 Web search integration (Tavily/Serper)`);
+  console.log(`\n✨ New Features v6.0:`);
+  console.log(`   📱 PWA Support - Install as Chrome app`);
+  console.log(`   🎬 Line-by-line streaming responses`);
+  console.log(`   📋 Copy-paste image support with OCR`);
+  console.log(`   📸 Perplexity Vision for image analysis`);
+  console.log(`   📄 PDF text extraction`);
+  console.log(`   🌐 Web search integration`);
   console.log(`   🔄 Automatic fallback across all providers`);
 
   console.log(`\n💰 Cost Management:`);
