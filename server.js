@@ -348,7 +348,7 @@ async function extractTextFromImage(base64Image) {
           'Authorization': `Bearer ${key}`
         }, 
         body: JSON.stringify({
-          model: 'Sonar Pro ; sonar reasoning pro', // ✅ Perplexity's vision model
+          model: 'openai/gpt-5.4', // ✅ Perplexity's vision model
           messages: [
             {
               role: 'user',
